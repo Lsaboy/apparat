@@ -50,6 +50,20 @@ val ALL_TOOLS = listOf(
         category = ToolCategory.PDF,
         route = "images_to_pdf"
     ),
+    ToolItem(
+        id = "pdf_to_images",
+        title = "PDF to Images",
+        description = "Render every page of a PDF into high-res PNG images.",
+        category = ToolCategory.PDF,
+        route = "pdf_to_images"
+    ),
+    ToolItem(
+        id = "pdf_split",
+        title = "Split PDF / Extract Pages",
+        description = "Extract specific page ranges into a separate, clean PDF.",
+        category = ToolCategory.PDF,
+        route = "pdf_split"
+    ),
 
     // Video Tools
     ToolItem(
@@ -61,6 +75,14 @@ val ALL_TOOLS = listOf(
         badge = "FFmpeg"
     ),
     ToolItem(
+        id = "video_trim",
+        title = "Lossless Trim & Mute",
+        description = "Instant video trimming or audio muting in <1s with 0 re-encoding (stream copy).",
+        category = ToolCategory.VIDEO,
+        route = "video_trim",
+        badge = "Fast"
+    ),
+    ToolItem(
         id = "video_caption",
         title = "Burn Subtitles & Captions",
         description = "Hardcode .srt or .vtt subtitles directly into video with custom font sizing.",
@@ -69,9 +91,17 @@ val ALL_TOOLS = listOf(
         badge = "Subtitles"
     ),
     ToolItem(
+        id = "video_to_gif",
+        title = "Video to Smooth GIF",
+        description = "Generate crystal-clear animated GIFs using 2-pass palette generation.",
+        category = ToolCategory.VIDEO,
+        route = "video_to_gif",
+        badge = "Palette"
+    ),
+    ToolItem(
         id = "video_convert",
         title = "Video Format Exchange",
-        description = "Transcode between MP4, MKV, WEBM, and high-quality animated GIFs.",
+        description = "Transcode between MP4, MKV, WEBM, and animated GIFs.",
         category = ToolCategory.VIDEO,
         route = "video_convert"
     ),
@@ -90,6 +120,21 @@ val ALL_TOOLS = listOf(
         description = "Compress photo file size with quality slider, resolution downscaling, and EXIF strip.",
         category = ToolCategory.IMAGE,
         route = "image_shrink"
+    ),
+    ToolItem(
+        id = "document_scan",
+        title = "Document & Receipt Enhancer",
+        description = "Turn photos of documents into crisp, high-contrast black & white scans.",
+        category = ToolCategory.IMAGE,
+        route = "document_scan",
+        badge = "Scanner"
+    ),
+    ToolItem(
+        id = "palette_extractor",
+        title = "Palette & Color Extractor",
+        description = "Extract dominant colors and HEX codes directly from photos.",
+        category = ToolCategory.IMAGE,
+        route = "palette_extractor"
     ),
     ToolItem(
         id = "image_convert",
@@ -121,6 +166,13 @@ val ALL_TOOLS = listOf(
         description = "Compute and verify MD5, SHA-1, SHA-256 hashes of any file against clipboard.",
         category = ToolCategory.UTILITIES,
         route = "hash_verifier"
+    ),
+    ToolItem(
+        id = "json_tool",
+        title = "JSON Formatter & Validator",
+        description = "Prettify, format, or minify JSON data offline.",
+        category = ToolCategory.UTILITIES,
+        route = "json_tool"
     ),
     ToolItem(
         id = "base64_studio",
@@ -418,11 +470,18 @@ fun getCategoryIcon(id: String, category: ToolCategory): ImageVector = when {
     id.contains("password") || id.contains("unlock") -> Icons.Default.LockOpen
     id.contains("shrink") || id.contains("compress") -> Icons.Default.Compress
     id.contains("caption") || id.contains("subtitle") -> Icons.Default.Subtitles
+    id.contains("trim") || id.contains("mute") -> Icons.Default.ContentCut
+    id.contains("gif") -> Icons.Default.Gif
     id.contains("convert") -> Icons.Default.Transform
     id.contains("audio") -> Icons.Default.Audiotrack
+    id.contains("scan") -> Icons.Default.DocumentScanner
+    id.contains("palette") -> Icons.Default.ColorLens
     id.contains("exif") -> Icons.Default.Shield
     id.contains("qr") -> Icons.Default.QrCode
     id.contains("hash") -> Icons.Default.Fingerprint
+    id.contains("split") -> Icons.Default.CallSplit
+    id.contains("to_images") -> Icons.Default.Collections
+    id.contains("json") -> Icons.Default.DataObject
     id.contains("base64") -> Icons.Default.Code
     category == ToolCategory.PDF -> Icons.Default.PictureAsPdf
     category == ToolCategory.VIDEO -> Icons.Default.VideoFile

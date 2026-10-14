@@ -145,4 +145,80 @@ object PdfEngine {
             outputFile
         }
     }
+
+    /**
+     * Splits a PDF to keep only a specific page range (1-indexed).
+     */
+    suspend fun splitPdf(
+        context: Context,
+        inputUri: Uri,
+        startPage: Int,
+        endPage: Int
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
+            val outputFile = FileUtils.createTempOutputFile(context, "split_p${startPage}_p$endPage", ".pdf")
+
+            val document = PDDocument.load(cachedInput)
+            val newDoc = PDDocument()
+
+            try {
+                val totalPages = document.numberOfPages
+                val start = (startPage - 1).coerceIn(0, totalPages - 1)
+                val end = (endPage - 1).coerceIn(start, totalPages - 1)
+
+                for (i in start..end) {
+                    newDoc.addPage(document.getPage(i))
+                }
+                newDoc.save(outputFile)
+            } finally {
+                newDoc.close()
+                document.close()
+                cachedInput.delete()
+            }
+
+            outputFile
+        }
+    }
+
+    /**
+     * Renders each page of a PDF into high-res PNG images using Android's native hardware PdfRenderer.
+     */
+    suspend fun pdfToImages(
+        context: Context,
+        inputUri: Uri
+    ): Result<List<File>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
+            val renderedFiles = mutableListOf<File>()
+
+            val pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+            val renderer = android.graphics.pdf.PdfRenderer(pfd)
+
+            try {
+                for (i in 0 until renderer.pageCount) {
+                    val page = renderer.openPage(i)
+                    // Render at 2x density for crisp quality
+                    val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    canvas.drawColor(android.graphics.Color.WHITE) // White background for transparent pages
+                    page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    page.close()
+
+                    val pageFile = FileUtils.createTempOutputFile(context, "page_${i + 1}", ".png")
+                    FileOutputStream(pageFile).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    bitmap.recycle()
+                    renderedFiles.add(pageFile)
+                }
+            } finally {
+                renderer.close()
+                pfd.close()
+                cachedInput.delete()
+            }
+
+            renderedFiles
+        }
+    }
 }

@@ -170,4 +170,62 @@ object VideoEngine {
             }
         }
     }
+
+    /**
+     * Losslessly trims video by time range without re-encoding (instant stream copy).
+     */
+    suspend fun losslessTrim(
+        context: Context,
+        videoUri: Uri,
+        startSec: Float,
+        durationSec: Float
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
+            val outputFile = FileUtils.createTempOutputFile(context, "trimmed", ".mp4")
+
+            try {
+                val cmd = "-y -ss $startSec -t $durationSec -i \"${cachedVideo.absolutePath}\" -c copy -avoid_negative_ts make_zero \"${outputFile.absolutePath}\""
+                val session = FFmpegKit.execute(cmd)
+                if (!ReturnCode.isSuccess(session.returnCode)) {
+                    throw IllegalStateException("Trim failed: ${session.failStackTrace ?: session.allLogsAsString}")
+                }
+                outputFile
+            } finally {
+                cachedVideo.delete()
+            }
+        }
+    }
+
+    /**
+     * Converts a video segment into a smooth animated GIF using 2-pass palettegen.
+     */
+    suspend fun videoToGif(
+        context: Context,
+        videoUri: Uri,
+        fps: Int = 12,
+        width: Int = 480,
+        startSec: Float = 0f,
+        durationSec: Float = 6f,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
+            val outputFile = FileUtils.createTempOutputFile(context, "animated", ".gif")
+
+            try {
+                onProgress(0.3f, "Generating GIF color palette...")
+                val filter = "fps=$fps,scale=$width:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer"
+                val cmd = "-y -ss $startSec -t $durationSec -i \"${cachedVideo.absolutePath}\" -vf \"$filter\" \"${outputFile.absolutePath}\""
+
+                val session = FFmpegKit.execute(cmd)
+                if (!ReturnCode.isSuccess(session.returnCode)) {
+                    throw IllegalStateException("GIF creation failed: ${session.failStackTrace ?: session.allLogsAsString}")
+                }
+                outputFile
+            } finally {
+                cachedVideo.delete()
+            }
+        }
+    }
 }

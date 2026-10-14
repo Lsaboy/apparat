@@ -74,4 +74,46 @@ object UtilityEngine {
     fun decodeBase64(input: String): Result<String> = runCatching {
         String(Base64.decode(input, Base64.DEFAULT), Charsets.UTF_8)
     }
+
+    /**
+     * Prettifies or minifies JSON strings.
+     */
+    fun formatJson(jsonString: String, pretty: Boolean = true): Result<String> = runCatching {
+        val trimmed = jsonString.trim()
+        val indent = if (pretty) 4 else 0
+        if (trimmed.startsWith("{")) {
+            org.json.JSONObject(trimmed).toString(indent)
+        } else if (trimmed.startsWith("[")) {
+            org.json.JSONArray(trimmed).toString(indent)
+        } else {
+            throw IllegalArgumentException("Not a valid JSON object or array")
+        }
+    }
+
+    /**
+     * Converts text casing.
+     */
+    enum class CaseMode(val label: String) {
+        UPPERCASE("UPPERCASE"),
+        LOWERCASE("lowercase"),
+        TITLE_CASE("Title Case"),
+        CAMEL_CASE("camelCase"),
+        SNAKE_CASE("snake_case"),
+        KEBAB_CASE("kebab-case")
+    }
+
+    fun convertCase(text: String, mode: CaseMode): String {
+        val words = text.trim().split(Regex("[\\s_\\-]+")).filter { it.isNotEmpty() }
+        if (words.isEmpty()) return text
+        return when (mode) {
+            CaseMode.UPPERCASE -> text.uppercase()
+            CaseMode.LOWERCASE -> text.lowercase()
+            CaseMode.TITLE_CASE -> words.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            CaseMode.CAMEL_CASE -> words.mapIndexed { index, w ->
+                if (index == 0) w.lowercase() else w.replaceFirstChar { it.uppercase() }
+            }.joinToString("")
+            CaseMode.SNAKE_CASE -> words.joinToString("_") { it.lowercase() }
+            CaseMode.KEBAB_CASE -> words.joinToString("-") { it.lowercase() }
+        }
+    }
 }

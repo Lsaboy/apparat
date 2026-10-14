@@ -182,4 +182,91 @@ object ImageEngine {
             src.getAttribute(tag)?.let { dst.setAttribute(tag, it) }
         }
     }
+
+    /**
+     * Enhances document photos (receipts, pages) into clean high-contrast black & white scans.
+     */
+    suspend fun enhanceDocumentScan(
+        context: Context,
+        inputUri: Uri,
+        contrastMultiplier: Float = 1.8f,
+        convertToMonochrome: Boolean = true
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val inputStream = context.contentResolver.openInputStream(inputUri)
+                ?: throw IllegalStateException("Could not open input image")
+            val original = BitmapFactory.decodeStream(inputStream)
+                ?: throw IllegalStateException("Could not decode image")
+            inputStream.close()
+
+            val outputBitmap = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(outputBitmap)
+            val paint = Paint()
+
+            val cm = ColorMatrix()
+            if (convertToMonochrome) {
+                cm.setSaturation(0f)
+            }
+            val scale = contrastMultiplier
+            val translate = (-0.5f * scale + 0.5f) * 255f
+            val contrastMatrix = ColorMatrix(floatArrayOf(
+                scale, 0f, 0f, 0f, translate,
+                0f, scale, 0f, 0f, translate,
+                0f, 0f, scale, 0f, translate,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            cm.postConcat(contrastMatrix)
+            paint.colorFilter = ColorMatrixColorFilter(cm)
+
+            canvas.drawBitmap(original, 0f, 0f, paint)
+            original.recycle()
+
+            val outputFile = FileUtils.createTempOutputFile(context, "scanned_doc", ".jpg")
+            FileOutputStream(outputFile).use { out ->
+                outputBitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+            }
+            outputBitmap.recycle()
+            outputFile
+        }
+    }
+
+    /**
+     * Extracts top dominant colors as hex strings from an image.
+     */
+    suspend fun extractColorPalette(
+        context: Context,
+        inputUri: Uri,
+        count: Int = 6
+    ): Result<List<String>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val inputStream = context.contentResolver.openInputStream(inputUri)
+                ?: throw IllegalStateException("Could not open image")
+            val original = BitmapFactory.decodeStream(inputStream)
+                ?: throw IllegalStateException("Could not decode image")
+            inputStream.close()
+
+            // Downsample for fast color sampling
+            val scaled = Bitmap.createScaledBitmap(original, 64, 64, true)
+            if (scaled != original) original.recycle()
+
+            val colorCounts = mutableMapOf<Int, Int>()
+            for (x in 0 until scaled.width step 2) {
+                for (y in 0 until scaled.height step 2) {
+                    val pixel = scaled.getPixel(x, y)
+                    // Quantize to reduce subtle variations
+                    val r = (pixel shr 16 and 0xFF) / 16 * 16
+                    val g = (pixel shr 8 and 0xFF) / 16 * 16
+                    val b = (pixel and 0xFF) / 16 * 16
+                    val quantized = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                    colorCounts[quantized] = (colorCounts[quantized] ?: 0) + 1
+                }
+            }
+            scaled.recycle()
+
+            colorCounts.entries
+                .sortedByDescending { it.value }
+                .take(count)
+                .map { String.format("#%06X", (0xFFFFFF and it.key)) }
+        }
+    }
 }

@@ -79,7 +79,7 @@ fun FileSelectionCard(
     fileName: String?,
     fileSize: Long?,
     placeholderText: String = "Tap to choose a file",
-    icon: ImageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+    icon: ImageVector = Icons.Default.Description,
     accentColor: Color = PrimaryTeal,
     onClick: () -> Unit
 ) {

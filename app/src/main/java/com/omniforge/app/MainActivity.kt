@@ -11,19 +11,26 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.omniforge.app.core.theme.OmniForgeTheme
 import com.omniforge.app.feature.home.HomeScreen
+import com.omniforge.app.feature.image.DocumentScanScreen
 import com.omniforge.app.feature.image.ExifStripperScreen
 import com.omniforge.app.feature.image.ImageConvertScreen
 import com.omniforge.app.feature.image.ImageShrinkScreen
+import com.omniforge.app.feature.image.PaletteExtractorScreen
 import com.omniforge.app.feature.pdf.ImagesToPdfScreen
 import com.omniforge.app.feature.pdf.PdfShrinkScreen
+import com.omniforge.app.feature.pdf.PdfSplitScreen
+import com.omniforge.app.feature.pdf.PdfToImagesScreen
 import com.omniforge.app.feature.pdf.PdfUnlockScreen
 import com.omniforge.app.feature.utilities.Base64StudioScreen
 import com.omniforge.app.feature.utilities.HashVerifierScreen
+import com.omniforge.app.feature.utilities.JsonToolScreen
 import com.omniforge.app.feature.utilities.QrStudioScreen
 import com.omniforge.app.feature.video.AudioExtractScreen
 import com.omniforge.app.feature.video.VideoCaptionScreen
 import com.omniforge.app.feature.video.VideoConvertScreen
 import com.omniforge.app.feature.video.VideoShrinkScreen
+import com.omniforge.app.feature.video.VideoToGifScreen
+import com.omniforge.app.feature.video.VideoTrimMuteScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,13 +63,25 @@ class MainActivity : ComponentActivity() {
                     composable("images_to_pdf") {
                         ImagesToPdfScreen(onBack = { navController.popBackStack() })
                     }
+                    composable("pdf_to_images") {
+                        PdfToImagesScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("pdf_split") {
+                        PdfSplitScreen(onBack = { navController.popBackStack() })
+                    }
 
                     // Video Tools
                     composable("video_shrink") {
                         VideoShrinkScreen(onBack = { navController.popBackStack() })
                     }
+                    composable("video_trim") {
+                        VideoTrimMuteScreen(onBack = { navController.popBackStack() })
+                    }
                     composable("video_caption") {
                         VideoCaptionScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("video_to_gif") {
+                        VideoToGifScreen(onBack = { navController.popBackStack() })
                     }
                     composable("video_convert") {
                         VideoConvertScreen(onBack = { navController.popBackStack() })
@@ -74,6 +93,12 @@ class MainActivity : ComponentActivity() {
                     // Image Tools
                     composable("image_shrink") {
                         ImageShrinkScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("document_scan") {
+                        DocumentScanScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("palette_extractor") {
+                        PaletteExtractorScreen(onBack = { navController.popBackStack() })
                     }
                     composable("image_convert") {
                         ImageConvertScreen(onBack = { navController.popBackStack() })
@@ -88,6 +113,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("hash_verifier") {
                         HashVerifierScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("json_tool") {
+                        JsonToolScreen(onBack = { navController.popBackStack() })
                     }
                     composable("base64_studio") {
                         Base64StudioScreen(onBack = { navController.popBackStack() })
