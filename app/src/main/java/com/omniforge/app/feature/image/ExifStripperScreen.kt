@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
@@ -27,16 +27,26 @@ import com.omniforge.app.engine.image.ImageEngine
 import kotlinx.coroutines.launch
 
 @Composable
-fun ExifStripperScreen(onBack: () -> Unit) {
+fun ExifStripperScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
     var exifInfo by remember { mutableStateOf<ExifInfo?>(null) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
 
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(initialUri) {
+        initialUri?.let {
+            exifInfo = ImageEngine.getExifData(context, it)
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -53,7 +63,7 @@ fun ExifStripperScreen(onBack: () -> Unit) {
     }
 
     ToolScaffold(
-        title = "EXIF Privacy Stripper",
+        title = "EXIF Metadata Stripper",
         categoryName = "Photo & Image",
         accentColor = AccentImage,
         onBack = onBack
@@ -75,6 +85,13 @@ fun ExifStripperScreen(onBack: () -> Unit) {
                 icon = Icons.Default.Image,
                 accentColor = AccentImage,
                 onClick = { picker.launch(arrayOf("image/*")) }
+            )
+
+            // Save Mode
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentImage
             )
 
             // Detected Metadata Card
@@ -114,10 +131,25 @@ fun ExifStripperScreen(onBack: () -> Unit) {
                         val result = ImageEngine.stripExif(context, uri)
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "All EXIF & Location tags removed!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original photo stripped of EXIF in-place!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Metadata stripped! (Saved as copy in Downloads)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "All EXIF & Location tags removed!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to strip EXIF")
@@ -153,7 +185,7 @@ fun ExifStripperScreen(onBack: () -> Unit) {
                             mimeType = "image/jpeg",
                             displayName = "${baseName}_clean.jpg"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "image/jpeg")

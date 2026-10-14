@@ -19,23 +19,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
+import com.omniforge.app.engine.video.VideoOutputFormat
 import com.omniforge.app.engine.video.VideoShrinkPreset
 import kotlinx.coroutines.launch
 
 @Composable
-fun VideoShrinkScreen(onBack: () -> Unit) {
+fun VideoShrinkScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
+    var selectedFormat by remember { mutableStateOf(VideoOutputFormat.MP4) }
     var selectedPreset by remember { mutableStateOf(VideoShrinkPreset.DISCORD_FAST) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
+
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
@@ -74,6 +82,28 @@ fun VideoShrinkScreen(onBack: () -> Unit) {
                 onClick = { picker.launch(arrayOf("video/*")) }
             )
 
+            // Format Selector
+            FormatSelectorRow(
+                title = "Output Container",
+                formats = listOf("mp4", "mkv", "webm"),
+                selectedFormat = selectedFormat.extension.removePrefix("."),
+                onFormatSelect = { ext ->
+                    selectedFormat = when (ext.lowercase()) {
+                        "mkv" -> VideoOutputFormat.MKV
+                        "webm" -> VideoOutputFormat.WEBM
+                        else -> VideoOutputFormat.MP4
+                    }
+                },
+                accentColor = AccentVideo
+            )
+
+            // Save Mode
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentVideo
+            )
+
             // Preset Selection
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -81,7 +111,7 @@ fun VideoShrinkScreen(onBack: () -> Unit) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Compression Preset",
+                        text = "Target Size / Resolution Preset",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -126,10 +156,25 @@ fun VideoShrinkScreen(onBack: () -> Unit) {
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "Video compressed successfully!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original video overwritten in-place!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Compressed! (Saved as copy in Downloads)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Video compressed successfully!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to compress video")
@@ -162,13 +207,13 @@ fun VideoShrinkScreen(onBack: () -> Unit) {
                         val saved = FileUtils.saveToDownloads(
                             context = context,
                             file = success.outputFile,
-                            mimeType = "video/mp4",
-                            displayName = "${baseName}_shrunk.mp4"
+                            mimeType = selectedFormat.mimeType,
+                            displayName = "${baseName}_shrunk${selectedFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "video/mp4")
+                        FileUtils.shareFile(context, success.outputFile, selectedFormat.mimeType)
                     }
                 )
             }

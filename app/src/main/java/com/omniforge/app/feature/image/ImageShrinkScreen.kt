@@ -19,20 +19,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.ImageEngine
+import com.omniforge.app.engine.image.ImageOutputFormat
 import kotlinx.coroutines.launch
 
 @Composable
-fun ImageShrinkScreen(onBack: () -> Unit) {
+fun ImageShrinkScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+
+    var outputFormat by remember { mutableStateOf(ImageOutputFormat.JPEG) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
 
     var quality by remember { mutableFloatStateOf(75f) }
     var maxDimension by remember { mutableFloatStateOf(1920f) }
@@ -76,13 +84,34 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
                 onClick = { picker.launch(arrayOf("image/*")) }
             )
 
-            // Settings Card
+            // Format Selection Row
+            FormatSelectorRow(
+                title = "Output Format",
+                formats = listOf("jpg", "webp", "png"),
+                selectedFormat = outputFormat.extension.removePrefix("."),
+                onFormatSelect = { ext ->
+                    outputFormat = when (ext.lowercase()) {
+                        "png" -> ImageOutputFormat.PNG
+                        "webp" -> ImageOutputFormat.WEBP
+                        else -> ImageOutputFormat.JPEG
+                    }
+                },
+                accentColor = AccentImage
+            )
+
+            // Save Mode Preference
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentImage
+            )
+
+            // Compression Settings Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Quality
                     Text(
                         text = "Compression Quality: ${quality.toInt()}%",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -104,9 +133,8 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Max Dimension
                     Text(
-                        text = "Max Dimension: ${maxDimension.toInt()}px",
+                        text = "Max Resolution Dimension: ${maxDimension.toInt()}px",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -126,7 +154,6 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Strip EXIF
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -134,14 +161,14 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Strip EXIF / GPS Metadata",
+                                text = "Strip EXIF / Location",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.SemiBold,
                                     color = TextPrimary
                                 )
                             )
                             Text(
-                                text = "Removes location and camera details for privacy.",
+                                text = "Wipes GPS coords and device tags",
                                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                             )
                         }
@@ -150,8 +177,7 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
                             onCheckedChange = { stripExif = it },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = AmoledBlack,
-                                checkedTrackColor = AccentImage,
-                                uncheckedTrackColor = DarkBorder
+                                checkedTrackColor = AccentImage
                             )
                         )
                     }
@@ -172,10 +198,25 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "Photo shrunk successfully!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original photo overwritten in-place!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Processed! (Original not directly writable, saved as copy)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Photo shrunk successfully!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to shrink photo")
@@ -204,16 +245,17 @@ fun ImageShrinkScreen(onBack: () -> Unit) {
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val base = (fileName ?: "photo").substringBeforeLast(".")
                         val saved = FileUtils.saveToDownloads(
                             context = context,
                             file = success.outputFile,
-                            mimeType = "image/jpeg",
-                            displayName = "shrunk_${fileName ?: "photo.jpg"}"
+                            mimeType = outputFormat.mimeType,
+                            displayName = "${base}_shrunk${outputFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "image/jpeg")
+                        FileUtils.shareFile(context, success.outputFile, outputFormat.mimeType)
                     }
                 )
             }

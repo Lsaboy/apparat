@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
@@ -25,15 +26,19 @@ import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
 
 @Composable
-fun PdfShrinkScreen(onBack: () -> Unit) {
+fun PdfShrinkScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var compressionLevel by remember { mutableFloatStateOf(0.6f) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -72,6 +77,13 @@ fun PdfShrinkScreen(onBack: () -> Unit) {
                 onClick = { filePicker.launch(arrayOf("application/pdf")) }
             )
 
+            // Save Mode
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentPdf
+            )
+
             // Compression slider
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -97,7 +109,7 @@ fun PdfShrinkScreen(onBack: () -> Unit) {
                         )
                     )
                     Text(
-                        text = "Higher compression lowers embedded image resolution to shrink file size significantly.",
+                        text = "Optimizes internal object streams and downscales embedded photos.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -111,10 +123,25 @@ fun PdfShrinkScreen(onBack: () -> Unit) {
                         val result = PdfEngine.compressPdf(context, uri, compressionLevel)
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "PDF compressed successfully!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original PDF overwritten in-place!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Compressed! (Original protected, saved as copy)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "PDF compressed successfully!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to compress PDF")
@@ -149,7 +176,7 @@ fun PdfShrinkScreen(onBack: () -> Unit) {
                             mimeType = "application/pdf",
                             displayName = "compressed_${fileName ?: "doc.pdf"}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")

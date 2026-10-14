@@ -34,7 +34,7 @@ fun ToolScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     Scaffold(
-        containerColor = AmoledBlack,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -43,7 +43,7 @@ fun ToolScaffold(
                             text = title,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         )
                         Text(
@@ -61,12 +61,12 @@ fun ToolScaffold(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AmoledBlack
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -324,5 +324,106 @@ fun ProcessStateView(
             }
         }
         else -> Unit
+    }
+}
+
+@Composable
+fun SaveModeSelector(
+    saveMode: com.omniforge.app.core.settings.SaveMode,
+    onSaveModeChange: (com.omniforge.app.core.settings.SaveMode) -> Unit,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = "Output Save Mode",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.omniforge.app.core.settings.SaveMode.entries.forEach { mode ->
+                    val isSelected = saveMode == mode
+                    OutlinedButton(
+                        onClick = { onSaveModeChange(mode) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (isSelected) accentColor else Color.Transparent,
+                            contentColor = if (isSelected) AmoledBlack else TextPrimary
+                        ),
+                        border = BorderStroke(1.dp, if (isSelected) accentColor else DarkBorder)
+                    ) {
+                        Text(
+                            text = if (mode == com.omniforge.app.core.settings.SaveMode.NEW_COPY) "New Copy" else "Modify OG",
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = saveMode.description,
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
+            )
+        }
+    }
+}
+
+@Composable
+fun FormatSelectorRow(
+    title: String = "Output Format",
+    formats: List<String>,
+    selectedFormat: String,
+    onFormatSelect: (String) -> Unit,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                formats.forEach { format ->
+                    val isSelected = selectedFormat.equals(format, ignoreCase = true)
+                    OutlinedButton(
+                        onClick = { onFormatSelect(format) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (isSelected) accentColor else Color.Transparent,
+                            contentColor = if (isSelected) AmoledBlack else TextPrimary
+                        ),
+                        border = BorderStroke(1.dp, if (isSelected) accentColor else DarkBorder)
+                    ) {
+                        Text(
+                            text = format.uppercase(),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
     }
 }

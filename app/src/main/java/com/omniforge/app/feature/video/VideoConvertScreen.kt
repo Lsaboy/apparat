@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
@@ -27,15 +28,19 @@ import com.omniforge.app.engine.video.VideoOutputFormat
 import kotlinx.coroutines.launch
 
 @Composable
-fun VideoConvertScreen(onBack: () -> Unit) {
+fun VideoConvertScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var targetFormat by remember { mutableStateOf(VideoOutputFormat.MP4) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
@@ -74,45 +79,28 @@ fun VideoConvertScreen(onBack: () -> Unit) {
                 onClick = { picker.launch(arrayOf("video/*")) }
             )
 
-            // Target Format Cards
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Target Container / Format",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        VideoOutputFormat.entries.forEach { format ->
-                            val isSelected = targetFormat == format
-                            OutlinedButton(
-                                onClick = { targetFormat = format },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (isSelected) AccentVideo else DarkSurfaceElevated,
-                                    contentColor = if (isSelected) AmoledBlack else TextPrimary
-                                ),
-                                border = BorderStroke(1.dp, if (isSelected) AccentVideo else DarkBorder)
-                            ) {
-                                Text(
-                                    text = format.name,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        }
+            // Target Format Selection
+            FormatSelectorRow(
+                title = "Target Container / Format",
+                formats = listOf("mp4", "mkv", "webm", "gif"),
+                selectedFormat = targetFormat.extension.removePrefix("."),
+                onFormatSelect = { ext ->
+                    targetFormat = when (ext.lowercase()) {
+                        "mkv" -> VideoOutputFormat.MKV
+                        "webm" -> VideoOutputFormat.WEBM
+                        "gif" -> VideoOutputFormat.GIF
+                        else -> VideoOutputFormat.MP4
                     }
-                }
-            }
+                },
+                accentColor = AccentVideo
+            )
+
+            // Save Mode
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentVideo
+            )
 
             Button(
                 onClick = {
@@ -127,10 +115,25 @@ fun VideoConvertScreen(onBack: () -> Unit) {
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "Converted to ${targetFormat.name}!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original video overwritten in-place!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Transcoded! (Saved as copy in Downloads)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Converted to ${targetFormat.name}!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to transcode")
@@ -166,7 +169,7 @@ fun VideoConvertScreen(onBack: () -> Unit) {
                             mimeType = targetFormat.mimeType,
                             displayName = "${baseName}_converted${targetFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)

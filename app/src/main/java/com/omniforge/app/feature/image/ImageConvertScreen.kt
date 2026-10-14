@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
@@ -27,15 +28,19 @@ import com.omniforge.app.engine.image.ImageOutputFormat
 import kotlinx.coroutines.launch
 
 @Composable
-fun ImageConvertScreen(onBack: () -> Unit) {
+fun ImageConvertScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by remember { mutableStateOf(initialUri) }
+    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var targetFormat by remember { mutableStateOf(ImageOutputFormat.PNG) }
+    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
     var quality by remember { mutableFloatStateOf(90f) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -76,45 +81,33 @@ fun ImageConvertScreen(onBack: () -> Unit) {
             )
 
             // Format Selection
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Target Format",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ImageOutputFormat.entries.forEach { format ->
-                            val isSelected = targetFormat == format
-                            OutlinedButton(
-                                onClick = { targetFormat = format },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (isSelected) AccentImage else DarkSurfaceElevated,
-                                    contentColor = if (isSelected) AmoledBlack else TextPrimary
-                                ),
-                                border = BorderStroke(1.dp, if (isSelected) AccentImage else DarkBorder)
-                            ) {
-                                Text(
-                                    text = format.name,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        }
+            FormatSelectorRow(
+                title = "Target Format",
+                formats = listOf("png", "jpg", "webp"),
+                selectedFormat = targetFormat.extension.removePrefix("."),
+                onFormatSelect = { ext ->
+                    targetFormat = when (ext.lowercase()) {
+                        "png" -> ImageOutputFormat.PNG
+                        "webp" -> ImageOutputFormat.WEBP
+                        else -> ImageOutputFormat.JPEG
                     }
+                },
+                accentColor = AccentImage
+            )
 
-                    if (targetFormat != ImageOutputFormat.PNG) {
-                        Spacer(modifier = Modifier.height(16.dp))
+            // Save Mode
+            SaveModeSelector(
+                saveMode = saveMode,
+                onSaveModeChange = { saveMode = it },
+                accentColor = AccentImage
+            )
+
+            if (targetFormat != ImageOutputFormat.PNG) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "Quality: ${quality.toInt()}%",
                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -149,10 +142,25 @@ fun ImageConvertScreen(onBack: () -> Unit) {
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "Converted to ${targetFormat.name}!"
-                                )
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    if (overwritten) {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Original overwritten with new format!"
+                                        )
+                                    } else {
+                                        processState = ProcessState.Success(
+                                            outputFile = outputFile,
+                                            message = "Converted! (Saved as copy in Downloads)"
+                                        )
+                                    }
+                                } else {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Converted to ${targetFormat.name}!"
+                                    )
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to convert")
@@ -188,7 +196,7 @@ fun ImageConvertScreen(onBack: () -> Unit) {
                             mimeType = targetFormat.mimeType,
                             displayName = "${baseName}_converted${targetFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)

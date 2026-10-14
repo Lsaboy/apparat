@@ -182,6 +182,42 @@ object PdfEngine {
     }
 
     /**
+     * Splits a PDF into multiple distinct PDF files based on a list of page ranges (1-indexed).
+     */
+    suspend fun multiSplitPdf(
+        context: Context,
+        inputUri: Uri,
+        ranges: List<IntRange>
+    ): Result<List<File>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
+            val document = PDDocument.load(cachedInput)
+            val outputFiles = mutableListOf<File>()
+
+            try {
+                val totalPages = document.numberOfPages
+                for ((index, range) in ranges.withIndex()) {
+                    val newDoc = PDDocument()
+                    val start = (range.first - 1).coerceIn(0, totalPages - 1)
+                    val end = (range.last - 1).coerceIn(start, totalPages - 1)
+                    for (p in start..end) {
+                        newDoc.addPage(document.getPage(p))
+                    }
+                    val partFile = FileUtils.createTempOutputFile(context, "part_${index + 1}_p${range.first}_p${range.last}", ".pdf")
+                    newDoc.save(partFile)
+                    newDoc.close()
+                    outputFiles.add(partFile)
+                }
+            } finally {
+                document.close()
+                cachedInput.delete()
+            }
+
+            outputFiles
+        }
+    }
+
+    /**
      * Renders each page of a PDF into high-res PNG images using Android's native hardware PdfRenderer.
      */
     suspend fun pdfToImages(

@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,12 +20,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
+import java.io.File
+
+enum class SplitMode(val label: String) {
+    CUSTOM_RANGES("Custom Ranges"),
+    EVERY_N_PAGES("Every N Pages"),
+    SINGLE_RANGE("Single Range")
+}
 
 @Composable
 fun PdfSplitScreen(onBack: () -> Unit) {
@@ -35,8 +44,13 @@ fun PdfSplitScreen(onBack: () -> Unit) {
     var fileName by remember { mutableStateOf<String?>(null) }
     var fileSize by remember { mutableStateOf<Long?>(null) }
 
+    var splitMode by remember { mutableStateOf(SplitMode.CUSTOM_RANGES) }
+    var customRangesText by remember { mutableStateOf("1-3, 4-6") }
+    var intervalPagesText by remember { mutableStateOf("1") }
     var startPageText by remember { mutableStateOf("1") }
-    var endPageText by remember { mutableStateOf("1") }
+    var endPageText by remember { mutableStateOf("3") }
+
+    var generatedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -47,11 +61,12 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
             processState = ProcessState.Idle
+            generatedFiles = emptyList()
         }
     }
 
     ToolScaffold(
-        title = "Split PDF / Extract Pages",
+        title = "Split PDF / Multi-File Split",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
         onBack = onBack
@@ -69,59 +84,134 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
-                placeholderText = "Select PDF to Split",
+                placeholderText = "Select PDF Document to Split",
                 icon = Icons.Default.PictureAsPdf,
                 accentColor = AccentPdf,
                 onClick = { filePicker.launch(arrayOf("application/pdf")) }
             )
 
-            // Page range selectors
+            // Split Mode Selector
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Page Range to Extract",
+                        text = "Split Strategy",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            value = startPageText,
-                            onValueChange = { startPageText = it.filter { c -> c.isDigit() } },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Start Page", color = TextSecondary) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AccentPdf,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
-                            )
-                        )
+                        SplitMode.entries.forEach { mode ->
+                            val isSelected = splitMode == mode
+                            OutlinedButton(
+                                onClick = { splitMode = mode },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isSelected) AccentPdf else DarkSurfaceElevated,
+                                    contentColor = if (isSelected) AmoledBlack else TextPrimary
+                                ),
+                                border = BorderStroke(1.dp, if (isSelected) AccentPdf else DarkBorder)
+                            ) {
+                                Text(
+                                    text = mode.label,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 11.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
 
-                        OutlinedTextField(
-                            value = endPageText,
-                            onValueChange = { endPageText = it.filter { c -> c.isDigit() } },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("End Page", color = TextSecondary) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AccentPdf,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    when (splitMode) {
+                        SplitMode.CUSTOM_RANGES -> {
+                            OutlinedTextField(
+                                value = customRangesText,
+                                onValueChange = { customRangesText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Comma-separated page ranges", color = TextSecondary) },
+                                placeholder = { Text("e.g. 1-2, 3-5, 6-10", color = TextTertiary) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentPdf,
+                                    unfocusedBorderColor = DarkBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary
+                                )
                             )
-                        )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Creates a distinct PDF file for each specified range.",
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
+                            )
+                        }
+                        SplitMode.EVERY_N_PAGES -> {
+                            OutlinedTextField(
+                                value = intervalPagesText,
+                                onValueChange = { intervalPagesText = it.filter { c -> c.isDigit() } },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Pages per PDF chunk", color = TextSecondary) },
+                                placeholder = { Text("e.g. 1 for single-page PDFs", color = TextTertiary) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentPdf,
+                                    unfocusedBorderColor = DarkBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Splits document into chunks of N pages (use 1 for single-page PDFs).",
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
+                            )
+                        }
+                        SplitMode.SINGLE_RANGE -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = startPageText,
+                                    onValueChange = { startPageText = it.filter { c -> c.isDigit() } },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("Start Page", color = TextSecondary) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AccentPdf,
+                                        unfocusedBorderColor = DarkBorder,
+                                        focusedTextColor = TextPrimary,
+                                        unfocusedTextColor = TextPrimary
+                                    )
+                                )
+
+                                OutlinedTextField(
+                                    value = endPageText,
+                                    onValueChange = { endPageText = it.filter { c -> c.isDigit() } },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("End Page", color = TextSecondary) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AccentPdf,
+                                        unfocusedBorderColor = DarkBorder,
+                                        focusedTextColor = TextPrimary,
+                                        unfocusedTextColor = TextPrimary
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -129,21 +219,41 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    val start = startPageText.toIntOrNull() ?: 1
-                    val end = endPageText.toIntOrNull() ?: 1
-                    if (start > end) {
-                        Toast.makeText(context, "Start page must be <= End page", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
                     scope.launch {
-                        processState = ProcessState.Processing(0.5f, "Extracting pages $start to $end...")
-                        val result = PdfEngine.splitPdf(context, uri, start, end)
+                        processState = ProcessState.Processing(0.3f, "Splitting PDF document...")
+                        val ranges: List<IntRange> = when (splitMode) {
+                            SplitMode.CUSTOM_RANGES -> {
+                                parseCustomRanges(customRangesText)
+                            }
+                            SplitMode.EVERY_N_PAGES -> {
+                                val n = intervalPagesText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                                // 100 pages upper estimate chunked
+                                (1..100 step n).map { it..(it + n - 1) }
+                            }
+                            SplitMode.SINGLE_RANGE -> {
+                                val s = startPageText.toIntOrNull() ?: 1
+                                val e = endPageText.toIntOrNull() ?: s
+                                listOf(s..e)
+                            }
+                        }
+
+                        if (ranges.isEmpty()) {
+                            processState = ProcessState.Error("Please enter valid page ranges")
+                            return@launch
+                        }
+
+                        val result = PdfEngine.multiSplitPdf(context, uri, ranges)
                         result.fold(
-                            onSuccess = { outputFile ->
-                                processState = ProcessState.Success(
-                                    outputFile = outputFile,
-                                    message = "Pages $start–$end extracted successfully!"
-                                )
+                            onSuccess = { files ->
+                                generatedFiles = files
+                                if (files.isNotEmpty()) {
+                                    processState = ProcessState.Success(
+                                        outputFile = files.first(),
+                                        message = "Split into ${files.size} PDF files successfully!"
+                                    )
+                                } else {
+                                    processState = ProcessState.Error("No files generated")
+                                }
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to split PDF")
@@ -160,34 +270,85 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             ) {
                 Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Extract Selected Pages", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Split Document", color = AmoledBlack, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
 
-            if (processState is ProcessState.Success) {
-                val success = processState as ProcessState.Success
-                ResultCard(
-                    outputFile = success.outputFile,
-                    originalSize = fileSize,
-                    message = success.message,
-                    onSaveToDownloads = {
-                        val base = (fileName ?: "doc").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = context,
-                            file = success.outputFile,
-                            mimeType = "application/pdf",
-                            displayName = "${base}_p${startPageText}_p${endPageText}.pdf"
+            if (generatedFiles.isNotEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "${generatedFiles.size} Split Files Generated",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = SuccessGreen
+                            )
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
-                    onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "application/pdf")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    var count = 0
+                                    val base = (fileName ?: "doc").substringBeforeLast(".")
+                                    for ((idx, file) in generatedFiles.withIndex()) {
+                                        val uri = FileUtils.saveToDownloads(
+                                            context,
+                                            file,
+                                            "application/pdf",
+                                            "${base}_part_${idx + 1}.pdf"
+                                        )
+                                        if (uri != null) count++
+                                    }
+                                    Toast.makeText(context, "Saved $count PDF files to Downloads/DigitalPocketKnife", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Save All Files", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    if (generatedFiles.isNotEmpty()) {
+                                        FileUtils.shareFile(context, generatedFiles.first(), "application/pdf")
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Share First File", color = TextPrimary)
+                            }
+                        }
                     }
-                )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+private fun parseCustomRanges(text: String): List<IntRange> {
+    val results = mutableListOf<IntRange>()
+    val tokens = text.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    for (token in tokens) {
+        if (token.contains("-")) {
+            val parts = token.split("-").map { it.trim() }
+            val s = parts[0].toIntOrNull() ?: continue
+            val e = parts.getOrNull(1)?.toIntOrNull() ?: s
+            if (s <= e) results.add(s..e)
+        } else {
+            val p = token.toIntOrNull() ?: continue
+            results.add(p..p)
+        }
+    }
+    return results
 }
