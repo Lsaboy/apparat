@@ -60,6 +60,10 @@ class AppSettings(context: Context) {
         get() = prefs.getStringSet("enabled_shortcuts", setOf("pdf_unlock", "image_shrink", "video_shrink", "video_trim")) ?: emptySet()
         set(value) = prefs.edit().putStringSet("enabled_shortcuts", value).apply()
 
+    var isGridView: Boolean
+        get() = prefs.getBoolean("is_grid_view", true)
+        set(value) = prefs.edit().putBoolean("is_grid_view", value).apply()
+
     val currentAccentColor: Color
         get() = AppAccentSwatches[accentIndex].color
 }

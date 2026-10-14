@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("home") {
                         HomeScreen(
+                            appSettings = appSettings,
                             sharedUri = incomingUri,
                             sharedMimeType = incomingMimeType,
                             onNavigateToTool = { route -> navController.navigate(route) },

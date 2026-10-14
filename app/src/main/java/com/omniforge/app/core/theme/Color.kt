@@ -5,9 +5,10 @@ import androidx.compose.ui.graphics.Color
 // Pure AMOLED Dark Colors
 val AmoledBlack = Color(0xFF000000)
 val DarkSurface = Color(0xFF0D0D0D)
-val DarkSurfaceElevated = Color(0xFF161616)
-val DarkSurfaceCard = Color(0xFF1C1C1E)
-val DarkBorder = Color(0xFF2C2C2E)
+val DarkSurfaceElevated = Color(0xFF16161B)
+val DarkSurfaceCard = Color(0xFF121215)
+val DarkBorder = Color(0xFF222228)
+val DarkSurfaceHighlight = Color(0xFF1C1C22)
 
 // Text Colors
 val TextPrimary = Color(0xFFF5F5F7)
