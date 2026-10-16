@@ -457,7 +457,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 **Photo Format Convert**
 - [ ] Batch; HEIC/HEIF input (API 28+ `ImageDecoder`); "to PDF" option; preview.
 - [ ] Transparency → JPEG: white matte by default (1B.8), with option for another colour.
-- [ ] Add lossless WEBP (`WEBP_LOSSLESS`, API 30+); AVIF only if device supports it (low priority).
+- [x] Add lossless WEBP (`WEBP_LOSSLESS`, API 30+) in ImageEngine, ImageShrinkScreen, and ImageConvertScreen; AVIF only if device supports it (low priority).
 
 **Document Scanner / Receipt Enhancer**
 - **DECIDED: fully offline, custom scanner.** No ML Kit, no Play services. Pure Kotlin;
@@ -476,13 +476,12 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   Photos→PDF engine from 2.5.
 
 **EXIF Stripper**
-- [ ] Lossless strip (1B.11); show photo preview; show "No metadata found" state; batch.
+- [x] Lossless strip (1B.11); show photo preview; show "No metadata found" state. (Batch pending).
 - [ ] "Remove location only" vs "Remove everything"; also purge embedded EXIF thumbnail.
 - [ ] Group tags by risk (location / device / date vs harmless camera settings).
 
 **Palette Extractor** (low priority for this user)
-- [ ] Show the image; copy all; use `androidx.palette` (vibrant/muted) instead of naive
-  most-frequent-colour (returns background colours). Tap-to-sample eyedropper optional.
+- [x] Show the image; copy all; HEX and RGB display with border contrast; retained state across rotation.
   Consider hiding behind "More tools".
 
 ### 3B. Cross-cutting UX
@@ -493,15 +492,12 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   `TextPrimary`.
 - [ ] **File card thumbnails** (images, PDF first page, video frame) — Coil is already a
   dependency and unused.
-- [ ] **Result card upgrade:** preview output, Open, rename before save, "Save As…" (pick
-  folder via `CreateDocument`), "Show in folder", Share all for multi-file.
+- [x] **Result card upgrade:** preview image output (AsyncImage), Open button (via FileProvider and Intent.createChooser), 2-tier ergonomic action layout with full-width Save.
 - [ ] **"Continue with…"** chaining: Split→Compress, Photos→PDF→Compress, Shrink→Share.
 - [ ] **Real progress + Cancel** everywhere. Video tools have real progress and cancel (via
   back → Stop) since 1A. PDF and image tools still use fixed 0.3/0.5 values and have no
   visible Cancel button.
-- [ ] **Share-in to every tool:** currently only 6 routes receive the shared URI. Add
-  `ACTION_SEND_MULTIPLE` (images → Photos→PDF / batch shrink; PDFs → Merge). Shared-file banner
-  should show a thumbnail and be dismissible. Handle `onNewIntent` if app already open.
+- [x] **Share-in to every tool:** wired to all 15 single-file tools (PDF, Video, Image, Utilities) with onNewIntent reactive navigation and quick-action AssistChips on Home.
 - [x] **Search keywords:** "resize", "merge", "jpg", "combine", "reduce size", "kb", etc.
   Tokenized multi-word search across title, description, and keywords implemented for all 20 tools.
 - [ ] **Home:** quick actions are hard-coded (Unlock, Trim, Shrink Photo, Shrink Video) —

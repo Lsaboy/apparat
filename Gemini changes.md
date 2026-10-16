@@ -21,6 +21,7 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 6. `3d66375` - **Batch 6:** Hash Verifier multi-digest & FGS, QR Studio 50x speedup, Base64 URL-safe, Media3 HDR tone-mapping, and encryption honesty (`1D.2`, `3D`).
 7. `85e8fa0` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
 8. `964f437` - **Batch 8:** Comprehensive share sheet & open-with intent routing, initial URI rotation safety, QR Studio templates, and Base64 binary magic-byte detection (`2.8`, `3B`, `3D`, `3F`).
+9. `78b2521` & `current` - **Batch 9:** ResultCard direct file opening & image preview, lossless WebP, palette extractor polish, and video share-in routing (`3B` lines 460, 479, 484-486, 497, 502-504).
 
 ---
 
@@ -363,6 +364,76 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
     - In Decode mode, if binary data is detected, displays a dedicated card showing the detected file format, MIME type, and byte size.
     - Added "Save Decoded File to Downloads" button running on `Dispatchers.IO + NonCancellable` with timestamped filename (`Decoded_yyyyMMdd_HHmmss.<ext>`).
 
+### Batch 9: ResultCard Direct Open & Image Preview, Lossless WebP, Palette Extractor Polish, and Video Share-In Routing
+**Commit:** `78b2521` & `current`
+
+#### 1. ResultCard Upgrade with Direct "Open File" via FileProvider & Image Thumbnail Preview (`3B` / line 497)
+- **Problem:**
+  - After processing, users only had "Save" and "Share". To view the result, they had to exit the app and open an external file manager.
+  - No visual confirmation was shown for generated images in the result card.
+- **Solution:**
+  - In `FileUtils.kt`:
+    - Added `openFile(context: Context, file: File, mimeType: String? = null)`.
+    - Uses `FileProvider.getUriForFile` (`${context.packageName}.fileprovider`).
+    - Uses `intent.setDataAndType(contentUri, resolvedMime)` (avoiding the separate `intent.data = ...` + `intent.type = ...` bug where setting type clears data).
+    - Sets `intent.clipData = ClipData.newRawUri("Output File", contentUri)` and `FLAG_GRANT_READ_URI_PERMISSION` so read permissions survive across `Intent.createChooser()`.
+    - Handles `ActivityNotFoundException` and `SecurityException` gracefully with user-facing toasts.
+  - In `CommonComponents.kt`:
+    - Upgraded `ResultCard` to a 2-tier ergonomic action layout: Tier 1 full-width "Save to Downloads" button (with progress indicator and "Saving to Downloads…" text); Tier 2 side-by-side "Open" (using `Icons.AutoMirrored.Filled.OpenInNew`) and "Share" buttons (`weight(1f)` each).
+    - If `outputFile` has an image extension (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`), renders an `AsyncImage` (Coil) preview with bounded dimensions (`size(512, 512)`), `ContentScale.Fit`, and `150.dp` height inside a clipped rounded surface.
+
+#### 2. Lossless WEBP Compression Support (`3B` / line 460)
+- **Problem:**
+  - WebP encoding in `ImageEngine.kt` previously used deprecated `Bitmap.CompressFormat.WEBP` or lossy encoding regardless of quality setting.
+- **Solution:**
+  - In `ImageEngine.kt` (`shrinkImage` and `convertFormat`):
+    - When `targetFormat == ImageOutputFormat.WEBP`: on API 30+ (Android R+), uses `Bitmap.CompressFormat.WEBP_LOSSLESS` when `quality >= 100`, and `Bitmap.CompressFormat.WEBP_LOSSY` when `quality < 100`. On API < 30, falls back to `Bitmap.CompressFormat.WEBP`.
+  - In `ImageShrinkScreen.kt`:
+    - Expanded slider range from `10f..95f` to `10f..100f` (`steps = 17`).
+    - Displays `(Lossless WEBP)` badge in the quality label when 100% quality is selected.
+  - In `ImageConvertScreen.kt`:
+    - Displays `(Lossless WEBP)` badge when 100% quality is selected.
+
+#### 3. EXIF Stripper "No Metadata Found" Card & Photo Preview (`3B` / line 479)
+- **Problem:**
+  - In `ExifStripperScreen.kt`, if an image had no EXIF tags (already clean or screenshot), the screen rendered an empty metadata section without reassuring the user.
+  - The screen did not show a photo preview of the selected image.
+- **Solution:**
+  - In `ImageEngine.kt`:
+    - Added `ExifInfo.hasAnyMetadata(): Boolean` which inspects `cameraMake`, `cameraModel`, `dateTime`, `iso`, `fNumber`, `exposureTime`, and `(latitude != null && longitude != null)`.
+  - In `ExifStripperScreen.kt`:
+    - Added Coil `AsyncImage` preview of the selected image with bounded size (`size(512, 512)`).
+    - When `!info.hasAnyMetadata()`, renders a dedicated reassurance card with `Icons.Default.VerifiedUser` in `SuccessGreen` informing the user that the photo is already free of private metadata tags.
+
+#### 4. Palette Extractor Polish, Image Preview & State Retain (`3B` / lines 484-486)
+- **Problem:**
+  - `PaletteExtractorScreen.kt` naively used `remember`, losing state on screen rotation.
+  - It did not accept shared images (`initialUri`), lacked an image preview, and did not offer a quick way to copy all palette colors.
+- **Solution:**
+  - Migrated state to `retained(JOB_KEY, ...)` (`selectedUri`, `fileName`, `fileSize`, `paletteColors`, `isExtracting`, `lastHandledInitialUri`, `pendingShareUri`).
+  - Added `initialUri: Uri? = null` parameter, incoming share banner, and share-in protection matching the rest of the app.
+  - Added Coil `AsyncImage` preview of the selected image before and above the palette swatches (`size(512, 512)`).
+  - Added "Copy All" button that copies all extracted HEX color codes comma-separated to the clipboard.
+  - Displays both HEX (`#RRGGBB`) and RGB (`rgb(r, g, b)`) strings with a 1dp border for swatch contrast.
+
+#### 5. Share-In URI Support & Duration Clamping for Remaining Video Tools (`3B` / lines 502-504)
+- **Problem:**
+  - Video tools (`VideoTrimMuteScreen`, `VideoToGifScreen`, `AudioExtractScreen`) did not support `initialUri`, missing incoming shared video/audio files.
+  - `VideoTrimMuteScreen` and `VideoToGifScreen` did not dynamically query video duration when shared from other apps.
+- **Solution:**
+  - In `VideoTrimMuteScreen.kt`:
+    - Added `initialUri: Uri? = null`, `lastHandledInitialUri`, `pendingShareUri`, incoming share banner.
+    - Added dynamic duration extraction via `MediaMetadataRetriever` on `Dispatchers.IO` with file descriptor fallback, clamping trim bounds to actual video length.
+  - In `VideoToGifScreen.kt`:
+    - Added `initialUri: Uri? = null`, `lastHandledInitialUri`, `pendingShareUri`, incoming share banner.
+    - Dynamically queries duration, clamps GIF duration to `min(5f, videoDurationSec)`, and resets start offset when a new video is loaded.
+  - In `AudioExtractScreen.kt`:
+    - Added `initialUri: Uri? = null`, `lastHandledInitialUri`, `pendingShareUri`, incoming share banner, and `appContext` for sharing.
+  - In `MainActivity.kt`:
+    - Wired `initialUri` to `video_trim`, `video_to_gif`, `audio_extract`, and `palette_extractor`.
+  - In `HomeScreen.kt`:
+    - Added direct quick-action `AssistChip`s inside the shared file banner for all compatible tools.
+
 ---
 
 ## 3. Comprehensive File Audit
@@ -380,19 +451,20 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/core/model/ToolModels.kt` | Added `keywords: List<String>` to `ToolItem`. |
 | `app/src/main/java/com/omniforge/app/core/settings/AppSettings.kt` | Added `hasAskedNotificationPermission` SharedPreferences persistence. |
 | `app/src/main/java/com/omniforge/app/core/theme/Theme.kt` | Added `recomposeTrigger: Int = 0` to trigger theme recomposition. |
-| `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label. |
+| `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label; 2-tier ergonomic action layout with full-width Save, side-by-side Open (`AutoMirrored.OpenInNew`) and Share buttons, and Coil `AsyncImage` output thumbnail preview. |
 | `app/src/main/java/com/omniforge/app/core/ui/PdfPasswordGate.kt` | Added `pageCount` to `onReady` callback. |
-| `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`. |
+| `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`; added `openFile(context, file, mimeType)` with FileProvider, `setDataAndType`, `ClipData`, and `FLAG_GRANT_READ_URI_PERMISSION`. |
 | `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512); bulk `setPixels` for QR; URL-safe Base64; JSON line/col reporting; Wi-Fi/UPI/vCard QR formatters; Base64 data URL stripping; magic-byte binary type detector. |
 | `app/src/main/java/com/omniforge/app/engine/image/BitmapDecoder.kt` | Added `isAnimated` and `isAnimatedWebpHeader` zero-allocation animation detection. |
-| `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation. |
+| `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation; lossless WebP (`WEBP_LOSSLESS` on API 30+ when quality >= 100); added `ExifInfo.hasAnyMetadata()`. |
 | `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`; explicit `PdfPasswordException` handling and temp file cleanup in `removePassword`. |
 | `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message; configured `Composition` with OpenGL HDR-to-SDR tone-mapping for video re-encoding. |
-| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles; comprehensive search keywords for all 20 tools; whitespace tokenized multi-word search; contextual share banner for incoming files. |
-| `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles; comprehensive search keywords for all 20 tools; whitespace tokenized multi-word search; contextual share banner for incoming files with direct quick-action `AssistChip`s. |
+| `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save; Coil `AsyncImage` photo preview; reassurance card with `VerifiedUser` when clean. |
+| `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save; `(Lossless WEBP)` badge when 100% selected. |
+| `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save; expanded slider to 100% with `(Lossless WEBP)` badge. |
 | `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/image/PaletteExtractorScreen.kt` | Retained state across rotation; `initialUri` and incoming share banner; `AsyncImage` preview; "Copy All" button; hex + rgb display. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; timestamped `Photos_yyyy-MM-dd_HHmmss.pdf` output naming; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; password retention honesty messages; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count; password removal honesty message; initialUri support & share protection banner. |
@@ -402,21 +474,22 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/feature/utilities/HashVerifierScreen.kt` | Retained state; `ToolJobs.launch` background hashing with progress; SHA-256/SHA-512/SHA-1/MD5 cards with copy buttons; 4-algorithm case-insensitive hash comparison; Android 12+ compliant clipboard paste; initialUri auto-hash support & share protection banner. |
 | `app/src/main/java/com/omniforge/app/feature/utilities/JsonToolScreen.kt` | Retained state; Clear and Paste actions; line/column error display; template branding update; initialText support. |
 | `app/src/main/java/com/omniforge/app/feature/utilities/QrStudioScreen.kt` | Retained state; 150ms keystroke debounce; `Dispatchers.Default` background QR generation; `NonCancellable` save/share with `appContext`; Wi-Fi, UPI Pay, and Contact vCard templates; initialText support. |
-| `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; initialUri and pendingShareUri support; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; removed invalid SaveModeSelector; share-in protection banner; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size and non-MP4; share-in protection banner; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; Start Offset slider; clamped duration; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; initialUri and pendingShareUri support; dynamic duration query; Start Offset slider; clamped duration; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; initialUri and pendingShareUri support; dynamic duration query on `Dispatchers.IO`; appContext Toast/Save. |
 | `app/src/main/res/drawable/ic_stat_notify.xml` | Created 24dp monochrome notification icon. |
 | `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Unit tests for MessageDigest verification, string casing, JSON line/col errors, data URL stripping, binary magic-byte detection, and Wi-Fi/UPI/vCard formatting. |
 | `app/src/test/java/com/omniforge/app/engine/image/BitmapDecoderTest.kt` | Added unit tests for WebP header animation flag detection. |
+| `app/src/test/java/com/omniforge/app/engine/image/ExifInfoTest.kt` | Added unit tests for `ExifInfo.hasAnyMetadata()`. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfA4FitTest.kt` | Added unit tests for A4 image scaling and margins. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfSplitTest.kt` | Added unit tests for PDF chunking and bounds. |
 | `app/src/test/java/com/omniforge/app/core/util/FileUtilsTest.kt` | Added unit tests for MIME format matching and cache cleanup. |
 | `app/src/test/java/com/omniforge/app/feature/home/HomeSearchTest.kt` | Added 5 unit tests for tool keywords, multi-word matching, trailing spaces, and verb aliases. |
 | `README.md` | Updated for Media3 architecture and current features. |
-| `FIX_PLAN.md` | Checked off all completed items across Batches 1–8. |
+| `FIX_PLAN.md` | Checked off all completed items across Batches 1–9. |
 
 ---
 
@@ -443,5 +516,11 @@ When reviewing these changes, please inspect:
 18. **UPI QR Spec Compliance:** Verify `UtilityEngine.formatUpiQr` includes mandatory `pa`, `pn`, and `cu=INR` parameters with UTF-8 URL encoding conforming to NPCI UPI specifications.
 19. **Magic-Byte False Positive Prevention:** In `UtilityEngine.detectBinaryType`, inspect the length guard (`bytes.size < 12`) and dual-offset WebP verification (`RIFF` at 0..3 and `WEBP` at 8..11) to ensure WAV/AVI files are not misidentified as WebP.
 20. **Base64 Decoded File Export:** Check `Base64StudioScreen.kt` binary export to verify `withContext(Dispatchers.IO + NonCancellable)` ensures safe writing to `Downloads/DigitalPocketKnife` with unique timestamped filenames.
+21. **Intent setDataAndType in FileUtils.openFile:** Verify that `intent.setDataAndType(contentUri, resolvedMime)` is called as a single atomic invocation (rather than `intent.data = ...` followed by `intent.type = ...`, which Android clears).
+22. **FileProvider Chooser ClipData:** In `FileUtils.openFile`, verify that `clipData = ClipData.newRawUri("Output File", contentUri)` and `FLAG_GRANT_READ_URI_PERMISSION` ensure read access propagates correctly when wrapped in `Intent.createChooser()`.
+23. **Coil ImageRequest Bounding:** In `ResultCard`, `ExifStripperScreen`, and `PaletteExtractorScreen`, inspect `ImageRequest.Builder.size(coil.size.Size(512, 512))` to ensure full-resolution multi-megapixel photos are never decoded into memory at 100% resolution inside scrollable columns.
+24. **WebP Lossless API Level Branching:** In `ImageEngine.kt`, verify that `Bitmap.CompressFormat.WEBP_LOSSLESS` is only accessed on `Build.VERSION.SDK_INT >= Build.VERSION_CODES.R` (API 30+), avoiding `ClassNotFoundException` / NoSuchFieldError on API 29.
+25. **MediaMetadataRetriever Resource Cleanup:** Check `VideoTrimMuteScreen.kt` and `VideoToGifScreen.kt` to ensure `retriever.release()` runs inside a `finally` block and catches any platform release exceptions.
+
 
 
