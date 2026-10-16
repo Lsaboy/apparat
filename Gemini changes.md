@@ -20,7 +20,7 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 5. `aeb768a` - **Batch 5:** Save completion resilience, share-in rotation safety, animated image notice, and audio/video tooling (`1D.2`, `1D.3`, `3B`).
 6. `3d66375` - **Batch 6:** Hash Verifier multi-digest & FGS, QR Studio 50x speedup, Base64 URL-safe, Media3 HDR tone-mapping, and encryption honesty (`1D.2`, `3D`).
 7. `85e8fa0` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
-8. `Pending` - **Batch 8:** Comprehensive share sheet & open-with intent routing, initial URI rotation safety, QR Studio templates, and Base64 binary magic-byte detection (`2.8`, `3B`, `3D`, `3F`).
+8. `964f437` - **Batch 8:** Comprehensive share sheet & open-with intent routing, initial URI rotation safety, QR Studio templates, and Base64 binary magic-byte detection (`2.8`, `3B`, `3D`, `3F`).
 
 ---
 
@@ -307,6 +307,7 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 ---
 
 ### Batch 8: Comprehensive Share-In & Open-With Intent Routing, Rotation Safety, QR Studio Templates, and Base64 Binary Detection
+**Commit:** `964f437`
 
 #### 1. Comprehensive Share-In & Open-With Intent Routing (`2.8` / `3F` / lines 427, 428, 564)
 - **Root Cause:**
