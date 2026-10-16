@@ -68,7 +68,7 @@ easy to bisect.
   Large scanned PDFs (bank statements, 100+ page scans) can OOM.
   - Fix: `PDDocument.load(file, password, MemoryUsageSetting.setupTempFileOnly())` everywhere.
 
-- [ ] **1A.5 ANR / freeze on save.** Every "Save" / "Save All" calls
+- [x] **1A.5 ANR / freeze on save.** Every "Save" / "Save All" calls
   `FileUtils.saveToDownloads` directly in `onClick` (main thread). Large videos or 50+ split
   files freeze the UI; can trigger "App not responding".
   - Fix: make `saveToDownloads` `suspend` + `Dispatchers.IO`, show progress, disable button

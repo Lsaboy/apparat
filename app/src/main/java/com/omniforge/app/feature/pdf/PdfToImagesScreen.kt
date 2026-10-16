@@ -36,6 +36,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
 
     var renderedPages by remember { mutableStateOf<List<File>>(emptyList()) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var saveProgress by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -132,24 +133,34 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
                         ) {
                             Button(
                                 onClick = {
-                                    var count = 0
+                                    if (saveProgress != null) return@Button
+                                    val files = renderedPages.toList()
                                     val base = (fileName ?: "doc").substringBeforeLast(".")
-                                    for ((idx, file) in renderedPages.withIndex()) {
-                                        val uri = FileUtils.saveToDownloads(
-                                            context,
-                                            file,
-                                            "image/png",
-                                            "${base}_page_${idx + 1}.png"
-                                        )
-                                        if (uri != null) count++
+                                    scope.launch {
+                                        var count = 0
+                                        try {
+                                            for ((idx, file) in files.withIndex()) {
+                                                saveProgress = "Saving ${idx + 1} of ${files.size}…"
+                                                val uri = FileUtils.saveToDownloads(
+                                                    context,
+                                                    file,
+                                                    "image/png",
+                                                    "${base}_page_${idx + 1}.png"
+                                                )
+                                                if (uri != null) count++
+                                            }
+                                        } finally {
+                                            saveProgress = null
+                                        }
+                                        Toast.makeText(context, "Saved $count images to Downloads/OmniForge", Toast.LENGTH_SHORT).show()
                                     }
-                                    Toast.makeText(context, "Saved $count images to Downloads/OmniForge", Toast.LENGTH_SHORT).show()
                                 },
+                                enabled = saveProgress == null,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Save All Images", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                                Text(saveProgress ?: "Save All Images", color = AmoledBlack, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedButton(

@@ -52,6 +52,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
 
     var generatedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var saveProgress by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -295,24 +296,34 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                         ) {
                             Button(
                                 onClick = {
-                                    var count = 0
+                                    if (saveProgress != null) return@Button
+                                    val files = generatedFiles.toList()
                                     val base = (fileName ?: "doc").substringBeforeLast(".")
-                                    for ((idx, file) in generatedFiles.withIndex()) {
-                                        val uri = FileUtils.saveToDownloads(
-                                            context,
-                                            file,
-                                            "application/pdf",
-                                            "${base}_part_${idx + 1}.pdf"
-                                        )
-                                        if (uri != null) count++
+                                    scope.launch {
+                                        var count = 0
+                                        try {
+                                            for ((idx, file) in files.withIndex()) {
+                                                saveProgress = "Saving ${idx + 1} of ${files.size}…"
+                                                val uri = FileUtils.saveToDownloads(
+                                                    context,
+                                                    file,
+                                                    "application/pdf",
+                                                    "${base}_part_${idx + 1}.pdf"
+                                                )
+                                                if (uri != null) count++
+                                            }
+                                        } finally {
+                                            saveProgress = null
+                                        }
+                                        Toast.makeText(context, "Saved $count PDF files to Downloads/DigitalPocketKnife", Toast.LENGTH_SHORT).show()
                                     }
-                                    Toast.makeText(context, "Saved $count PDF files to Downloads/DigitalPocketKnife", Toast.LENGTH_SHORT).show()
                                 },
+                                enabled = saveProgress == null,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Save All Files", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                                Text(saveProgress ?: "Save All Files", color = AmoledBlack, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedButton(

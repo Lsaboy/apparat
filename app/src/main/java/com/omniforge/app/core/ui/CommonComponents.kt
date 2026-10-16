@@ -11,6 +11,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -156,9 +162,11 @@ fun ResultCard(
     outputFile: File,
     originalSize: Long? = null,
     message: String = "Processed successfully!",
-    onSaveToDownloads: () -> Unit,
+    onSaveToDownloads: suspend () -> Unit,
     onShare: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,18 +228,37 @@ fun ResultCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = onSaveToDownloads,
+                    onClick = {
+                        if (isSaving) return@Button
+                        isSaving = true
+                        scope.launch {
+                            try {
+                                onSaveToDownloads()
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    },
+                    enabled = !isSaving,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = null,
-                        tint = AmoledBlack
-                    )
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = AmoledBlack
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = AmoledBlack
+                        )
+                    }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Save", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    Text(if (isSaving) "Saving…" else "Save", color = AmoledBlack, fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(

@@ -8,6 +8,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -93,7 +95,8 @@ object FileUtils {
         context.startActivity(chooser)
     }
 
-    fun saveToDownloads(context: Context, file: File, mimeType: String, displayName: String): Uri? {
+    /** Copies [file] into Downloads/DigitalPocketKnife on the IO dispatcher. Returns null on failure. */
+    suspend fun saveToDownloads(context: Context, file: File, mimeType: String, displayName: String): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
@@ -102,24 +105,29 @@ object FileUtils {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
-        val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return null
+        val itemUri = runCatching { resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) }.getOrNull()
+            ?: return@withContext null
 
-        resolver.openOutputStream(itemUri)?.use { out ->
-            FileInputStream(file).use { input ->
-                input.copyTo(out)
+        try {
+            val out = resolver.openOutputStream(itemUri) ?: throw java.io.IOException("Could not open output")
+            out.use { output ->
+                FileInputStream(file).use { input -> input.copyTo(output) }
             }
+            contentValues.clear()
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(itemUri, contentValues, null, null)
+            itemUri
+        } catch (t: Throwable) {
+            // Don't leave a half-written pending entry behind (also on cancellation).
+            runCatching { resolver.delete(itemUri, null, null) }
+            if (t is kotlinx.coroutines.CancellationException) throw t
+            null
         }
-
-        contentValues.clear()
-        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-        resolver.update(itemUri, contentValues, null, null)
-
-        return itemUri
     }
 
-    fun overwriteOriginal(context: Context, originalUri: Uri, newFile: File): Boolean {
-        return try {
-            val out = context.contentResolver.openOutputStream(originalUri, "wt") ?: return false
+    suspend fun overwriteOriginal(context: Context, originalUri: Uri, newFile: File): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val out = context.contentResolver.openOutputStream(originalUri, "wt") ?: return@withContext false
             out.use { output ->
                 FileInputStream(newFile).use { input ->
                     input.copyTo(output)
