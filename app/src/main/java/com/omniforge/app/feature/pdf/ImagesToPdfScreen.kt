@@ -21,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -28,13 +30,16 @@ import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "images_to_pdf"
+
 @Composable
 fun ImagesToPdfScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var selectedUris by retained(JOB_KEY, "selectedUris") { mutableStateOf<List<Uri>>(emptyList()) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val multiPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -49,7 +54,8 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
         title = "Photos to PDF",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -100,7 +106,7 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (selectedUris.isEmpty()) return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Photos to PDF") {
                         processState = ProcessState.Processing(0.5f, "Combining photos into PDF...")
                         val result = PdfEngine.imagesToPdf(context, selectedUris)
                         result.fold(

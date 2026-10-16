@@ -1,5 +1,11 @@
 package com.omniforge.app.core.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -11,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +33,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.util.FileUtils
@@ -37,8 +51,39 @@ fun ToolScaffold(
     categoryName: String,
     accentColor: Color,
     onBack: () -> Unit,
+    /** Route of a tool that runs jobs through ToolJobs; enables keep-running-on-back handling. */
+    jobKey: String? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val isRunning = jobKey != null && ToolJobs.isRunning(jobKey)
+    var confirmLeave by remember { mutableStateOf(false) }
+    val requestBack = { if (isRunning) confirmLeave = true else onBack() }
+    BackHandler(enabled = isRunning) { confirmLeave = true }
+
+    if (jobKey != null) {
+        ToolJobLifecycle(jobKey)
+        NotificationPermissionOnFirstJob(isRunning)
+    }
+    if (confirmLeave && isRunning) {
+        AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text("Still working") },
+            text = {
+                Text("Keep it running in the background? You'll get a notification when it's done, and the result will be here when you come back.")
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmLeave = false; onBack() }) { Text("Keep running") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    confirmLeave = false
+                    ToolJobs.cancel(jobKey!!)
+                    onBack()
+                }) { Text("Stop", color = ErrorRed) }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -63,7 +108,7 @@ fun ToolScaffold(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = requestBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -78,6 +123,46 @@ fun ToolScaffold(
         },
         content = content
     )
+}
+
+/** Tells ToolJobs when this tool's screen is visible, hidden or closed. */
+@Composable
+private fun ToolJobLifecycle(jobKey: String) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(jobKey, lifecycleOwner) {
+        ToolJobs.onScreenOpened(jobKey)
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> ToolJobs.onScreenShown(context, jobKey)
+                Lifecycle.Event.ON_STOP -> ToolJobs.onScreenHidden(jobKey)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            ToolJobs.onScreenLeft(jobKey)
+        }
+    }
+}
+
+private var askedForNotifications = false
+
+/** Asks once per app run, when the first job starts, so progress/done notifications can show. */
+@Composable
+private fun NotificationPermissionOnFirstJob(isRunning: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(isRunning) {
+        if (isRunning && !askedForNotifications &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askedForNotifications = true
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 }
 
 @Composable

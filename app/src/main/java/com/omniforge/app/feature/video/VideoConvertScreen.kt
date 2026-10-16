@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
@@ -25,6 +27,9 @@ import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
 import kotlinx.coroutines.launch
+
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "video_convert"
 
 @Composable
 fun VideoConvertScreen(
@@ -34,12 +39,12 @@ fun VideoConvertScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf(initialUri) }
-    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
-    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -56,7 +61,8 @@ fun VideoConvertScreen(
         title = "Convert to MP4",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -92,7 +98,7 @@ fun VideoConvertScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Convert to MP4") {
                         processState = ProcessState.Processing(0f, "Converting to MP4...")
                         val result = VideoEngine.convertToMp4(
                             context = context,

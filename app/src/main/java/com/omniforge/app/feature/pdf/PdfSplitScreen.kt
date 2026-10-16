@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -35,26 +37,29 @@ enum class SplitMode(val label: String) {
     SINGLE_RANGE("Single Range")
 }
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "pdf_split"
+
 @Composable
 fun PdfSplitScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var splitMode by remember { mutableStateOf(SplitMode.CUSTOM_RANGES) }
-    var customRangesText by remember { mutableStateOf("1-3, 4-6") }
-    var intervalPagesText by remember { mutableStateOf("1") }
-    var startPageText by remember { mutableStateOf("1") }
-    var endPageText by remember { mutableStateOf("3") }
+    var splitMode by retained(JOB_KEY, "splitMode") { mutableStateOf(SplitMode.CUSTOM_RANGES) }
+    var customRangesText by retained(JOB_KEY, "customRangesText") { mutableStateOf("1-3, 4-6") }
+    var intervalPagesText by retained(JOB_KEY, "intervalPagesText") { mutableStateOf("1") }
+    var startPageText by retained(JOB_KEY, "startPageText") { mutableStateOf("1") }
+    var endPageText by retained(JOB_KEY, "endPageText") { mutableStateOf("3") }
 
-    var generatedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var generatedFiles by retained(JOB_KEY, "generatedFiles") { mutableStateOf<List<File>>(emptyList()) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
-    var pdfPassword by remember { mutableStateOf<String?>(null) }
-    var saveProgress by remember { mutableStateOf<String?>(null) }
+    var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -73,7 +78,8 @@ fun PdfSplitScreen(onBack: () -> Unit) {
         title = "Split PDF / Multi-File Split",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -240,7 +246,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Split PDF") {
                         processState = ProcessState.Processing(0.3f, "Splitting PDF document...")
                         val ranges: List<IntRange> = when (splitMode) {
                             SplitMode.CUSTOM_RANGES -> {

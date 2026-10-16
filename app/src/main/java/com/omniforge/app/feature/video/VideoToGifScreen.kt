@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -24,19 +26,22 @@ import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "video_to_gif"
+
 @Composable
 fun VideoToGifScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var fps by remember { mutableFloatStateOf(15f) }
-    var width by remember { mutableFloatStateOf(480f) }
-    var durationSec by remember { mutableFloatStateOf(5f) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var fps by retained(JOB_KEY, "fps") { mutableFloatStateOf(15f) }
+    var width by retained(JOB_KEY, "width") { mutableFloatStateOf(480f) }
+    var durationSec by retained(JOB_KEY, "durationSec") { mutableFloatStateOf(5f) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -53,7 +58,8 @@ fun VideoToGifScreen(onBack: () -> Unit) {
         title = "Video to Smooth GIF Maker",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -145,7 +151,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Video to GIF") {
                         processState = ProcessState.Processing(0f, "Reading video frames...")
                         val result = VideoEngine.videoToGif(
                             context = context,

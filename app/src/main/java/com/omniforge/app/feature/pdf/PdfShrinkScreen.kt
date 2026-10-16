@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
@@ -24,6 +26,9 @@ import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
+
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "pdf_shrink"
 
 @Composable
 fun PdfShrinkScreen(
@@ -33,17 +38,17 @@ fun PdfShrinkScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf(initialUri) }
-    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
-    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var compressionLevel by remember { mutableFloatStateOf(0.6f) }
-    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
-    var processState by remember {
+    var compressionLevel by retained(JOB_KEY, "compressionLevel") { mutableFloatStateOf(0.6f) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var processState by retained(JOB_KEY, "processState") {
         mutableStateOf<ProcessState>(if (initialUri != null) ProcessState.Processing(0f, "Opening PDF...") else ProcessState.Idle)
     }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
-    var pdfPassword by remember { mutableStateOf<String?>(null) }
+    var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -61,7 +66,8 @@ fun PdfShrinkScreen(
         title = "Shrink & Compress PDF",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -140,7 +146,7 @@ fun PdfShrinkScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Compress PDF") {
                         processState = ProcessState.Processing(0.4f, "Compressing PDF streams...")
                         val result = PdfEngine.compressPdf(context, uri, compressionLevel, password = pdfPassword ?: "")
                         result.fold(

@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -25,18 +27,21 @@ import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.ImageEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "document_scan"
+
 @Composable
 fun DocumentScanScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var contrast by remember { mutableFloatStateOf(1.8f) }
-    var isMonochrome by remember { mutableStateOf(true) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var contrast by retained(JOB_KEY, "contrast") { mutableFloatStateOf(1.8f) }
+    var isMonochrome by retained(JOB_KEY, "isMonochrome") { mutableStateOf(true) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -53,7 +58,8 @@ fun DocumentScanScreen(onBack: () -> Unit) {
         title = "Document & Receipt Enhancer",
         categoryName = "Photo & Image",
         accentColor = AccentImage,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -127,7 +133,7 @@ fun DocumentScanScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Document Enhancer") {
                         processState = ProcessState.Processing(0.5f, "Enhancing scan contrast...")
                         val result = ImageEngine.enhanceDocumentScan(
                             context = context,

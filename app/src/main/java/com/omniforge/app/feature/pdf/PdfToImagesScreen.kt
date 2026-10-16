@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -25,20 +27,23 @@ import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
 import java.io.File
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "pdf_to_images"
+
 @Composable
 fun PdfToImagesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var renderedPages by remember { mutableStateOf<List<File>>(emptyList()) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var renderedPages by retained(JOB_KEY, "renderedPages") { mutableStateOf<List<File>>(emptyList()) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
-    var pdfPassword by remember { mutableStateOf<String?>(null) }
-    var saveProgress by remember { mutableStateOf<String?>(null) }
+    var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -57,7 +62,8 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
         title = "PDF to Images",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -98,7 +104,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "PDF to Images") {
                         processState = ProcessState.Processing(0.3f, "Rendering pages into PNG images...")
                         val result = PdfEngine.pdfToImages(context, uri, password = pdfPassword ?: "")
                         result.fold(

@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -24,20 +26,23 @@ import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "video_caption"
+
 @Composable
 fun VideoCaptionScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var videoUri by remember { mutableStateOf<Uri?>(null) }
-    var videoName by remember { mutableStateOf<String?>(null) }
-    var videoSize by remember { mutableStateOf<Long?>(null) }
+    var videoUri by retained(JOB_KEY, "videoUri") { mutableStateOf<Uri?>(null) }
+    var videoName by retained(JOB_KEY, "videoName") { mutableStateOf<String?>(null) }
+    var videoSize by retained(JOB_KEY, "videoSize") { mutableStateOf<Long?>(null) }
 
-    var subtitleUri by remember { mutableStateOf<Uri?>(null) }
-    var subtitleName by remember { mutableStateOf<String?>(null) }
+    var subtitleUri by retained(JOB_KEY, "subtitleUri") { mutableStateOf<Uri?>(null) }
+    var subtitleName by retained(JOB_KEY, "subtitleName") { mutableStateOf<String?>(null) }
 
-    var fontSize by remember { mutableFloatStateOf(20f) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var fontSize by retained(JOB_KEY, "fontSize") { mutableFloatStateOf(20f) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val videoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -64,7 +69,8 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
         title = "Burn Subtitles & Captions",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -131,7 +137,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                 onClick = {
                     val vUri = videoUri ?: return@Button
                     val sUri = subtitleUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Burn Subtitles") {
                         processState = ProcessState.Processing(0f, "Burning subtitles into video...")
                         val result = VideoEngine.burnSubtitles(
                             context = context,

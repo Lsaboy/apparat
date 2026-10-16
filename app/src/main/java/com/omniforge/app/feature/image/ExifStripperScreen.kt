@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
@@ -26,6 +28,9 @@ import com.omniforge.app.engine.image.ExifInfo
 import com.omniforge.app.engine.image.ImageEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "exif_strip"
+
 @Composable
 fun ExifStripperScreen(
     initialUri: Uri? = null,
@@ -34,13 +39,13 @@ fun ExifStripperScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf(initialUri) }
-    var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
-    var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
-    var exifInfo by remember { mutableStateOf<ExifInfo?>(null) }
-    var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+    var exifInfo by retained(JOB_KEY, "exifInfo") { mutableStateOf<ExifInfo?>(null) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
 
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     LaunchedEffect(initialUri) {
         initialUri?.let {
@@ -66,7 +71,8 @@ fun ExifStripperScreen(
         title = "EXIF Metadata Stripper",
         categoryName = "Photo & Image",
         accentColor = AccentImage,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -126,7 +132,7 @@ fun ExifStripperScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "EXIF Stripper") {
                         processState = ProcessState.Processing(0.5f, "Stripping all metadata...")
                         val result = ImageEngine.stripExif(context, uri)
                         result.fold(

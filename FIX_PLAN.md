@@ -90,7 +90,7 @@ easy to bisect.
     `getParcelableExtra(class)` (33).
   - File: `core/util/FileUtils.kt:97-129`, `app/build.gradle.kts`, `AndroidManifest.xml`.
 
-- [ ] **1A.8 Long jobs are lost when leaving the screen / backgrounding.** Work runs in
+- [x] **1A.8 Long jobs are lost when leaving the screen / backgrounding.** Work runs in
   `rememberCoroutineScope()` of the screen. Pressing back mid-job cancels the coroutine (the
   blocking FFmpeg/PDFBox call keeps running, result discarded). Long video encodes in the
   background may be killed by the OS.

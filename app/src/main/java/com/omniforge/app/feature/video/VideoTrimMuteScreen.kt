@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -28,20 +30,23 @@ import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "video_trim"
+
 @Composable
 fun VideoTrimMuteScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var startSecText by remember { mutableStateOf("0") }
-    var durationSecText by remember { mutableStateOf("10") }
-    var isMuteOnly by remember { mutableStateOf(false) }
+    var startSecText by retained(JOB_KEY, "startSecText") { mutableStateOf("0") }
+    var durationSecText by retained(JOB_KEY, "durationSecText") { mutableStateOf("10") }
+    var isMuteOnly by retained(JOB_KEY, "isMuteOnly") { mutableStateOf(false) }
 
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -58,7 +63,8 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
         title = "Lossless Trim & Mute",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -164,7 +170,7 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Trim & Mute") {
                         processState = ProcessState.Processing(0f, "Processing...")
                         val result = if (isMuteOnly) {
                             VideoEngine.stripAudio(context, uri) { p, msg -> processState = ProcessState.Processing(p, msg) }

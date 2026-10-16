@@ -21,6 +21,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -29,18 +31,21 @@ import com.omniforge.app.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
 import java.io.File
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "pdf_unlock"
+
 @Composable
 fun PdfUnlockScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
-    var password by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
+    var password by retained(JOB_KEY, "password") { mutableStateOf("") }
+    var isPasswordVisible by retained(JOB_KEY, "isPasswordVisible") { mutableStateOf(false) }
 
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -57,7 +62,8 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
         title = "Remove PDF Password",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -120,7 +126,7 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
                         Toast.makeText(context, "Please enter the password", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Remove PDF Password") {
                         processState = ProcessState.Processing(0.5f, "Decrypting and removing security...")
                         val result = PdfEngine.removePassword(context, uri, password)
                         result.fold(

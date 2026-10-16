@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -26,17 +28,20 @@ import com.omniforge.app.engine.video.AudioOutputFormat
 import com.omniforge.app.engine.video.VideoEngine
 import kotlinx.coroutines.launch
 
+/** Nav route; also the key for this tool's background job and retained state. */
+private const val JOB_KEY = "audio_extract"
+
 @Composable
 fun AudioExtractScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var targetFormat by remember { mutableStateOf(AudioOutputFormat.M4A) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var targetFormat by retained(JOB_KEY, "targetFormat") { mutableStateOf(AudioOutputFormat.M4A) }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -53,7 +58,8 @@ fun AudioExtractScreen(onBack: () -> Unit) {
         title = "Extract Audio from Video",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -124,7 +130,7 @@ fun AudioExtractScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    scope.launch {
+                    ToolJobs.launch(context, JOB_KEY, "Extract Audio") {
                         processState = ProcessState.Processing(0f, "Extracting audio track...")
                         val result = VideoEngine.extractAudio(
                             context = context,
