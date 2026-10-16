@@ -34,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -250,10 +253,13 @@ fun ResultCard(
     originalSize: Long? = null,
     message: String = "Processed successfully!",
     onSaveToDownloads: suspend () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onOpenFile: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var isSaving by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -280,6 +286,32 @@ fun ResultCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Image Preview (if outputFile is an image format)
+            val ext = outputFile.extension.lowercase()
+            val isImage = ext in setOf("jpg", "jpeg", "png", "webp", "gif")
+            if (isImage) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(outputFile)
+                            .crossfade(true)
+                            .size(coil.size.Size(512, 512))
+                            .build(),
+                        contentDescription = "Output image preview",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             val newSize = outputFile.length()
             Row(
@@ -310,44 +342,75 @@ fun ResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 2-Tier Ergonomic Action Layout
+            // Tier 1: Full-width Save Button
+            Button(
+                onClick = {
+                    if (isSaving) return@Button
+                    isSaving = true
+                    scope.launch {
+                        try {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                                onSaveToDownloads()
+                            }
+                        } finally {
+                            isSaving = false
+                        }
+                    }
+                },
+                enabled = !isSaving,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = AmoledBlack
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Saving to Downloads…", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                        tint = AmoledBlack
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Save to Downloads", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Tier 2: Open and Share side-by-side
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Button(
+                OutlinedButton(
                     onClick = {
-                        if (isSaving) return@Button
-                        isSaving = true
-                        scope.launch {
-                            try {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-                                    onSaveToDownloads()
-                                }
-                            } finally {
-                                isSaving = false
-                            }
+                        if (onOpenFile != null) {
+                            onOpenFile()
+                        } else {
+                            FileUtils.openFile(context.applicationContext, outputFile)
                         }
                     },
-                    enabled = !isSaving,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, TextSecondary)
                 ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = AmoledBlack
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            tint = AmoledBlack
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.OpenInNew,
+                        contentDescription = null,
+                        tint = TextPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isSaving) "Saving…" else "Save", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    Text("Open", color = TextPrimary, fontWeight = FontWeight.SemiBold)
                 }
 
                 OutlinedButton(
@@ -359,7 +422,8 @@ fun ResultCard(
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = null,
-                        tint = TextPrimary
+                        tint = TextPrimary,
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold)

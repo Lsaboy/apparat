@@ -1,5 +1,7 @@
 package com.omniforge.app.core.util
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -7,6 +9,8 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,16 +87,64 @@ object FileUtils {
     }
 
     fun shareFile(context: Context, file: File, mimeType: String = "*/*") {
+        if (!file.exists() || file.length() == 0L) {
+            Toast.makeText(context, "Output file does not exist", Toast.LENGTH_SHORT).show()
+            return
+        }
         val authority = "${context.packageName}.fileprovider"
         val contentUri = FileProvider.getUriForFile(context, authority, file)
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, contentUri)
+            clipData = ClipData.newRawUri("Shared File", contentUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val chooser = Intent.createChooser(shareIntent, "Share output")
-        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val chooser = Intent.createChooser(shareIntent, "Share output").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         context.startActivity(chooser)
+    }
+
+    fun openFile(context: Context, file: File, mimeType: String? = null) {
+        if (!file.exists() || file.length() == 0L) {
+            Toast.makeText(context, "Output file does not exist", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val authority = "${context.packageName}.fileprovider"
+            val contentUri = FileProvider.getUriForFile(context, authority, file)
+            val extension = file.extension.lowercase()
+            val resolvedMime = mimeType?.takeIf { it.isNotBlank() }
+                ?: if (extension.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) else null
+                ?: when (extension) {
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "png" -> "image/png"
+                    "webp" -> "image/webp"
+                    "gif" -> "image/gif"
+                    "pdf" -> "application/pdf"
+                    "mp4" -> "video/mp4"
+                    "m4a" -> "audio/mp4"
+                    "mp3" -> "audio/mpeg"
+                    "wav" -> "audio/wav"
+                    else -> "*/*"
+                }
+
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, resolvedMime)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newRawUri("Output File", contentUri)
+            }
+            val chooser = Intent.createChooser(viewIntent, "Open with").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+        } catch (_: SecurityException) {
+            Toast.makeText(context, "Permission denied opening file", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Could not open file: ${e.localizedMessage ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     const val DOWNLOAD_SUBFOLDER = "DigitalPocketKnife"

@@ -227,8 +227,14 @@ fun ImageShrinkScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val isLosslessPng = outputFormat == ImageOutputFormat.PNG
+                    val isLosslessWebp = outputFormat == ImageOutputFormat.WEBP && quality >= 100f
+                    val qualityLabel = when {
+                        isLosslessPng -> "Compression Quality: Lossless (PNG)"
+                        isLosslessWebp -> "Compression Quality: 100% (Lossless WEBP)"
+                        else -> "Compression Quality: ${quality.toInt()}%"
+                    }
                     Text(
-                        text = if (isLosslessPng) "Compression Quality: Lossless (PNG)" else "Compression Quality: ${quality.toInt()}%",
+                        text = qualityLabel,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = if (isLosslessPng) TextSecondary else TextPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -237,8 +243,8 @@ fun ImageShrinkScreen(
                     Slider(
                         value = quality,
                         onValueChange = { quality = it },
-                        valueRange = 10f..95f,
-                        steps = 16,
+                        valueRange = 10f..100f,
+                        steps = 17,
                         enabled = !isLosslessPng,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,

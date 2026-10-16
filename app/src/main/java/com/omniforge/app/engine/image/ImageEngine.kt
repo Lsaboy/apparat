@@ -26,7 +26,17 @@ data class ExifInfo(
     val exposureTime: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null
-)
+) {
+    fun hasAnyMetadata(): Boolean {
+        return !cameraMake.isNullOrBlank() ||
+               !cameraModel.isNullOrBlank() ||
+               !dateTime.isNullOrBlank() ||
+               !iso.isNullOrBlank() ||
+               !fNumber.isNullOrBlank() ||
+               !exposureTime.isNullOrBlank() ||
+               (latitude != null && longitude != null)
+    }
+}
 
 object ImageEngine {
 
@@ -64,7 +74,11 @@ object ImageEngine {
                         ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
                         ImageOutputFormat.WEBP -> {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                Bitmap.CompressFormat.WEBP_LOSSY
+                                if (quality >= 100) {
+                                    Bitmap.CompressFormat.WEBP_LOSSLESS
+                                } else {
+                                    Bitmap.CompressFormat.WEBP_LOSSY
+                                }
                             } else {
                                 @Suppress("DEPRECATION")
                                 Bitmap.CompressFormat.WEBP
@@ -128,7 +142,11 @@ object ImageEngine {
                         ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
                         ImageOutputFormat.WEBP -> {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                Bitmap.CompressFormat.WEBP_LOSSY
+                                if (quality >= 100) {
+                                    Bitmap.CompressFormat.WEBP_LOSSLESS
+                                } else {
+                                    Bitmap.CompressFormat.WEBP_LOSSY
+                                }
                             } else {
                                 @Suppress("DEPRECATION")
                                 Bitmap.CompressFormat.WEBP
