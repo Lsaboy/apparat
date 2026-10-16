@@ -177,7 +177,7 @@ easy to bisect.
   in `res/xml/shortcuts.xml`. Either wire to `ShortcutManagerCompat` dynamic shortcuts or remove.
 - [x] **1C.4 Toasts lie about save folder.** 11 places say "Downloads/OmniForge"; files go to
   `Downloads/DigitalPocketKnife`. Centralise the folder name in one constant.
-- [ ] **1C.5 Temp files never deleted.** `cache/outputs/` grows forever (PDF→Images PNGs are
+- [x] **1C.5 Temp files never deleted.** `cache/outputs/` grows forever (PDF→Images PNGs are
   big). Clean outputs older than N hours on app start + clear on new job per tool.
   Also clean (added in 1A): `cache/pdfbox/` (PDFBox scratch files left after a crash),
   `cache/decrypted_*.pdf` (PDF→Images on protected PDFs), `cache/input_*` copies. **Never**
@@ -241,7 +241,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [x] **Notification small icon.** Progress/done notifications use
   `R.drawable.ic_launcher_foreground` (full-colour adaptive-icon layer). Status bar will likely
   show a white square/blob. Add a monochrome 24dp vector (`ic_stat_notify`) and use it.
-- [ ] **Jobs hold the Activity.** The job lambdas capture `LocalContext.current` (the Activity).
+- [x] **Jobs hold the Activity.** The job lambdas capture `LocalContext.current` (the Activity).
   A job that outlives the screen keeps the destroyed Activity alive until it finishes (memory
   leak during long encodes; Toasts from a dead Activity). Fix: in `ToolJobs.launch`, pass
   `applicationContext` into the block (e.g. `block: suspend CoroutineScope.(Context) -> Unit`)
@@ -250,7 +250,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   `selectedUri` while that tool's job runs, so a new share-in (`initialUri`) is ignored without
   any message. Fix: if `initialUri` differs and a job is running, show "Busy with <file> —
   wait or stop it" banner; if idle, take the new URI.
-- [ ] **Notification tap resets the back stack.** `openToolIntent` uses `FLAG_ACTIVITY_CLEAR_TASK`
+- [x] **Notification tap resets the back stack.** `openToolIntent` uses `FLAG_ACTIVITY_CLEAR_TASK`
   → Activity recreated, other open tool's state dropped. Better: `singleTop` + handle
   `onNewIntent` in `MainActivity` (also needed for share-in, 3B) and navigate there.
 - [x] **Notification permission nags each app run.** `askedForNotifications` is an in-memory
@@ -284,7 +284,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Shrink can make files bigger.** For small/low-bitrate inputs the requested bitrate can
   exceed the source (capped at 80 % of the source bitrate only when the bitrate is readable).
   Show "could not reduce" and don't offer overwrite when output ≥ input (same rule as 1B.3/1B.7).
-- [ ] **WAV assumes 16-bit PCM.** `decodeToWav` writes a 16-bit header always; if a decoder
+- [x] **WAV assumes 16-bit PCM.** `decodeToWav` writes a 16-bit header always; if a decoder
   outputs float PCM (`KEY_PCM_ENCODING` = `ENCODING_PCM_FLOAT`), the WAV is noise. Read the
   output format's PCM encoding and write format 3 (float) or convert to 16-bit.
 - [ ] **Image decode cap silently lowers resolution.** `BitmapDecoder` caps at 24 MP (12 MP on
@@ -303,7 +303,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 #### 1D.3 Stale text left behind by 1A (do with 3B copy cleanup, or sooner — it's quick)
 
-- [ ] **README.md** still says "powered by … **FFmpeg-Kit**", lists MKV/WEBM output, "Video
+- [x] **README.md** still says "powered by … **FFmpeg-Kit**", lists MKV/WEBM output, "Video
   Format Exchange" (MP4/MKV/WEBM/MOV/GIF), MP3/FLAC audio, `-c copy` trimming. Rewrite the video
   section for Media3: Convert to MP4, M4A/WAV, Android 10+ requirement, new notification permission.
 - [x] Screen titles don't match the new home titles: "Video to Smooth GIF Maker" (→ "Video to

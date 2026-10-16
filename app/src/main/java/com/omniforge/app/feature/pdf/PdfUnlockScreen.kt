@@ -126,9 +126,9 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
                         Toast.makeText(context, "Please enter the password", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    ToolJobs.launch(context, JOB_KEY, "Remove PDF Password") {
+                    ToolJobs.launch(context, JOB_KEY, "Remove PDF Password") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Decrypting and removing security...")
-                        val result = PdfEngine.removePassword(context, uri, password)
+                        val result = PdfEngine.removePassword(appContext, uri, password)
                         result.fold(
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(

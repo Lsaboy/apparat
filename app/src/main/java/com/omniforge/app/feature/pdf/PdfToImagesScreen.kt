@@ -117,9 +117,9 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "PDF to Images") {
+                    ToolJobs.launch(context, JOB_KEY, "PDF to Images") { appContext ->
                         processState = ProcessState.Processing(0.3f, "Rendering pages into PNG images...")
-                        val result = PdfEngine.pdfToImages(context, uri, password = pdfPassword ?: "")
+                        val result = PdfEngine.pdfToImages(appContext, uri, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { files ->
                                 renderedPages = files

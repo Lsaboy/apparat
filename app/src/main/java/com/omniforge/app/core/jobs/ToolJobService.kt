@@ -126,7 +126,7 @@ class ToolJobService : Service() {
         /** Opens the app on the tool's screen (via the dpk:// shortcut route). */
         private fun openToolIntent(context: Context, route: String): PendingIntent {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("dpk://$route"), context, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             return PendingIntent.getActivity(
                 context, route.hashCode(), intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

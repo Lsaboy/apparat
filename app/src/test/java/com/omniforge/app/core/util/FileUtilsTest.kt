@@ -36,4 +36,45 @@ class FileUtilsTest {
         assertFalse(FileUtils.isVideoMp4(null, "movie.mkv"))
         assertFalse(FileUtils.isVideoMp4("video/webm", "movie.webm"))
     }
+
+    @Test
+    fun testCleanStaleCacheDir() {
+        val tempDir = java.nio.file.Files.createTempDirectory("cache_test").toFile()
+        try {
+            val appStartTime = 1000000L
+            val pdfboxDir = java.io.File(tempDir, "pdfbox").apply { mkdirs() }
+            val oldPdfbox = java.io.File(pdfboxDir, "scratch1.tmp").apply { writeText("old"); setLastModified(appStartTime - 10000) }
+            val newPdfbox = java.io.File(pdfboxDir, "scratch2.tmp").apply { writeText("new"); setLastModified(appStartTime + 5000) }
+
+            val oldInput = java.io.File(tempDir, "input_old.mp4").apply { writeText("old"); setLastModified(appStartTime - 5000) }
+            val newInput = java.io.File(tempDir, "input_new.mp4").apply { writeText("new"); setLastModified(appStartTime + 5000) }
+
+            val oldDecrypted = java.io.File(tempDir, "decrypted_old.pdf").apply { writeText("old"); setLastModified(appStartTime - 5000) }
+            val newDecrypted = java.io.File(tempDir, "decrypted_new.pdf").apply { writeText("new"); setLastModified(appStartTime + 5000) }
+
+            val outputsDir = java.io.File(tempDir, "outputs").apply { mkdirs() }
+            val maxAge = 86400000L // 24 hours
+            val now = System.currentTimeMillis()
+            val oldOutput = java.io.File(outputsDir, "output_old.mp4").apply { writeText("old"); setLastModified(now - maxAge - 5000) }
+            val freshOutput = java.io.File(outputsDir, "output_fresh.mp4").apply { writeText("fresh"); setLastModified(now - 1000) }
+
+            FileUtils.cleanStaleCacheDir(tempDir, maxAgeMs = maxAge, appStartTime = appStartTime)
+
+            // Old scratch / inputs before app start must be deleted
+            assertFalse(oldPdfbox.exists())
+            assertFalse(oldInput.exists())
+            assertFalse(oldDecrypted.exists())
+
+            // Scratch / inputs created during / after app start must NOT be deleted
+            assertTrue(newPdfbox.exists())
+            assertTrue(newInput.exists())
+            assertTrue(newDecrypted.exists())
+
+            // Output older than 24h must be deleted; fresh output kept
+            assertFalse(oldOutput.exists())
+            assertTrue(freshOutput.exists())
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }

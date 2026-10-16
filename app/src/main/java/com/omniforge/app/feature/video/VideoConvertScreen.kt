@@ -86,10 +86,10 @@ fun VideoConvertScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Convert to MP4") {
+                    ToolJobs.launch(context, JOB_KEY, "Convert to MP4") { appContext ->
                         processState = ProcessState.Processing(0f, "Converting to MP4...")
                         val result = VideoEngine.convertToMp4(
-                            context = context,
+                            context = appContext,
                             inputUri = uri,
                             onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }
                         )

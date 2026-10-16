@@ -133,10 +133,10 @@ fun DocumentScanScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Document Enhancer") {
+                    ToolJobs.launch(context, JOB_KEY, "Document Enhancer") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Enhancing scan contrast...")
                         val result = ImageEngine.enhanceDocumentScan(
-                            context = context,
+                            context = appContext,
                             inputUri = uri,
                             contrastMultiplier = contrast,
                             convertToMonochrome = isMonochrome

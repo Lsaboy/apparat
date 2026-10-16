@@ -2,6 +2,7 @@ package com.omniforge.app.engine.video
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -401,6 +402,7 @@ object VideoEngine {
 
             var sampleRate = inputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
             var channels = inputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            var isFloatPcm = false
             var dataBytes = 0L
             val info = MediaCodec.BufferInfo()
             var inputDone = false
@@ -410,6 +412,7 @@ object VideoEngine {
                 raf.setLength(0)
                 raf.write(ByteArray(44)) // header placeholder
                 var chunk = ByteArray(0)
+                var shortChunk = ByteArray(0)
                 while (!outputDone) {
                     coroutineContext.ensureActive()
                     if (!inputDone) {
@@ -432,15 +435,38 @@ object VideoEngine {
                             val f = codec.outputFormat
                             sampleRate = f.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                             channels = f.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                            val encoding = if (f.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                                f.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                            } else {
+                                AudioFormat.ENCODING_PCM_16BIT
+                            }
+                            isFloatPcm = (encoding == AudioFormat.ENCODING_PCM_FLOAT)
                         }
                         outIndex >= 0 -> {
                             if (info.size > 0) {
                                 val buffer = codec.getOutputBuffer(outIndex)!!
-                                if (chunk.size < info.size) chunk = ByteArray(info.size)
                                 buffer.position(info.offset)
-                                buffer.get(chunk, 0, info.size)
-                                raf.write(chunk, 0, info.size)
-                                dataBytes += info.size
+                                buffer.limit(info.offset + info.size)
+                                if (isFloatPcm) {
+                                    val floatBuf = buffer.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                                    val numFloats = floatBuf.remaining()
+                                    val requiredBytes = numFloats * 2
+                                    if (shortChunk.size < requiredBytes) shortChunk = ByteArray(requiredBytes)
+                                    val outBuf = ByteBuffer.wrap(shortChunk).order(ByteOrder.LITTLE_ENDIAN)
+                                    outBuf.clear()
+                                    while (floatBuf.hasRemaining()) {
+                                        val sample = floatBuf.get()
+                                        val s16 = (sample.coerceIn(-1.0f, 1.0f) * 32767.0f).roundToInt().toShort()
+                                        outBuf.putShort(s16)
+                                    }
+                                    raf.write(shortChunk, 0, requiredBytes)
+                                    dataBytes += requiredBytes
+                                } else {
+                                    if (chunk.size < info.size) chunk = ByteArray(info.size)
+                                    buffer.get(chunk, 0, info.size)
+                                    raf.write(chunk, 0, info.size)
+                                    dataBytes += info.size
+                                }
                                 if (durationUs > 0) {
                                     val p = (info.presentationTimeUs.toFloat() / durationUs).coerceIn(0f, 1f)
                                     withContext(Dispatchers.Main) { onProgress(p) }

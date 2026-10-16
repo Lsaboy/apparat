@@ -130,10 +130,10 @@ fun AudioExtractScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Extract Audio") {
+                    ToolJobs.launch(context, JOB_KEY, "Extract Audio") { appContext ->
                         processState = ProcessState.Processing(0f, "Extracting audio track...")
                         val result = VideoEngine.extractAudio(
-                            context = context,
+                            context = appContext,
                             videoUri = uri,
                             targetFormat = targetFormat,
                             onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }

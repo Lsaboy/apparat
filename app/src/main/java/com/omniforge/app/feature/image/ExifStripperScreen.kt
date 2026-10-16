@@ -133,13 +133,13 @@ fun ExifStripperScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "EXIF Stripper") {
+                    ToolJobs.launch(context, JOB_KEY, "EXIF Stripper") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Stripping all metadata...")
-                        val result = ImageEngine.stripExif(context, uri)
+                        val result = ImageEngine.stripExif(appContext, uri)
                         result.fold(
                             onSuccess = { outputFile ->
                                 if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
-                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
                                         fileSize = outputFile.length()
                                         processState = ProcessState.Success(

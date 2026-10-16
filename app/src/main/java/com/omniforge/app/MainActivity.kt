@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var appSettings: AppSettings
+    private val navEvents = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
 
         appSettings = AppSettings(applicationContext)
 
-        // Parse incoming intent (Share Sheet or Shortcut Deep Link)
+        // Parse incoming intent (Share Sheet)
         val incomingUri: Uri? = if (intent?.action == Intent.ACTION_SEND) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
@@ -71,11 +72,9 @@ class MainActivity : ComponentActivity() {
 
         val incomingMimeType = intent?.type
 
-        // Only known tool routes are accepted; anything else would crash NavController.navigate.
-        // Skip on recreation: the restored back stack already contains the tool.
-        val shortcutRoute: String? = if (savedInstanceState == null && intent?.data?.scheme == "dpk") {
-            (intent.data?.host ?: intent.data?.path?.removePrefix("/"))?.takeIf { it in TOOL_ROUTES }
-        } else null
+        if (savedInstanceState == null) {
+            extractRoute(intent)?.let { navEvents.trySend(it) }
+        }
 
         setContent {
             var themeRecomposeTrigger by remember { mutableIntStateOf(0) }
@@ -88,10 +87,14 @@ class MainActivity : ComponentActivity() {
             ) {
                 val navController = rememberNavController()
 
-                // If launched via direct shortcut
-                LaunchedEffect(shortcutRoute) {
-                    if (!shortcutRoute.isNullOrBlank()) {
-                        navController.navigate(shortcutRoute)
+                // Handle deep links and notification taps via buffered events
+                LaunchedEffect(navController) {
+                    for (route in navEvents) {
+                        if (navController.currentDestination?.route != route) {
+                            navController.navigate(route) {
+                                launchSingleTop = true
+                            }
+                        }
                     }
                 }
 
@@ -210,5 +213,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractRoute(intent)?.let { navEvents.trySend(it) }
+    }
+
+    private fun extractRoute(intent: Intent?): String? {
+        val uri = intent?.data ?: return null
+        if (uri.scheme != "dpk") return null
+        val route = uri.host ?: uri.path?.removePrefix("/")
+        return route?.takeIf { it in TOOL_ROUTES }
     }
 }

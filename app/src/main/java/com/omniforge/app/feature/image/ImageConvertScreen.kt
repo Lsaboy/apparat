@@ -148,10 +148,10 @@ fun ImageConvertScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Convert Image") {
+                    ToolJobs.launch(context, JOB_KEY, "Convert Image") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Converting photo format...")
                         val result = ImageEngine.convertFormat(
-                            context = context,
+                            context = appContext,
                             inputUri = uri,
                             targetFormat = targetFormat,
                             quality = quality.toInt()
@@ -159,7 +159,7 @@ fun ImageConvertScreen(
                         result.fold(
                             onSuccess = { outputFile ->
                                 if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
-                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,

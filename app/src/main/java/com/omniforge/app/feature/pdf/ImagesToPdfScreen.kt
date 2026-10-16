@@ -106,9 +106,9 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (selectedUris.isEmpty()) return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Photos to PDF") {
+                    ToolJobs.launch(context, JOB_KEY, "Photos to PDF") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Combining photos into PDF...")
-                        val result = PdfEngine.imagesToPdf(context, selectedUris)
+                        val result = PdfEngine.imagesToPdf(appContext, selectedUris)
                         result.fold(
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(

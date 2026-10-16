@@ -170,14 +170,14 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Trim & Mute") {
+                    ToolJobs.launch(context, JOB_KEY, "Trim & Mute") { appContext ->
                         processState = ProcessState.Processing(0f, "Processing...")
                         val result = if (isMuteOnly) {
-                            VideoEngine.stripAudio(context, uri) { p, msg -> processState = ProcessState.Processing(p, msg) }
+                            VideoEngine.stripAudio(appContext, uri) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         } else {
                             val start = startSecText.toFloatOrNull() ?: 0f
                             val duration = durationSecText.toFloatOrNull() ?: 10f
-                            VideoEngine.losslessTrim(context, uri, start, duration) { p, msg -> processState = ProcessState.Processing(p, msg) }
+                            VideoEngine.losslessTrim(appContext, uri, start, duration) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         }
                         result.fold(
                             onSuccess = { outputFile ->

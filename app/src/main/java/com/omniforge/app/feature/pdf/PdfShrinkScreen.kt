@@ -160,13 +160,13 @@ fun PdfShrinkScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Compress PDF") {
+                    ToolJobs.launch(context, JOB_KEY, "Compress PDF") { appContext ->
                         processState = ProcessState.Processing(0.4f, "Compressing PDF streams...")
-                        val result = PdfEngine.compressPdf(context, uri, compressionLevel, password = pdfPassword ?: "")
+                        val result = PdfEngine.compressPdf(appContext, uri, compressionLevel, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { outputFile ->
                                 val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
-                                    runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
+                                    runCatching { appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
                                 }
                                 val newBytes = outputFile.length()
 
@@ -176,7 +176,7 @@ fun PdfShrinkScreen(
                                         message = "PDF is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
                                     )
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
-                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
                                         fileSize = newBytes
                                         processState = ProcessState.Success(

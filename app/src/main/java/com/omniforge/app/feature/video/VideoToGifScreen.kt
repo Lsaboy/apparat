@@ -151,10 +151,10 @@ fun VideoToGifScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Video to GIF") {
+                    ToolJobs.launch(context, JOB_KEY, "Video to GIF") { appContext ->
                         processState = ProcessState.Processing(0f, "Reading video frames...")
                         val result = VideoEngine.videoToGif(
-                            context = context,
+                            context = appContext,
                             videoUri = uri,
                             fps = fps.toInt(),
                             width = width.toInt(),

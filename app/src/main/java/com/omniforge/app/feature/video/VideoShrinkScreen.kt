@@ -143,10 +143,10 @@ fun VideoShrinkScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Video Shrinker") {
+                    ToolJobs.launch(context, JOB_KEY, "Video Shrinker") { appContext ->
                         processState = ProcessState.Processing(0.2f, "Preparing video...")
                         val result = VideoEngine.shrinkVideo(
-                            context = context,
+                            context = appContext,
                             inputUri = uri,
                             preset = selectedPreset,
                             onProgress = { p, msg ->
@@ -156,7 +156,7 @@ fun VideoShrinkScreen(
                         result.fold(
                             onSuccess = { outputFile ->
                                 val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
-                                    runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
+                                    runCatching { appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
                                 }
                                 val newBytes = outputFile.length()
 
@@ -166,7 +166,7 @@ fun VideoShrinkScreen(
                                         message = "Video is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
                                     )
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
-                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
+                                    val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
                                         fileSize = newBytes
                                         processState = ProcessState.Success(

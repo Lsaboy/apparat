@@ -137,10 +137,10 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                 onClick = {
                     val vUri = videoUri ?: return@Button
                     val sUri = subtitleUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Burn Subtitles") {
+                    ToolJobs.launch(context, JOB_KEY, "Burn Subtitles") { appContext ->
                         processState = ProcessState.Processing(0f, "Burning subtitles into video...")
                         val result = VideoEngine.burnSubtitles(
-                            context = context,
+                            context = appContext,
                             videoUri = vUri,
                             subtitleUri = sUri,
                             fontSize = fontSize.toInt(),

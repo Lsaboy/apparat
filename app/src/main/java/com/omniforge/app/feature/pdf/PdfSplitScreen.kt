@@ -323,9 +323,9 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                         return@Button
                     }
 
-                    ToolJobs.launch(context, JOB_KEY, "Split PDF") {
+                    ToolJobs.launch(context, JOB_KEY, "Split PDF") { appContext ->
                         processState = ProcessState.Processing(0.3f, "Splitting PDF document...")
-                        val result = PdfEngine.multiSplitPdf(context, uri, validRanges, password = pdfPassword ?: "")
+                        val result = PdfEngine.multiSplitPdf(appContext, uri, validRanges, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { files ->
                                 generatedFiles = files

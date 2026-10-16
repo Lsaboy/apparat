@@ -42,13 +42,20 @@ object ToolJobs {
     fun isRunning(key: String): Boolean = running.containsKey(key)
 
     /** Starts [block] for [key] unless a job is already running there. */
-    fun launch(context: Context, key: String, title: String, block: suspend CoroutineScope.() -> Unit) {
+    fun launch(
+        context: Context,
+        key: String,
+        title: String,
+        block: suspend CoroutineScope.(appContext: Context) -> Unit
+    ) {
         if (isRunning(key)) return
         val appContext = context.applicationContext
         running[key] = title
         // Best effort: if the service can't start, the job still runs while the app is open.
         runCatching { ContextCompat.startForegroundService(appContext, Intent(appContext, ToolJobService::class.java)) }
-        val job = scope.launch(block = block)
+        val job = scope.launch {
+            block(appContext)
+        }
         jobs[key] = job
         job.invokeOnCompletion { cause ->
             scope.launch {

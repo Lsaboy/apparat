@@ -164,5 +164,53 @@ object FileUtils {
     fun isVideoMp4(context: Context, uri: Uri): Boolean {
         return isVideoMp4(context.contentResolver.getType(uri), getFileName(context, uri))
     }
+
+    fun cleanStaleCacheDir(
+        cacheDir: File,
+        maxAgeMs: Long = 24 * 60 * 60 * 1000L,
+        appStartTime: Long = System.currentTimeMillis()
+    ) {
+        // 1. PDFBox scratch files (created prior to this process start)
+        runCatching {
+            File(cacheDir, "pdfbox").listFiles()?.forEach { file ->
+                if (file.lastModified() < appStartTime) {
+                    file.deleteRecursively()
+                }
+            }
+        }
+
+        // 2. Decrypted PDFs and copied input files
+        runCatching {
+            cacheDir.listFiles()?.forEach { file ->
+                val name = file.name
+                if ((name.startsWith("input_") || name.startsWith("decrypted_")) && file.lastModified() < appStartTime) {
+                    file.delete()
+                }
+            }
+        }
+
+        // 3. Stale outputs older than maxAgeMs (default 24h)
+        val cutoff = System.currentTimeMillis() - maxAgeMs
+        runCatching {
+            File(cacheDir, "outputs").listFiles()?.forEach { file ->
+                if (file.lastModified() < cutoff) {
+                    file.deleteRecursively()
+                }
+            }
+        }
+    }
+
+    /**
+     * Cleans stale temp files from cacheDir.
+     * Guards against deleting active files by checking lastModified against appStartTime and maxAgeMs.
+     */
+    fun cleanStaleCache(
+        context: Context,
+        maxAgeMs: Long = 24 * 60 * 60 * 1000L,
+        appStartTime: Long = System.currentTimeMillis()
+    ) {
+        val cacheDir = context.cacheDir ?: return
+        cleanStaleCacheDir(cacheDir, maxAgeMs, appStartTime)
+    }
 }
 
