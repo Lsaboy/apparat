@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -99,19 +98,11 @@ object FileUtils {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DigitalPocketKnife")
-                put(MediaStore.MediaColumns.IS_PENDING, 1)
-            }
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DigitalPocketKnife")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        } else {
-            MediaStore.Files.getContentUri("external")
-        }
-
-        val itemUri = resolver.insert(collection, contentValues) ?: return null
+        val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return null
 
         resolver.openOutputStream(itemUri)?.use { out ->
             FileInputStream(file).use { input ->
@@ -119,11 +110,9 @@ object FileUtils {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            resolver.update(itemUri, contentValues, null, null)
-        }
+        contentValues.clear()
+        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(itemUri, contentValues, null, null)
 
         return itemUri
     }

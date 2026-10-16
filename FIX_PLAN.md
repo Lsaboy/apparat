@@ -80,7 +80,7 @@ easy to bisect.
   - Fix: detect encryption on file pick; show a password dialog (shared component) and pass
     the password through the engine. Reuse in all PDF tools.
 
-- [ ] **1A.7 Saving broken on Android 8/9 (API 26–28).** Pre-Q branch inserts into
+- [x] **1A.7 Saving broken on Android 8/9 (API 26–28).** Pre-Q branch inserts into
   `MediaStore.Files` with no path and no write permission.
   - **DECIDED: drop Android 8/9.** Set `minSdk = 29`. Delete the pre-Q branches in
     `FileUtils.saveToDownloads`. Drop `Build.VERSION` checks that are now always true.
