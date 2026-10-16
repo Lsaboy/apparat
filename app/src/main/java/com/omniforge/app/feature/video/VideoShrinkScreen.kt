@@ -24,7 +24,6 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
-import com.omniforge.app.engine.video.VideoOutputFormat
 import com.omniforge.app.engine.video.VideoShrinkPreset
 import kotlinx.coroutines.launch
 
@@ -40,7 +39,6 @@ fun VideoShrinkScreen(
     var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var selectedFormat by remember { mutableStateOf(VideoOutputFormat.MP4) }
     var selectedPreset by remember { mutableStateOf(VideoShrinkPreset.DISCORD_FAST) }
     var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
 
@@ -80,21 +78,6 @@ fun VideoShrinkScreen(
                 icon = Icons.Default.VideoFile,
                 accentColor = AccentVideo,
                 onClick = { picker.launch(arrayOf("video/*")) }
-            )
-
-            // Format Selector
-            FormatSelectorRow(
-                title = "Output Container",
-                formats = listOf("mp4", "mkv", "webm"),
-                selectedFormat = selectedFormat.extension.removePrefix("."),
-                onFormatSelect = { ext ->
-                    selectedFormat = when (ext.lowercase()) {
-                        "mkv" -> VideoOutputFormat.MKV
-                        "webm" -> VideoOutputFormat.WEBM
-                        else -> VideoOutputFormat.MP4
-                    }
-                },
-                accentColor = AccentVideo
             )
 
             // Save Mode
@@ -145,7 +128,7 @@ fun VideoShrinkScreen(
                 onClick = {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.2f, "Encoding video with FFmpeg...")
+                        processState = ProcessState.Processing(0.2f, "Preparing video...")
                         val result = VideoEngine.shrinkVideo(
                             context = context,
                             inputUri = uri,
@@ -207,13 +190,13 @@ fun VideoShrinkScreen(
                         val saved = FileUtils.saveToDownloads(
                             context = context,
                             file = success.outputFile,
-                            mimeType = selectedFormat.mimeType,
-                            displayName = "${baseName}_shrunk${selectedFormat.extension}"
+                            mimeType = VideoEngine.MP4_MIME,
+                            displayName = "${baseName}_shrunk.mp4"
                         )
                         Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, selectedFormat.mimeType)
+                        FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)
                     }
                 )
             }

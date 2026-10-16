@@ -1,205 +1,220 @@
 package com.omniforge.app.engine.video
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.ReturnCode
+import androidx.annotation.OptIn
+import androidx.media3.common.C
+import androidx.media3.common.Effect
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.Presentation
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.DefaultEncoderFactory
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.Effects
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.ProgressHolder
+import androidx.media3.transformer.Transformer
+import androidx.media3.transformer.VideoEncoderSettings
+import com.google.common.collect.ImmutableList
 import com.omniforge.app.core.util.FileUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
-enum class VideoOutputFormat(val extension: String, val mimeType: String, val codecArgs: String) {
-    MP4(".mp4", "video/mp4", "-c:v libx264 -preset veryfast -crf 23 -c:a aac"),
-    MKV(".mkv", "video/x-matroska", "-c:v libx264 -preset veryfast -crf 23 -c:a aac"),
-    WEBM(".webm", "video/webm", "-c:v libvpx-vp9 -crf 30 -b:v 0 -c:a libopus"),
-    GIF(".gif", "image/gif", "-vf \"fps=12,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\"")
+/**
+ * Target for Video Shrinker. [shortSide] is the output's smaller dimension (so portrait and
+ * landscape clips get the same treatment); [bitrate] is the requested H.264 bitrate at that size.
+ */
+enum class VideoShrinkPreset(val label: String, val shortSide: Int, val bitrate: Int) {
+    DISCORD_FAST("Discord / Social (Compact 720p)", 720, 2_500_000),
+    WHATSAPP("WhatsApp / Messaging (480p)", 480, 1_200_000),
+    HIGH_QUALITY("Light Compress (1080p)", 1080, 5_000_000),
+    MAX_SHRINK("Extreme Shrink (360p)", 360, 600_000)
 }
 
-enum class VideoShrinkPreset(val label: String, val scaleFilter: String, val crf: Int) {
-    DISCORD_FAST("Discord / Social (Compact 720p)", "scale=-2:720", 28),
-    WHATSAPP("WhatsApp / Messaging (480p)", "scale=-2:480", 30),
-    HIGH_QUALITY("Light Compress (1080p)", "scale=-2:1080", 24),
-    MAX_SHRINK("Extreme Shrink (360p)", "scale=-2:360", 32)
+enum class AudioOutputFormat(val label: String, val extension: String, val mimeType: String) {
+    M4A("M4A (AAC)", ".m4a", "audio/mp4"),
+    WAV("WAV", ".wav", "audio/wav")
 }
 
-enum class AudioOutputFormat(val extension: String, val mimeType: String, val ffmpegArgs: String) {
-    MP3(".mp3", "audio/mpeg", "-vn -c:a libmp3lame -q:a 2"),
-    M4A(".m4a", "audio/mp4", "-vn -c:a aac -b:a 192k"),
-    WAV(".wav", "audio/wav", "-vn -c:a pcm_s16le"),
-    FLAC(".flac", "audio/flac", "-vn -c:a flac")
-}
-
+/**
+ * All video work runs on Media3 Transformer (hardware codecs, no bundled FFmpeg).
+ * With no effects, Transformer copies streams instead of re-encoding (trim, mute, remux, AAC rip).
+ */
+@OptIn(UnstableApi::class)
 object VideoEngine {
 
-    /**
-     * Shrinks video using FFmpeg with selected preset, resolution scaling, and CRF.
-     */
+    const val MP4_MIME = "video/mp4"
+
     suspend fun shrinkVideo(
         context: Context,
         inputUri: Uri,
         preset: VideoShrinkPreset = VideoShrinkPreset.DISCORD_FAST,
         onProgress: (Float, String) -> Unit = { _, _ -> }
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "shrunk", ".mp4")
-
-            try {
-                val cmd = "-y -i \"${cachedInput.absolutePath}\" -vf \"${preset.scaleFilter}\" -c:v libx264 -preset veryfast -crf ${preset.crf} -c:a aac -b:a 128k \"${outputFile.absolutePath}\""
-                onProgress(0.2f, "Encoding video with ${preset.label}...")
-
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("FFmpeg failed: ${session.failStackTrace ?: session.allLogsAsString}")
-                }
-                outputFile
-            } finally {
-                cachedInput.delete()
-            }
+    ): Result<File> = runCatchingCancellable {
+        val info = readVideoInfo(context, inputUri)
+        val effects = mutableListOf<Effect>()
+        var bitrate = preset.bitrate
+        if (info != null && info.shortSide > preset.shortSide) {
+            val scale = preset.shortSide.toFloat() / info.shortSide
+            effects += Presentation.createForWidthAndHeight(
+                even(info.width * scale), even(info.height * scale), Presentation.LAYOUT_SCALE_TO_FIT
+            )
+        } else if (info != null) {
+            // Already small: keep size, just re-encode at a lower bitrate.
+            val pixelRatio = (info.width.toFloat() * info.height) / (preset.shortSide * preset.shortSide * 16f / 9f)
+            bitrate = (preset.bitrate * pixelRatio).roundToInt()
         }
+        info?.bitrate?.takeIf { it > 0 }?.let { bitrate = min(bitrate, (it * 0.8f).roundToInt()) }
+        bitrate = max(bitrate, 200_000)
+
+        val output = FileUtils.createTempOutputFile(context, "shrunk", ".mp4")
+        val item = EditedMediaItem.Builder(MediaItem.fromUri(inputUri))
+            .setEffects(Effects(emptyList(), effects))
+            .build()
+        onProgress(0f, "Compressing video (${preset.label})...")
+        runTransformer(context, item, output, forceVideoEncode = true, videoBitrate = bitrate) { p ->
+            onProgress(p, "Compressing video... ${(p * 100).toInt()}%")
+        }
+        output
     }
 
-    /**
-     * Converts video to different container / format (MP4, MKV, WEBM, GIF).
-     */
-    suspend fun convertFormat(
+    /** Re-packages any supported input (MKV, WEBM, MOV, 3GP…) as an H.264/AAC MP4. */
+    suspend fun convertToMp4(
         context: Context,
         inputUri: Uri,
-        targetFormat: VideoOutputFormat,
         onProgress: (Float, String) -> Unit = { _, _ -> }
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "converted", targetFormat.extension)
-
-            try {
-                val cmd = "-y -i \"${cachedInput.absolutePath}\" ${targetFormat.codecArgs} \"${outputFile.absolutePath}\""
-                onProgress(0.2f, "Transcoding to ${targetFormat.name}...")
-
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("Transcoding failed: ${session.failStackTrace ?: session.allLogsAsString}")
-                }
-                outputFile
-            } finally {
-                cachedInput.delete()
-            }
-        }
+    ): Result<File> = runCatchingCancellable {
+        val output = FileUtils.createTempOutputFile(context, "converted", ".mp4")
+        val item = EditedMediaItem.Builder(MediaItem.fromUri(inputUri)).build()
+        onProgress(0f, "Converting to MP4...")
+        runTransformer(
+            context, item, output,
+            videoMimeType = MimeTypes.VIDEO_H264,
+            audioMimeType = MimeTypes.AUDIO_AAC
+        ) { p -> onProgress(p, "Converting to MP4... ${(p * 100).toInt()}%") }
+        output
     }
 
-    /**
-     * Hardcodes / burns subtitles (.srt or .vtt) into video.
-     */
     suspend fun burnSubtitles(
         context: Context,
         videoUri: Uri,
         subtitleUri: Uri,
         fontSize: Int = 20,
         onProgress: (Float, String) -> Unit = { _, _ -> }
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
-            val cachedSub = FileUtils.copyUriToCache(context, subtitleUri, "subtitles.srt")
-            val outputFile = FileUtils.createTempOutputFile(context, "captioned", ".mp4")
-
-            try {
-                // Escape colons and backslashes for FFmpeg subtitles filter
-                val subPathEscaped = cachedSub.absolutePath.replace(":", "\\:").replace("\\", "/")
-                val filter = "subtitles='$subPathEscaped':force_style='FontSize=$fontSize,PrimaryColour=&H00FFFFFF&,OutlineColour=&H00000000&,BorderStyle=3'"
-                val cmd = "-y -i \"${cachedVideo.absolutePath}\" -vf \"$filter\" -c:v libx264 -preset veryfast -crf 23 -c:a copy \"${outputFile.absolutePath}\""
-
-                onProgress(0.2f, "Burning subtitles into video track...")
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("Subtitle burn failed: ${session.failStackTrace ?: session.allLogsAsString}")
-                }
-                outputFile
-            } finally {
-                cachedVideo.delete()
-                cachedSub.delete()
-            }
+    ): Result<File> = runCatchingCancellable {
+        val text = withContext(Dispatchers.IO) {
+            context.contentResolver.openInputStream(subtitleUri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                ?: throw IllegalStateException("Could not read subtitle file")
         }
+        val cues = SubtitleParser.parse(text)
+        if (cues.isEmpty()) throw IllegalArgumentException("No subtitles found. Use a .srt or .vtt file.")
+
+        val output = FileUtils.createTempOutputFile(context, "captioned", ".mp4")
+        val overlay = SubtitleOverlay(cues, fontSize)
+        val item = EditedMediaItem.Builder(MediaItem.fromUri(videoUri))
+            .setEffects(Effects(emptyList(), listOf(OverlayEffect(ImmutableList.of(overlay)))))
+            .build()
+        onProgress(0f, "Burning subtitles...")
+        runTransformer(context, item, output, forceVideoEncode = true) { p ->
+            onProgress(p, "Burning subtitles... ${(p * 100).toInt()}%")
+        }
+        output
     }
 
-    /**
-     * Extracts audio from video directly into MP3, M4A, WAV, or FLAC.
-     */
     suspend fun extractAudio(
         context: Context,
         videoUri: Uri,
-        targetFormat: AudioOutputFormat
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "extracted_audio", targetFormat.extension)
-
-            try {
-                val cmd = "-y -i \"${cachedVideo.absolutePath}\" ${targetFormat.ffmpegArgs} \"${outputFile.absolutePath}\""
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("Audio extraction failed: ${session.failStackTrace ?: session.allLogsAsString}")
+        targetFormat: AudioOutputFormat,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): Result<File> = runCatchingCancellable {
+        val output = FileUtils.createTempOutputFile(context, "extracted_audio", targetFormat.extension)
+        when (targetFormat) {
+            AudioOutputFormat.M4A -> {
+                val item = EditedMediaItem.Builder(MediaItem.fromUri(videoUri)).setRemoveVideo(true).build()
+                onProgress(0f, "Extracting audio...")
+                runTransformer(context, item, output, audioMimeType = MimeTypes.AUDIO_AAC) { p ->
+                    onProgress(p, "Extracting audio... ${(p * 100).toInt()}%")
                 }
-                outputFile
-            } finally {
-                cachedVideo.delete()
+            }
+            AudioOutputFormat.WAV -> withContext(Dispatchers.IO) {
+                decodeToWav(context, videoUri, output) { p -> onProgress(p, "Decoding audio... ${(p * 100).toInt()}%") }
             }
         }
+        output
     }
 
-    /**
-     * Instantly strips audio track from video (lossless stream copy, 0 re-encoding!).
-     */
+    /** Removes the audio track. No re-encoding: the video stream is copied. */
     suspend fun stripAudio(
         context: Context,
-        videoUri: Uri
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "muted", ".mp4")
-
-            try {
-                val cmd = "-y -i \"${cachedVideo.absolutePath}\" -an -c:v copy \"${outputFile.absolutePath}\""
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("Mute failed: ${session.failStackTrace ?: session.allLogsAsString}")
-                }
-                outputFile
-            } finally {
-                cachedVideo.delete()
-            }
-        }
+        videoUri: Uri,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): Result<File> = runCatchingCancellable {
+        val output = FileUtils.createTempOutputFile(context, "muted", ".mp4")
+        val item = EditedMediaItem.Builder(MediaItem.fromUri(videoUri)).setRemoveAudio(true).build()
+        runTransformer(context, item, output) { p -> onProgress(p, "Removing audio... ${(p * 100).toInt()}%") }
+        output
     }
 
     /**
-     * Losslessly trims video by time range without re-encoding (instant stream copy).
+     * Cuts [startSec, startSec + durationSec]. Streams are copied; trim optimisation only
+     * re-encodes the few frames before the first keyframe so the cut stays accurate.
      */
     suspend fun losslessTrim(
         context: Context,
         videoUri: Uri,
         startSec: Float,
-        durationSec: Float
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "trimmed", ".mp4")
-
-            try {
-                val cmd = "-y -ss $startSec -t $durationSec -i \"${cachedVideo.absolutePath}\" -c copy -avoid_negative_ts make_zero \"${outputFile.absolutePath}\""
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("Trim failed: ${session.failStackTrace ?: session.allLogsAsString}")
-                }
-                outputFile
-            } finally {
-                cachedVideo.delete()
-            }
+        durationSec: Float,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): Result<File> = runCatchingCancellable {
+        require(startSec >= 0f) { "Start time can't be negative" }
+        require(durationSec > 0f) { "Duration must be more than 0 seconds" }
+        val info = readVideoInfo(context, videoUri)
+        if (info != null && info.durationMs > 0 && startSec * 1000 >= info.durationMs) {
+            throw IllegalArgumentException("Start time is past the end of the video (${info.durationMs / 1000f}s)")
         }
+        val startMs = (startSec * 1000).toLong()
+        val endMs = startMs + (durationSec * 1000).toLong()
+        val mediaItem = MediaItem.Builder()
+            .setUri(videoUri)
+            .setClippingConfiguration(
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(startMs)
+                    .setEndPositionMs(if (info != null && info.durationMs in 1..endMs) C.TIME_END_OF_SOURCE else endMs)
+                    .build()
+            )
+            .build()
+        val output = FileUtils.createTempOutputFile(context, "trimmed", ".mp4")
+        runTransformer(context, EditedMediaItem.Builder(mediaItem).build(), output, trimOptimization = true) { p ->
+            onProgress(p, "Trimming... ${(p * 100).toInt()}%")
+        }
+        output
     }
 
-    /**
-     * Converts a video segment into a smooth animated GIF using 2-pass palettegen.
-     */
+    /** Pulls frames with MediaMetadataRetriever and writes them with our own GIF encoder. */
     suspend fun videoToGif(
         context: Context,
         videoUri: Uri,
@@ -208,24 +223,267 @@ object VideoEngine {
         startSec: Float = 0f,
         durationSec: Float = 6f,
         onProgress: (Float, String) -> Unit = { _, _ -> }
-    ): Result<File> = withContext(Dispatchers.IO) {
-        runCatching {
-            val cachedVideo = FileUtils.copyUriToCache(context, videoUri)
-            val outputFile = FileUtils.createTempOutputFile(context, "animated", ".gif")
-
+    ): Result<File> = runCatchingCancellable {
+        withContext(Dispatchers.IO) {
+            val output = FileUtils.createTempOutputFile(context, "animated", ".gif")
+            val retriever = MediaMetadataRetriever()
             try {
-                onProgress(0.3f, "Generating GIF color palette...")
-                val filter = "fps=$fps,scale=$width:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer"
-                val cmd = "-y -ss $startSec -t $durationSec -i \"${cachedVideo.absolutePath}\" -vf \"$filter\" \"${outputFile.absolutePath}\""
+                retriever.setDataSource(context, videoUri)
+                val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                val startMs = (startSec * 1000).toLong()
+                val endMs = if (durationMs > 0) min(durationMs, startMs + (durationSec * 1000).toLong()) else startMs + (durationSec * 1000).toLong()
+                if (endMs <= startMs) throw IllegalArgumentException("Start time is past the end of the video")
 
-                val session = FFmpegKit.execute(cmd)
-                if (!ReturnCode.isSuccess(session.returnCode)) {
-                    throw IllegalStateException("GIF creation failed: ${session.failStackTrace ?: session.allLogsAsString}")
+                val info = readVideoInfo(retriever)
+                val outW = if (info != null) min(width, info.width) else width
+                val outH = if (info != null) max(2, (outW.toFloat() * info.height / info.width).roundToInt()) else outW * 9 / 16
+
+                val frameDelayMs = 1000 / fps.coerceIn(1, 50)
+                val frameCount = max(1, ((endMs - startMs) / frameDelayMs).toInt())
+                FileOutputStream(output).buffered().use { out ->
+                    val encoder = GifEncoder(out, outW, outH, frameDelayMs)
+                    for (i in 0 until frameCount) {
+                        coroutineContext.ensureActive()
+                        val timeUs = (startMs + i.toLong() * frameDelayMs) * 1000
+                        val frame = retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST, outW, outH)
+                            ?: continue
+                        val sized = if (frame.width != outW || frame.height != outH) {
+                            Bitmap.createScaledBitmap(frame, outW, outH, true).also { if (it != frame) frame.recycle() }
+                        } else frame
+                        encoder.addFrame(sized)
+                        sized.recycle()
+                        withContext(Dispatchers.Main) {
+                            onProgress((i + 1f) / frameCount, "Encoding GIF frame ${i + 1} of $frameCount...")
+                        }
+                    }
+                    encoder.finish()
                 }
-                outputFile
+            } catch (t: Throwable) {
+                output.delete()
+                throw t
             } finally {
-                cachedVideo.delete()
+                retriever.release()
             }
+            output
         }
+    }
+
+    // ---------------------------------------------------------------- internals
+
+    private data class VideoInfo(val width: Int, val height: Int, val durationMs: Long, val bitrate: Int?) {
+        val shortSide get() = min(width, height)
+    }
+
+    /** Displayed size (rotation applied), duration and bitrate, or null when unreadable. */
+    private fun readVideoInfo(context: Context, uri: Uri): VideoInfo? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, uri)
+            readVideoInfo(retriever)
+        } catch (_: Exception) {
+            null
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private fun readVideoInfo(retriever: MediaMetadataRetriever): VideoInfo? {
+        val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: return null
+        val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: return null
+        val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+        val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()
+        val rotated = rotation % 180 != 0
+        return VideoInfo(if (rotated) h else w, if (rotated) w else h, duration, bitrate)
+    }
+
+    private fun even(value: Float): Int = max(2, (value / 2).roundToInt() * 2)
+
+    /**
+     * Runs one Transformer export on the main looper and suspends until it finishes.
+     * Cancelling the coroutine cancels the export and deletes the partial output.
+     */
+    private suspend fun runTransformer(
+        context: Context,
+        item: EditedMediaItem,
+        output: File,
+        videoMimeType: String? = null,
+        audioMimeType: String? = null,
+        forceVideoEncode: Boolean = false,
+        videoBitrate: Int? = null,
+        trimOptimization: Boolean = false,
+        onProgress: (Float) -> Unit
+    ): Unit = withContext(Dispatchers.Main) {
+        val builder = Transformer.Builder(context.applicationContext)
+        if (forceVideoEncode || videoMimeType != null) builder.setVideoMimeType(videoMimeType ?: MimeTypes.VIDEO_H264)
+        audioMimeType?.let { builder.setAudioMimeType(it) }
+        if (videoBitrate != null) {
+            builder.setEncoderFactory(
+                DefaultEncoderFactory.Builder(context.applicationContext)
+                    .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(videoBitrate).build())
+                    .setEnableFallback(true)
+                    .build()
+            )
+        }
+        if (trimOptimization) builder.experimentalSetTrimOptimizationEnabled(true)
+
+        val progressHolder = ProgressHolder()
+        var poller: kotlinx.coroutines.Job? = null
+        try {
+        suspendCancellableCoroutine { cont ->
+            val transformer = builder.addListener(object : Transformer.Listener {
+                override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                    if (cont.isActive) cont.resume(Unit)
+                }
+
+                override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
+                    output.delete()
+                    if (cont.isActive) cont.resumeWithException(friendlyError(exportException))
+                }
+            }).build()
+
+            poller = launch {
+                while (true) {
+                    if (transformer.getProgress(progressHolder) == Transformer.PROGRESS_STATE_AVAILABLE) {
+                        onProgress(progressHolder.progress / 100f)
+                    }
+                    delay(250)
+                }
+            }
+            cont.invokeOnCancellation {
+                // invokeOnCancellation may run off the main thread; Transformer must be touched on its looper.
+                android.os.Handler(transformer.applicationLooper).post {
+                    transformer.cancel()
+                    output.delete()
+                }
+            }
+            transformer.start(item, output.absolutePath)
+        }
+        } finally {
+            poller?.cancel()
+        }
+        onProgress(1f)
+    }
+
+    private fun friendlyError(e: ExportException): Exception {
+        val reason = when (e.errorCode) {
+            ExportException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            ExportException.ERROR_CODE_DECODER_INIT_FAILED -> "This phone can't decode this video format."
+            ExportException.ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED,
+            ExportException.ERROR_CODE_ENCODER_INIT_FAILED -> "This phone's video encoder doesn't support these settings."
+            ExportException.ERROR_CODE_IO_FILE_NOT_FOUND,
+            ExportException.ERROR_CODE_IO_NO_PERMISSION -> "Could not read the selected file. Pick it again."
+            ExportException.ERROR_CODE_MUXING_FAILED -> "Could not write the output file."
+            else -> "Processing failed (${e.errorCodeName})."
+        }
+        return IllegalStateException(reason, e)
+    }
+
+    /**
+     * Decodes the first audio track to 16-bit PCM and writes a WAV file.
+     * The header is written last, once the real data size is known.
+     */
+    private suspend fun decodeToWav(context: Context, uri: Uri, output: File, onProgress: (Float) -> Unit) {
+        val extractor = MediaExtractor()
+        var codec: MediaCodec? = null
+        try {
+            extractor.setDataSource(context, uri, null)
+            val trackIndex = (0 until extractor.trackCount).firstOrNull {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+            } ?: throw IllegalArgumentException("This video has no audio track")
+            extractor.selectTrack(trackIndex)
+            val inputFormat = extractor.getTrackFormat(trackIndex)
+            val durationUs = if (inputFormat.containsKey(MediaFormat.KEY_DURATION)) inputFormat.getLong(MediaFormat.KEY_DURATION) else 0L
+
+            codec = MediaCodec.createDecoderByType(inputFormat.getString(MediaFormat.KEY_MIME)!!)
+            codec.configure(inputFormat, null, null, 0)
+            codec.start()
+
+            var sampleRate = inputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            var channels = inputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            var dataBytes = 0L
+            val info = MediaCodec.BufferInfo()
+            var inputDone = false
+            var outputDone = false
+
+            RandomAccessFile(output, "rw").use { raf ->
+                raf.setLength(0)
+                raf.write(ByteArray(44)) // header placeholder
+                var chunk = ByteArray(0)
+                while (!outputDone) {
+                    coroutineContext.ensureActive()
+                    if (!inputDone) {
+                        val inIndex = codec.dequeueInputBuffer(10_000)
+                        if (inIndex >= 0) {
+                            val buffer = codec.getInputBuffer(inIndex)!!
+                            val size = extractor.readSampleData(buffer, 0)
+                            if (size < 0) {
+                                codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                inputDone = true
+                            } else {
+                                codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
+                                extractor.advance()
+                            }
+                        }
+                    }
+                    val outIndex = codec.dequeueOutputBuffer(info, 10_000)
+                    when {
+                        outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            val f = codec.outputFormat
+                            sampleRate = f.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                            channels = f.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        }
+                        outIndex >= 0 -> {
+                            if (info.size > 0) {
+                                val buffer = codec.getOutputBuffer(outIndex)!!
+                                if (chunk.size < info.size) chunk = ByteArray(info.size)
+                                buffer.position(info.offset)
+                                buffer.get(chunk, 0, info.size)
+                                raf.write(chunk, 0, info.size)
+                                dataBytes += info.size
+                                if (durationUs > 0) {
+                                    val p = (info.presentationTimeUs.toFloat() / durationUs).coerceIn(0f, 1f)
+                                    withContext(Dispatchers.Main) { onProgress(p) }
+                                }
+                            }
+                            codec.releaseOutputBuffer(outIndex, false)
+                            if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
+                        }
+                    }
+                }
+                if (dataBytes > 0xFFFFFFFFL - 36) throw IllegalStateException("Audio is too long for a WAV file. Use M4A instead.")
+                raf.seek(0)
+                raf.write(wavHeader(dataBytes, sampleRate, channels))
+            }
+        } catch (t: Throwable) {
+            output.delete()
+            throw t
+        } finally {
+            runCatching { codec?.stop() }
+            runCatching { codec?.release() }
+            extractor.release()
+        }
+    }
+
+    private fun wavHeader(dataBytes: Long, sampleRate: Int, channels: Int): ByteArray {
+        val bitsPerSample = 16
+        val byteRate = sampleRate * channels * bitsPerSample / 8
+        return ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN).apply {
+            put("RIFF".toByteArray()); putInt((36 + dataBytes).toInt())
+            put("WAVE".toByteArray())
+            put("fmt ".toByteArray()); putInt(16); putShort(1); putShort(channels.toShort())
+            putInt(sampleRate); putInt(byteRate); putShort((channels * bitsPerSample / 8).toShort())
+            putShort(bitsPerSample.toShort())
+            put("data".toByteArray()); putInt(dataBytes.toInt())
+        }.array()
+    }
+
+    /** Like runCatching, but lets coroutine cancellation propagate. */
+    private suspend fun <T> runCatchingCancellable(block: suspend () -> T): Result<T> = try {
+        Result.success(block())
+    } catch (c: kotlinx.coroutines.CancellationException) {
+        throw c
+    } catch (t: Throwable) {
+        Result.failure(t)
     }
 }

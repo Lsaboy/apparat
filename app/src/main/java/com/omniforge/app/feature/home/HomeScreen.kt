@@ -87,7 +87,7 @@ val ALL_TOOLS = listOf(
     ToolItem(
         id = "video_trim",
         title = "Lossless Trim & Mute",
-        description = "Cut video or strip audio in <1s without quality loss (stream copy).",
+        description = "Cut a clip or remove the sound. No re-encoding, so quality stays the same.",
         category = ToolCategory.VIDEO,
         route = "video_trim",
         badge = "Lossless"
@@ -95,29 +95,28 @@ val ALL_TOOLS = listOf(
     ToolItem(
         id = "video_caption",
         title = "Burn Subtitles & Captions",
-        description = "Hardcode .srt or .vtt subtitles directly into video with custom font sizing.",
+        description = "Burn .srt or .vtt subtitles into a video, with adjustable text size.",
         category = ToolCategory.VIDEO,
         route = "video_caption"
     ),
     ToolItem(
         id = "video_to_gif",
-        title = "Video to Smooth GIF",
-        description = "Generate crystal-clear animated GIFs using 2-pass palette generation.",
+        title = "Video to GIF",
+        description = "Turn a short video clip into an animated GIF.",
         category = ToolCategory.VIDEO,
-        route = "video_to_gif",
-        badge = "Palette"
+        route = "video_to_gif"
     ),
     ToolItem(
         id = "video_convert",
-        title = "Video Format Exchange",
-        description = "Transcode between MP4, MKV, WEBM, MOV, and animated GIFs.",
+        title = "Convert to MP4",
+        description = "Turn MKV, WEBM, MOV or 3GP videos into an MP4 that plays everywhere.",
         category = ToolCategory.VIDEO,
         route = "video_convert"
     ),
     ToolItem(
         id = "audio_extract",
         title = "Extract Audio from Video",
-        description = "Rip audio tracks directly to MP3, M4A, WAV, or lossless FLAC.",
+        description = "Save the sound from a video as M4A (small) or WAV (uncompressed).",
         category = ToolCategory.VIDEO,
         route = "audio_extract"
     ),

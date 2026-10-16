@@ -121,7 +121,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                         )
                     )
                     Text(
-                        text = "Subtitles will be rendered directly onto the video frames with crisp black outline for high contrast readability.",
+                        text = "Subtitles are drawn onto the video as white text on a dark box near the bottom. The video is re-encoded.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -132,7 +132,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                     val vUri = videoUri ?: return@Button
                     val sUri = subtitleUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.2f, "Burning subtitles into video...")
+                        processState = ProcessState.Processing(0f, "Burning subtitles into video...")
                         val result = VideoEngine.burnSubtitles(
                             context = context,
                             videoUri = vUri,

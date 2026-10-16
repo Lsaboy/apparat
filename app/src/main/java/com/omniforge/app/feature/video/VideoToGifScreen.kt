@@ -146,7 +146,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                 onClick = {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.3f, "Generating GIF with 2-pass palettegen...")
+                        processState = ProcessState.Processing(0f, "Reading video frames...")
                         val result = VideoEngine.videoToGif(
                             context = context,
                             videoUri = uri,
@@ -160,7 +160,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(
                                     outputFile = outputFile,
-                                    message = "Smooth animated GIF generated!"
+                                    message = "Animated GIF created!"
                                 )
                             },
                             onFailure = { err ->
@@ -195,7 +195,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                             context = context,
                             file = success.outputFile,
                             mimeType = "image/gif",
-                            displayName = "${base}_palette.gif"
+                            displayName = "${base}.gif"
                         )
                         Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },

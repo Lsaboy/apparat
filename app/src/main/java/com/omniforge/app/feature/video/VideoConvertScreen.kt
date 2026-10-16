@@ -24,7 +24,6 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
-import com.omniforge.app.engine.video.VideoOutputFormat
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,7 +38,6 @@ fun VideoConvertScreen(
     var fileName by remember { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by remember { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var targetFormat by remember { mutableStateOf(VideoOutputFormat.MP4) }
     var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -55,7 +53,7 @@ fun VideoConvertScreen(
     }
 
     ToolScaffold(
-        title = "Video Format Exchange",
+        title = "Convert to MP4",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
         onBack = onBack
@@ -79,20 +77,9 @@ fun VideoConvertScreen(
                 onClick = { picker.launch(arrayOf("video/*")) }
             )
 
-            // Target Format Selection
-            FormatSelectorRow(
-                title = "Target Container / Format",
-                formats = listOf("mp4", "mkv", "webm", "gif"),
-                selectedFormat = targetFormat.extension.removePrefix("."),
-                onFormatSelect = { ext ->
-                    targetFormat = when (ext.lowercase()) {
-                        "mkv" -> VideoOutputFormat.MKV
-                        "webm" -> VideoOutputFormat.WEBM
-                        "gif" -> VideoOutputFormat.GIF
-                        else -> VideoOutputFormat.MP4
-                    }
-                },
-                accentColor = AccentVideo
+            Text(
+                text = "Accepts MKV, WEBM, MOV, 3GP and other videos your phone can play. Output is an MP4 (H.264 + AAC) that plays everywhere.",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
             )
 
             // Save Mode
@@ -106,11 +93,10 @@ fun VideoConvertScreen(
                 onClick = {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.2f, "Transcoding to ${targetFormat.name}...")
-                        val result = VideoEngine.convertFormat(
+                        processState = ProcessState.Processing(0f, "Converting to MP4...")
+                        val result = VideoEngine.convertToMp4(
                             context = context,
                             inputUri = uri,
-                            targetFormat = targetFormat,
                             onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }
                         )
                         result.fold(
@@ -131,7 +117,7 @@ fun VideoConvertScreen(
                                 } else {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "Converted to ${targetFormat.name}!"
+                                        message = "Converted to MP4!"
                                     )
                                 }
                             },
@@ -150,7 +136,7 @@ fun VideoConvertScreen(
             ) {
                 Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to ${targetFormat.name}", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Convert to MP4", color = AmoledBlack, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
@@ -166,13 +152,13 @@ fun VideoConvertScreen(
                         val saved = FileUtils.saveToDownloads(
                             context = context,
                             file = success.outputFile,
-                            mimeType = targetFormat.mimeType,
-                            displayName = "${baseName}_converted${targetFormat.extension}"
+                            mimeType = VideoEngine.MP4_MIME,
+                            displayName = "${baseName}_converted.mp4"
                         )
                         Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)
+                        FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)
                     }
                 )
             }

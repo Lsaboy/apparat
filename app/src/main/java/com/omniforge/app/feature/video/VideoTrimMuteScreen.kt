@@ -165,19 +165,19 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
                 onClick = {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.5f, "Processing lossless stream copy...")
+                        processState = ProcessState.Processing(0f, "Processing...")
                         val result = if (isMuteOnly) {
-                            VideoEngine.stripAudio(context, uri)
+                            VideoEngine.stripAudio(context, uri) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         } else {
                             val start = startSecText.toFloatOrNull() ?: 0f
                             val duration = durationSecText.toFloatOrNull() ?: 10f
-                            VideoEngine.losslessTrim(context, uri, start, duration)
+                            VideoEngine.losslessTrim(context, uri, start, duration) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         }
                         result.fold(
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(
                                     outputFile = outputFile,
-                                    message = if (isMuteOnly) "Audio stripped (instant 0s encode)!" else "Video trimmed losslessly in <1s!"
+                                    message = if (isMuteOnly) "Audio removed!" else "Video trimmed!"
                                 )
                             },
                             onFailure = { err ->
@@ -200,7 +200,7 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isMuteOnly) "Mute Video (Instant)" else "Lossless Trim (<1s)",
+                    text = if (isMuteOnly) "Mute Video" else "Trim Video",
                     color = AmoledBlack,
                     fontWeight = FontWeight.Bold
                 )

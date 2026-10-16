@@ -35,7 +35,7 @@ fun AudioExtractScreen(onBack: () -> Unit) {
     var fileName by remember { mutableStateOf<String?>(null) }
     var fileSize by remember { mutableStateOf<Long?>(null) }
 
-    var targetFormat by remember { mutableStateOf(AudioOutputFormat.MP3) }
+    var targetFormat by remember { mutableStateOf(AudioOutputFormat.M4A) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
@@ -104,12 +104,20 @@ fun AudioExtractScreen(onBack: () -> Unit) {
                                 border = BorderStroke(1.dp, if (isSelected) AccentVideo else DarkBorder)
                             ) {
                                 Text(
-                                    text = format.name,
+                                    text = format.label,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (targetFormat == AudioOutputFormat.M4A)
+                            "Small file. AAC audio is copied without quality loss when possible."
+                        else
+                            "Uncompressed. Large file, but opens in any audio editor.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    )
                 }
             }
 
@@ -117,17 +125,18 @@ fun AudioExtractScreen(onBack: () -> Unit) {
                 onClick = {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
-                        processState = ProcessState.Processing(0.3f, "Extracting audio track...")
+                        processState = ProcessState.Processing(0f, "Extracting audio track...")
                         val result = VideoEngine.extractAudio(
                             context = context,
                             videoUri = uri,
-                            targetFormat = targetFormat
+                            targetFormat = targetFormat,
+                            onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }
                         )
                         result.fold(
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(
                                     outputFile = outputFile,
-                                    message = "Audio extracted as ${targetFormat.name}!"
+                                    message = "Audio extracted as ${targetFormat.label}!"
                                 )
                             },
                             onFailure = { err ->
