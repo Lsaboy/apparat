@@ -51,7 +51,7 @@ easy to bisect.
   - Files: `app/build.gradle.kts`, `settings.gradle.kts`, `engine/video/VideoEngine.kt`, all
     `feature/video/*`, `HomeScreen.kt` tool list.
 
-- [ ] **1A.2 Deep link crash.** `dpk://<anything>` is `BROWSABLE` + exported; `MainActivity`
+- [x] **1A.2 Deep link crash.** `dpk://<anything>` is `BROWSABLE` + exported; `MainActivity`
   calls `navController.navigate(shortcutRoute)` with the raw host. An unknown route throws
   `IllegalArgumentException` → crash. Any web page link can trigger it.
   - Fix: whitelist known routes; ignore others. Remove `BROWSABLE` (shortcuts don't need it).

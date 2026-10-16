@@ -24,11 +24,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep link scheme for shortcuts -->
+            <!-- Deep link scheme for launcher shortcuts (not BROWSABLE: web pages can't open it) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="dpk" />
             </intent-filter>
 

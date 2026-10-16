@@ -40,6 +40,17 @@ import com.omniforge.app.feature.video.VideoTrimMuteScreen
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        /** Every tool destination in the NavHost below. Keep in sync when adding a screen. */
+        val TOOL_ROUTES = setOf(
+            "settings",
+            "pdf_unlock", "pdf_shrink", "pdf_split", "pdf_to_images", "images_to_pdf",
+            "video_shrink", "video_trim", "video_caption", "video_to_gif", "video_convert", "audio_extract",
+            "image_shrink", "document_scan", "palette_extractor", "image_convert", "exif_strip",
+            "qr_studio", "hash_verifier", "json_tool", "base64_studio"
+        )
+    }
+
     private lateinit var appSettings: AppSettings
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,8 +71,10 @@ class MainActivity : ComponentActivity() {
 
         val incomingMimeType = intent?.type
 
-        val shortcutRoute: String? = if (intent?.data?.scheme == "dpk") {
-            intent.data?.host ?: intent.data?.path?.removePrefix("/")
+        // Only known tool routes are accepted; anything else would crash NavController.navigate.
+        // Skip on recreation: the restored back stack already contains the tool.
+        val shortcutRoute: String? = if (savedInstanceState == null && intent?.data?.scheme == "dpk") {
+            (intent.data?.host ?: intent.data?.path?.removePrefix("/"))?.takeIf { it in TOOL_ROUTES }
         } else null
 
         setContent {
