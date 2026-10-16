@@ -109,7 +109,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Subtitle Font Size: ${fontSize.toInt()}pt",
+                        text = "Subtitle Text Size: ${fontSize.toInt()}",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -127,7 +127,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                         )
                     )
                     Text(
-                        text = "Subtitles are drawn onto the video as white text on a dark box near the bottom. The video is re-encoded.",
+                        text = "Subtitles are scaled to video height and drawn near the bottom on a dark box. The video is re-encoded.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -189,7 +189,7 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                             mimeType = "video/mp4",
                             displayName = "${baseName}_captioned.mp4"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "video/mp4")

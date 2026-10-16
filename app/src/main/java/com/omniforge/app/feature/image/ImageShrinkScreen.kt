@@ -118,10 +118,11 @@ fun ImageShrinkScreen(
                 colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    val isLosslessPng = outputFormat == ImageOutputFormat.PNG
                     Text(
-                        text = "Compression Quality: ${quality.toInt()}%",
+                        text = if (isLosslessPng) "Compression Quality: Lossless (PNG)" else "Compression Quality: ${quality.toInt()}%",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = if (isLosslessPng) TextSecondary else TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -130,6 +131,7 @@ fun ImageShrinkScreen(
                         onValueChange = { quality = it },
                         valueRange = 10f..95f,
                         steps = 16,
+                        enabled = !isLosslessPng,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
@@ -200,7 +202,8 @@ fun ImageShrinkScreen(
                             inputUri = uri,
                             quality = quality.toInt(),
                             maxDimension = maxDimension.toInt(),
-                            stripExif = stripExif
+                            stripExif = stripExif,
+                            targetFormat = outputFormat
                         )
                         result.fold(
                             onSuccess = { outputFile ->
@@ -258,7 +261,7 @@ fun ImageShrinkScreen(
                             mimeType = outputFormat.mimeType,
                             displayName = "${base}_shrunk${outputFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, outputFormat.mimeType)

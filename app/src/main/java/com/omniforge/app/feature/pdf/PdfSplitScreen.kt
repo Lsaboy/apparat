@@ -341,7 +341,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                         } finally {
                                             saveProgress = null
                                         }
-                                        Toast.makeText(context, "Saved $count PDF files to Downloads/DigitalPocketKnife", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Saved $count PDF files to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 enabled = saveProgress == null,

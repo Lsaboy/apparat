@@ -107,7 +107,7 @@ fun QrStudioScreen(onBack: () -> Unit) {
                             scope.launch {
                                 val file = UtilityEngine.saveQrToFile(context, bmp)
                                 val saved = FileUtils.saveToDownloads(context, file, "image/png", "qrcode_${System.currentTimeMillis()}.png")
-                                Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.weight(1f),

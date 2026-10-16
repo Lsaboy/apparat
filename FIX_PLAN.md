@@ -136,7 +136,7 @@ easy to bisect.
   EXIF Strip, Scanner, Photos→PDF.
   - Fix: read `ExifInterface.rotationDegrees`/flip and apply a matrix in the shared decoder (1A.3).
 
-- [ ] **1B.5 Photo Shrinker ignores output format.** Always JPEG, but saved/shared as
+- [x] **1B.5 Photo Shrinker ignores output format.** Always JPEG, but saved/shared as
   `.png`/`.webp` with wrong MIME.
   - Fix: pass format into `shrinkImage`; for PNG note that quality slider has no effect.
   - Files: `ImageEngine.kt:48-50`, `ImageShrinkScreen.kt`.
@@ -151,14 +151,14 @@ easy to bisect.
   - Also: `"wt"` mode needs write permission the picker may not grant → falls back silently;
     message currently claims "Saved as copy in Downloads" but nothing was saved. Fix message.
 
-- [ ] **1B.8 PNG/WEBP with transparency → black background** when converted to JPEG.
+- [x] **1B.8 PNG/WEBP with transparency → black background** when converted to JPEG.
   - Fix: draw onto white canvas before JPEG encode.
 
 - [x] **1B.9 Max-dimension resize is inaccurate.** `inSampleSize` is rounded down to a power
   of 2 → "1920px" yields 2000–3999px. Fix in shared decoder (sample, then exact scale).
   - File: `ImageEngine.kt:149-169`.
 
-- [ ] **1B.10 Photos→PDF page size = photo pixel size.** A 4000×3000 photo → ~1.4 m wide page.
+- [x] **1B.10 Photos→PDF page size = photo pixel size.** A 4000×3000 photo → ~1.4 m wide page.
   - Phase 1 fix: default to A4 fit with margins. Full options in Phase 2 (2.5).
   - File: `PdfEngine.kt:101`.
 
@@ -175,7 +175,7 @@ easy to bisect.
 - [ ] **1C.2 "Default Save Mode" setting is never read.** Every tool hard-codes `NEW_COPY`.
 - [ ] **1C.3 "Share Sheet Shortcuts" setting is never read.** Launcher shortcuts are static
   in `res/xml/shortcuts.xml`. Either wire to `ShortcutManagerCompat` dynamic shortcuts or remove.
-- [ ] **1C.4 Toasts lie about save folder.** 11 places say "Downloads/OmniForge"; files go to
+- [x] **1C.4 Toasts lie about save folder.** 11 places say "Downloads/OmniForge"; files go to
   `Downloads/DigitalPocketKnife`. Centralise the folder name in one constant.
 - [ ] **1C.5 Temp files never deleted.** `cache/outputs/` grows forever (PDF→Images PNGs are
   big). Clean outputs older than N hours on app start + clear on new job per tool.
@@ -233,12 +233,12 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 #### 1D.2 Bugs / risks in the new 1A code (blocker — fix before moving on)
 
-- [ ] **Foreground service timeout on Android 15.** `dataSync` and `mediaProcessing` FGS have a
+- [x] **Foreground service timeout on Android 15.** `dataSync` and `mediaProcessing` FGS have a
   6-hour daily limit on API 35; when hit, the system calls `Service.onTimeout(startId, fgsType)`
   and **crashes the app if the service doesn't stop** within seconds. `ToolJobService` doesn't
   implement `onTimeout`. Fix: override it, cancel running jobs (or let them finish without FGS),
   call `stopSelf()`. File: `core/jobs/ToolJobService.kt`.
-- [ ] **Notification small icon.** Progress/done notifications use
+- [x] **Notification small icon.** Progress/done notifications use
   `R.drawable.ic_launcher_foreground` (full-colour adaptive-icon layer). Status bar will likely
   show a white square/blob. Add a monochrome 24dp vector (`ic_stat_notify`) and use it.
 - [ ] **Jobs hold the Activity.** The job lambdas capture `LocalContext.current` (the Activity).
@@ -297,7 +297,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Wide-gamut / 16-bit images.** `ImageDecoder` may return `RGBA_F16` / Display-P3 bitmaps
   for some HEIF/PNG. Check `Bitmap.compress` and PDFBox `JPEGFactory` handle them; if not, force
   `setTargetColorSpace(sRGB)` and `ARGB_8888` in `BitmapDecoder`.
-- [ ] **Run Android lint** (`./gradlew lintDebug`); not run during 1A. Expect `MissingPermission`
+- [x] **Run Android lint** (`./gradlew lintDebug`); not run during 1A. Expect `MissingPermission`
   (suppressed on `ToolJobService`), possible `NewApi`, unused imports and the now-unused
   `scope` vals in converted screens. Fix what it reports.
 
@@ -312,9 +312,9 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   "Shrink & Compress PDF", "Photo Format Exchange". Home tool card "Lossless Trim & Mute" + badge
   "Lossless" too. Pick one name per tool and use it in home, screen title, `ToolJobs` title,
   notifications and launcher shortcuts.
-- [ ] `VideoCaptionScreen`'s font-size slider says "pt"; it's now "relative to 720p height"
+- [x] `VideoCaptionScreen`'s font-size slider says "pt"; it's now "relative to 720p height"
   (`SubtitleOverlay`). Rename to "Text size" with S/M/L or a preview.
-- [ ] Convert to MP4 still shows the **Save Mode** selector. "Modify original" on an `.mkv`
+- [x] Convert to MP4 still shows the **Save Mode** selector. "Modify original" on an `.mkv`
   writes MP4 bytes into the `.mkv` (1B.7). Until 1B.7 lands, hide Save Mode on Convert.
 
 #### 1D.4 Quality/performance improvements to the new video code (after 1D.1 numbers)

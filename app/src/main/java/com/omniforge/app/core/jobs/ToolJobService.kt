@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.snapshotFlow
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -76,8 +77,13 @@ class ToolJobService : Service() {
         stopSelf()
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopSelfNow()
+    }
+
     private fun progressNotification() = NotificationCompat.Builder(this, CHANNEL_PROGRESS)
-        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setSmallIcon(R.drawable.ic_stat_notify)
         .setOngoing(true)
         .setOnlyAlertOnce(true)
         .setSilent(true)
@@ -138,7 +144,7 @@ class ToolJobService : Service() {
                 else -> "Finished. Tap to see the result."
             }
             val notification = NotificationCompat.Builder(context, CHANNEL_DONE)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_stat_notify)
                 .setContentTitle(if (state is ProcessState.Error) "$title failed" else "$title finished")
                 .setContentText(text)
                 .setAutoCancel(true)

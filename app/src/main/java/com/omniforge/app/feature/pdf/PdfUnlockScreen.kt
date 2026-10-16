@@ -114,7 +114,7 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
             )
 
             Text(
-                text = "Enter the current password once. OmniForge will decrypt the PDF and export an unlocked, permanent DRM-free copy.",
+                text = "Enter the current password once to decrypt the PDF and export an unlocked copy.",
                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
             )
 
@@ -178,7 +178,7 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
                             mimeType = "application/pdf",
                             displayName = "unlocked_${fileName ?: "document.pdf"}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")

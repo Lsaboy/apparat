@@ -95,13 +95,15 @@ object FileUtils {
         context.startActivity(chooser)
     }
 
+    const val DOWNLOAD_SUBFOLDER = "DigitalPocketKnife"
+
     /** Copies [file] into Downloads/DigitalPocketKnife on the IO dispatcher. Returns null on failure. */
     suspend fun saveToDownloads(context: Context, file: File, mimeType: String, displayName: String): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DigitalPocketKnife")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOAD_SUBFOLDER")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 

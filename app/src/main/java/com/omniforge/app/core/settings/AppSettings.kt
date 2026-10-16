@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.ui.graphics.Color
 import com.omniforge.app.core.theme.*
+import com.omniforge.app.core.util.FileUtils
 
 enum class ThemeStyle(val displayName: String) {
     AMOLED("AMOLED Black"),
@@ -13,7 +14,7 @@ enum class ThemeStyle(val displayName: String) {
 }
 
 enum class SaveMode(val label: String, val description: String) {
-    NEW_COPY("Create New Copy", "Save to Downloads/DigitalPocketKnife with unique filename"),
+    NEW_COPY("Create New Copy", "Save to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER} with unique filename"),
     OVERWRITE_ORIGINAL("Modify Original", "Replace original file in-place if format matches")
 }
 

@@ -179,7 +179,7 @@ fun AudioExtractScreen(onBack: () -> Unit) {
                             mimeType = targetFormat.mimeType,
                             displayName = "${baseName}_extracted${targetFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)

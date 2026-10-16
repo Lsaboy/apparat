@@ -2,6 +2,8 @@ package com.omniforge.app.engine.pdf
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.net.Uri
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.BitmapDecoder
@@ -32,6 +34,39 @@ sealed interface PdfAccess {
     /** [wrongPassword] is true when a password was given but didn't match. */
     data class NeedsPassword(val wrongPassword: Boolean) : PdfAccess
     data class Damaged(val message: String) : PdfAccess
+}
+
+data class A4Fit(
+    val pageWidth: Float,
+    val pageHeight: Float,
+    val drawWidth: Float,
+    val drawHeight: Float,
+    val x: Float,
+    val y: Float
+)
+
+internal fun calculateA4Fit(
+    imageWidth: Int,
+    imageHeight: Int,
+    margin: Float = 20f,
+    a4Short: Float = PDRectangle.A4.width,
+    a4Long: Float = PDRectangle.A4.height
+): A4Fit {
+    val isLandscape = imageWidth > imageHeight
+    val pageWidth = if (isLandscape) a4Long else a4Short
+    val pageHeight = if (isLandscape) a4Short else a4Long
+
+    val maxWidth = pageWidth - (2f * margin)
+    val maxHeight = pageHeight - (2f * margin)
+    val scale = minOf(maxWidth / imageWidth.toFloat(), maxHeight / imageHeight.toFloat())
+
+    val drawWidth = imageWidth.toFloat() * scale
+    val drawHeight = imageHeight.toFloat() * scale
+
+    val x = (pageWidth - drawWidth) / 2f
+    val y = (pageHeight - drawHeight) / 2f
+
+    return A4Fit(pageWidth, pageHeight, drawWidth, drawHeight, x, y)
 }
 
 object PdfEngine {
@@ -155,21 +190,38 @@ object PdfEngine {
         runCatching {
             val outputFile = FileUtils.createTempOutputFile(context, "converted", ".pdf")
             val document = PDDocument(tempFileMemory(context))
+            val margin = 20f // 20pt margin (~7mm)
 
             try {
                 for (uri in imageUris) {
                     // 16 MP keeps A4 at 300 DPI (~8.7 MP) sharp while bounding memory per photo.
-                    val bitmap = BitmapDecoder.decode(context, uri, maxPixels = 16_000_000L)
+                    val originalBitmap = BitmapDecoder.decode(context, uri, maxPixels = 16_000_000L)
+                    var compositedBitmap: Bitmap? = null
                     try {
-                        val page = PDPage(PDRectangle(bitmap.width.toFloat(), bitmap.height.toFloat()))
+                        val bitmapToDraw = if (originalBitmap.hasAlpha()) {
+                            compositedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+                            val canvas = Canvas(compositedBitmap)
+                            canvas.drawColor(Color.WHITE)
+                            canvas.drawBitmap(originalBitmap, 0f, 0f, null)
+                            originalBitmap.recycle()
+                            compositedBitmap
+                        } else {
+                            originalBitmap
+                        }
+
+                        val fit = calculateA4Fit(bitmapToDraw.width, bitmapToDraw.height, margin)
+                        val page = PDPage(PDRectangle(fit.pageWidth, fit.pageHeight))
                         document.addPage(page)
 
-                        val pdImage = JPEGFactory.createFromImage(document, bitmap, 0.85f)
-                        val contentStream = PDPageContentStream(document, page)
-                        contentStream.drawImage(pdImage, 0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
-                        contentStream.close()
+                        val pdImage = JPEGFactory.createFromImage(document, bitmapToDraw, 0.85f)
+                        PDPageContentStream(document, page).use { contentStream ->
+                            contentStream.drawImage(pdImage, fit.x, fit.y, fit.drawWidth, fit.drawHeight)
+                        }
                     } finally {
-                        bitmap.recycle()
+                        if (!originalBitmap.isRecycled) {
+                            originalBitmap.recycle()
+                        }
+                        compositedBitmap?.recycle()
                     }
                 }
                 document.save(outputFile)

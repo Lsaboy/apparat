@@ -204,7 +204,7 @@ fun PdfShrinkScreen(
                             mimeType = "application/pdf",
                             displayName = "compressed_${fileName ?: "doc.pdf"}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")

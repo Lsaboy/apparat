@@ -199,7 +199,7 @@ fun VideoShrinkScreen(
                             mimeType = VideoEngine.MP4_MIME,
                             displayName = "${baseName}_shrunk.mp4"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)

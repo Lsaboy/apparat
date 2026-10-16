@@ -24,7 +24,7 @@ object SubtitleParser {
     private val tags = Regex("""<[^>]+>|\{\\[^}]*\}""")
 
     fun parse(raw: String): List<SubtitleCue> {
-        val lines = raw.removePrefix("﻿").replace("\r\n", "\n").replace('\r', '\n').split('\n')
+        val lines = raw.removePrefix("\uFEFF").replace("\r\n", "\n").replace('\r', '\n').split('\n')
         val cues = mutableListOf<SubtitleCue>()
         var i = 0
         while (i < lines.size) {

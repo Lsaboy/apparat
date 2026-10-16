@@ -182,7 +182,7 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                             mimeType = "image/jpeg",
                             displayName = "${base}_scanned.jpg"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/OmniForge" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "image/jpeg")

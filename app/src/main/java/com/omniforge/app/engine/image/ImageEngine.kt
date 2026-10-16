@@ -38,24 +38,57 @@ object ImageEngine {
         inputUri: Uri,
         quality: Int = 80,
         maxDimension: Int = 1920,
-        stripExif: Boolean = true
+        stripExif: Boolean = true,
+        targetFormat: ImageOutputFormat = ImageOutputFormat.JPEG
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val bitmap = BitmapDecoder.decode(context, inputUri, maxDimension = maxDimension)
+            val originalBitmap = BitmapDecoder.decode(context, inputUri, maxDimension = maxDimension)
+            var compositedBitmap: Bitmap? = null
+            val outputFile = FileUtils.createTempOutputFile(context, "shrunk", targetFormat.extension)
 
-            val outputFile = FileUtils.createTempOutputFile(context, "shrunk", ".jpg")
-            FileOutputStream(outputFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(1, 100), out)
+            try {
+                val bitmapToCompress = if (targetFormat == ImageOutputFormat.JPEG && originalBitmap.hasAlpha()) {
+                    compositedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(compositedBitmap)
+                    canvas.drawColor(Color.WHITE)
+                    canvas.drawBitmap(originalBitmap, 0f, 0f, null)
+                    originalBitmap.recycle()
+                    compositedBitmap
+                } else {
+                    originalBitmap
+                }
+
+                FileOutputStream(outputFile).use { out ->
+                    val format = when (targetFormat) {
+                        ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                        ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
+                        ImageOutputFormat.WEBP -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                Bitmap.CompressFormat.WEBP_LOSSY
+                            } else {
+                                @Suppress("DEPRECATION")
+                                Bitmap.CompressFormat.WEBP
+                            }
+                        }
+                    }
+                    bitmapToCompress.compress(format, quality.coerceIn(1, 100), out)
+                }
+            } finally {
+                if (!originalBitmap.isRecycled) {
+                    originalBitmap.recycle()
+                }
+                compositedBitmap?.recycle()
             }
-            bitmap.recycle()
 
-            if (!stripExif) {
-                // Copy EXIF attributes
-                context.contentResolver.openInputStream(inputUri)?.use { originalStream ->
-                    val srcExif = ExifInterface(originalStream)
-                    val dstExif = ExifInterface(outputFile.absolutePath)
-                    copyExifTags(srcExif, dstExif)
-                    dstExif.saveAttributes()
+            if (!stripExif && targetFormat == ImageOutputFormat.JPEG) {
+                // Copy EXIF attributes (JPEG only; guarded against write errors)
+                runCatching {
+                    context.contentResolver.openInputStream(inputUri)?.use { originalStream ->
+                        val srcExif = ExifInterface(originalStream)
+                        val dstExif = ExifInterface(outputFile.absolutePath)
+                        copyExifTags(srcExif, dstExif)
+                        dstExif.saveAttributes()
+                    }
                 }
             }
 
@@ -73,25 +106,44 @@ object ImageEngine {
         quality: Int = 90
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val bitmap = BitmapDecoder.decode(context, inputUri)
-
+            val originalBitmap = BitmapDecoder.decode(context, inputUri)
+            var compositedBitmap: Bitmap? = null
             val outputFile = FileUtils.createTempOutputFile(context, "converted", targetFormat.extension)
-            FileOutputStream(outputFile).use { out ->
-                val format = when (targetFormat) {
-                    ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                    ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
-                    ImageOutputFormat.WEBP -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            Bitmap.CompressFormat.WEBP_LOSSY
-                        } else {
-                            @Suppress("DEPRECATION")
-                            Bitmap.CompressFormat.WEBP
+
+            try {
+                val bitmapToCompress = if (targetFormat == ImageOutputFormat.JPEG && originalBitmap.hasAlpha()) {
+                    compositedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(compositedBitmap)
+                    canvas.drawColor(Color.WHITE)
+                    canvas.drawBitmap(originalBitmap, 0f, 0f, null)
+                    originalBitmap.recycle()
+                    compositedBitmap
+                } else {
+                    originalBitmap
+                }
+
+                FileOutputStream(outputFile).use { out ->
+                    val format = when (targetFormat) {
+                        ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                        ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
+                        ImageOutputFormat.WEBP -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                Bitmap.CompressFormat.WEBP_LOSSY
+                            } else {
+                                @Suppress("DEPRECATION")
+                                Bitmap.CompressFormat.WEBP
+                            }
                         }
                     }
+                    bitmapToCompress.compress(format, quality.coerceIn(1, 100), out)
                 }
-                bitmap.compress(format, quality.coerceIn(1, 100), out)
+            } finally {
+                if (!originalBitmap.isRecycled) {
+                    originalBitmap.recycle()
+                }
+                compositedBitmap?.recycle()
             }
-            bitmap.recycle()
+
             outputFile
         }
     }

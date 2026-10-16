@@ -178,7 +178,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
                                         } finally {
                                             saveProgress = null
                                         }
-                                        Toast.makeText(context, "Saved $count images to Downloads/OmniForge", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Saved $count images to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 enabled = saveProgress == null,

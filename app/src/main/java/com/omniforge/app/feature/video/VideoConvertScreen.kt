@@ -4,7 +4,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,12 +20,10 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
-import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
-import kotlinx.coroutines.launch
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "video_convert"
@@ -37,13 +34,11 @@ fun VideoConvertScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     val picker = rememberLauncherForActivityResult(
@@ -88,13 +83,6 @@ fun VideoConvertScreen(
                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
             )
 
-            // Save Mode
-            SaveModeSelector(
-                saveMode = saveMode,
-                onSaveModeChange = { saveMode = it },
-                accentColor = AccentVideo
-            )
-
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
@@ -107,25 +95,10 @@ fun VideoConvertScreen(
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
-                                    val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
-                                    if (overwritten) {
-                                        processState = ProcessState.Success(
-                                            outputFile = outputFile,
-                                            message = "Original video overwritten in-place!"
-                                        )
-                                    } else {
-                                        processState = ProcessState.Success(
-                                            outputFile = outputFile,
-                                            message = "Transcoded! (Saved as copy in Downloads)"
-                                        )
-                                    }
-                                } else {
-                                    processState = ProcessState.Success(
-                                        outputFile = outputFile,
-                                        message = "Converted to MP4!"
-                                    )
-                                }
+                                processState = ProcessState.Success(
+                                    outputFile = outputFile,
+                                    message = "Converted to MP4!"
+                                )
                             },
                             onFailure = { err ->
                                 processState = ProcessState.Error(err.localizedMessage ?: "Failed to transcode")
@@ -161,7 +134,7 @@ fun VideoConvertScreen(
                             mimeType = VideoEngine.MP4_MIME,
                             displayName = "${baseName}_converted.mp4"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)

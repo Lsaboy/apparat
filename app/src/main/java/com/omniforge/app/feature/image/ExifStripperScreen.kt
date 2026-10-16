@@ -191,7 +191,7 @@ fun ExifStripperScreen(
                             mimeType = "image/jpeg",
                             displayName = "${baseName}_clean.jpg"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/DigitalPocketKnife" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "image/jpeg")
