@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
@@ -28,13 +30,19 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "video_trim"
 
 @Composable
-fun VideoTrimMuteScreen(onBack: () -> Unit) {
+fun VideoTrimMuteScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -42,11 +50,64 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
+    var videoTotalSec by retained(JOB_KEY, "videoTotalSec") { mutableFloatStateOf(0f) }
     var startSecText by retained(JOB_KEY, "startSecText") { mutableStateOf("0") }
     var durationSecText by retained(JOB_KEY, "durationSecText") { mutableStateOf("10") }
     var isMuteOnly by retained(JOB_KEY, "isMuteOnly") { mutableStateOf(false) }
 
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(selectedUri) {
+        val uri = selectedUri ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                try {
+                    retriever.setDataSource(context, uri)
+                } catch (_: Exception) {
+                    context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                        retriever.setDataSource(pfd.fileDescriptor)
+                    }
+                }
+                val durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                val totalSec = durMs / 1000f
+                if (totalSec > 0f) {
+                    videoTotalSec = totalSec
+                    val currentStart = startSecText.toFloatOrNull() ?: 0f
+                    if (currentStart >= totalSec) {
+                        startSecText = "0"
+                    }
+                    val currentDur = durationSecText.toFloatOrNull() ?: 10f
+                    if (currentDur > totalSec) {
+                        durationSecText = "%.1f".format(Locale.US, totalSec)
+                    }
+                }
+            } catch (_: Exception) {
+                videoTotalSec = 0f
+            } finally {
+                try { retriever.release() } catch (_: Exception) {}
+            }
+        }
+    }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri == null) return@LaunchedEffect
+        if (initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                processState = ProcessState.Idle
+            }
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -55,6 +116,7 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            pendingShareUri = null
             processState = ProcessState.Idle
         }
     }
@@ -76,9 +138,56 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared video: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another video. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = if (videoTotalSec > 0f) "Duration: %.1fs • %s".format(Locale.US, videoTotalSec, FileUtils.formatFileSize(fileSize ?: 0L)) else null,
                 placeholderText = "Select Video to Trim or Mute",
                 icon = Icons.Default.VideoFile,
                 accentColor = AccentVideo,
@@ -121,13 +230,25 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
 
                     if (!isMuteOnly) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Trim Range (Seconds)",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Trim Range (Seconds)",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
                             )
-                        )
+                            if (videoTotalSec > 0f) {
+                                Text(
+                                    text = "Total: %.1fs".format(Locale.US, videoTotalSec),
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -179,25 +300,26 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
                             val duration = durationSecText.toFloatOrNull() ?: 10f
                             VideoEngine.losslessTrim(appContext, uri, start, duration) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         }
+
                         result.fold(
                             onSuccess = { outputFile ->
                                 processState = ProcessState.Success(
                                     outputFile = outputFile,
-                                    message = if (isMuteOnly) "Audio removed!" else "Video trimmed!"
+                                    message = if (isMuteOnly) "Audio track removed successfully!" else "Video trimmed successfully!"
                                 )
                             },
-                            onFailure = { err ->
-                                processState = ProcessState.Error(err.localizedMessage ?: "Failed operation")
+                            onFailure = { error ->
+                                processState = ProcessState.Error(error.localizedMessage ?: "Operation failed")
                             }
                         )
                     }
                 },
+                enabled = selectedUri != null && !ToolJobs.isRunning(JOB_KEY),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
-                enabled = selectedUri != null && processState !is ProcessState.Processing
+                shape = RoundedCornerShape(14.dp)
             ) {
                 Icon(
                     imageVector = if (isMuteOnly) Icons.Default.VolumeOff else Icons.Default.ContentCut,
@@ -206,7 +328,7 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isMuteOnly) "Mute Video" else "Trim Video",
+                    text = if (isMuteOnly) "Mute Video" else "Trim Video Losslessly",
                     color = AmoledBlack,
                     fontWeight = FontWeight.Bold
                 )
@@ -221,18 +343,20 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val base = (fileName ?: "video").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
+                        val uri = FileUtils.saveToDownloads(
+                            context = context.applicationContext,
                             file = success.outputFile,
                             mimeType = "video/mp4",
-                            displayName = "${base}_${if (isMuteOnly) "muted" else "trimmed"}.mp4"
+                            displayName = "Trimmed_${System.currentTimeMillis()}.mp4"
                         )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        if (uri != null) {
+                            Toast.makeText(context.applicationContext, "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context.applicationContext, "Failed to save file", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "video/mp4")
+                        FileUtils.shareFile(context.applicationContext, success.outputFile, "video/mp4")
                     }
                 )
             }

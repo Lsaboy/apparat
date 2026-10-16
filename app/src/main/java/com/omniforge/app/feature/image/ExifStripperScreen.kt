@@ -8,15 +8,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
@@ -164,6 +171,29 @@ fun ExifStripperScreen(
                 onClick = { picker.launch(arrayOf("image/*")) }
             )
 
+            // Selected Image Preview
+            if (selectedUri != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(selectedUri)
+                            .crossfade(true)
+                            .size(coil.size.Size(512, 512))
+                            .build(),
+                        contentDescription = "Selected photo preview",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
             // Save Mode
             SaveModeSelector(
                 saveMode = saveMode,
@@ -173,28 +203,52 @@ fun ExifStripperScreen(
 
             // Detected Metadata Card
             if (exifInfo != null) {
+                val info = exifInfo!!
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Detected Metadata in Image",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                        if (info.hasAnyMetadata()) {
+                            Text(
+                                text = "Detected Metadata in Image",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
                             )
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val info = exifInfo!!
-                        MetaItem(label = "Camera", value = listOfNotNull(info.cameraMake, info.cameraModel).joinToString(" "))
-                        MetaItem(label = "Timestamp", value = info.dateTime)
-                        MetaItem(label = "ISO", value = info.iso)
-                        MetaItem(label = "Aperture / Exposure", value = listOfNotNull(info.fNumber?.let { "f/$it" }, info.exposureTime).joinToString(" • "))
-                        if (info.latitude != null && info.longitude != null) {
-                            MetaItem(label = "GPS Coordinates", value = "${info.latitude}, ${info.longitude}", isWarning = true)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            MetaItem(label = "Camera", value = listOfNotNull(info.cameraMake, info.cameraModel).joinToString(" "))
+                            MetaItem(label = "Timestamp", value = info.dateTime)
+                            MetaItem(label = "ISO", value = info.iso)
+                            MetaItem(label = "Aperture / Exposure", value = listOfNotNull(info.fNumber?.let { "f/$it" }, info.exposureTime).joinToString(" • "))
+                            if (info.latitude != null && info.longitude != null) {
+                                MetaItem(label = "GPS Coordinates", value = "${info.latitude}, ${info.longitude}", isWarning = true)
+                            } else {
+                                MetaItem(label = "GPS", value = "No location found")
+                            }
                         } else {
-                            MetaItem(label = "GPS", value = "No location found")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.VerifiedUser,
+                                    contentDescription = null,
+                                    tint = SuccessGreen,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "No EXIF Metadata Found",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = SuccessGreen
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "This photo is already free of camera details, timestamps, and GPS coordinates. Stripping will produce a clean copy without private tags.",
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                            )
                         }
                     }
                 }

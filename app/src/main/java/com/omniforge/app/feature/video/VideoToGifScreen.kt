@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
@@ -24,18 +26,21 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
-import android.media.MediaMetadataRetriever
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
-import kotlinx.coroutines.launch
+import java.util.Locale
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "video_to_gif"
 
 @Composable
-fun VideoToGifScreen(onBack: () -> Unit) {
+fun VideoToGifScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -48,6 +53,10 @@ fun VideoToGifScreen(onBack: () -> Unit) {
     var startSec by retained(JOB_KEY, "startSec") { mutableFloatStateOf(0f) }
     var durationSec by retained(JOB_KEY, "durationSec") { mutableFloatStateOf(5f) }
     var videoDurationSec by retained(JOB_KEY, "videoDurationSec") { mutableFloatStateOf(0f) }
+
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
     LaunchedEffect(selectedUri) {
@@ -56,21 +65,44 @@ fun VideoToGifScreen(onBack: () -> Unit) {
             withContext(Dispatchers.IO) {
                 val retriever = MediaMetadataRetriever()
                 try {
-                    retriever.setDataSource(context, uri)
+                    try {
+                        retriever.setDataSource(context, uri)
+                    } catch (_: Exception) {
+                        context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                            retriever.setDataSource(pfd.fileDescriptor)
+                        }
+                    }
                     val durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
                     videoDurationSec = durMs / 1000f
-                    if (videoDurationSec > 1f && startSec >= videoDurationSec) {
-                        startSec = (videoDurationSec - 1f).coerceAtLeast(0f)
+                    startSec = 0f
+                    if (videoDurationSec > 0f) {
+                        durationSec = min(5f, videoDurationSec)
                     }
                 } catch (_: Exception) {
                     videoDurationSec = 0f
                 } finally {
-                    retriever.release()
+                    try { retriever.release() } catch (_: Exception) {}
                 }
             }
         } else {
             videoDurationSec = 0f
             startSec = 0f
+        }
+    }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri == null) return@LaunchedEffect
+        if (initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                processState = ProcessState.Idle
+            }
         }
     }
 
@@ -81,6 +113,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            pendingShareUri = null
             processState = ProcessState.Idle
         }
     }
@@ -102,9 +135,56 @@ fun VideoToGifScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared video: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another video. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = if (videoDurationSec > 0f) "Duration: %.1fs • %s".format(Locale.US, videoDurationSec, FileUtils.formatFileSize(fileSize ?: 0L)) else null,
                 placeholderText = "Select Video to Create GIF",
                 icon = Icons.Default.VideoFile,
                 accentColor = AccentVideo,
@@ -138,7 +218,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Resolution Width: ${width.toInt()}px",
+                        text = "Output Width: ${width.toInt()}px",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -147,8 +227,8 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                     Slider(
                         value = width,
                         onValueChange = { width = it },
-                        valueRange = 320f..720f,
-                        steps = 3,
+                        valueRange = 240f..720f,
+                        steps = 7,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
@@ -156,11 +236,11 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                         )
                     )
 
-                    val maxStart = if (videoDurationSec > 1f) (videoDurationSec - 1f).coerceIn(0f, 60f) else 0f
-                    if (maxStart > 0f) {
+                    if (videoDurationSec > 1f) {
                         Spacer(modifier = Modifier.height(8.dp))
+                        val maxStart = (videoDurationSec - 1f).coerceAtLeast(0f)
                         Text(
-                            text = "Start Offset: ${startSec.toInt()}s",
+                            text = "Start Offset: %.1fs (of %.1fs)".format(Locale.US, startSec, videoDurationSec),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = TextPrimary,
                                 fontWeight = FontWeight.SemiBold
@@ -170,7 +250,6 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                             value = startSec.coerceIn(0f, maxStart),
                             onValueChange = { startSec = it },
                             valueRange = 0f..maxStart,
-                            steps = (maxStart - 1).toInt().coerceAtLeast(0),
                             colors = SliderDefaults.colors(
                                 thumbColor = AccentVideo,
                                 activeTrackColor = AccentVideo,
@@ -181,20 +260,20 @@ fun VideoToGifScreen(onBack: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    val maxDur = if (videoDurationSec > 0f) (videoDurationSec - startSec).coerceIn(1f, 15f) else 15f
-                    val currentDur = durationSec.coerceIn(1f, maxDur)
+                    val maxDurationAllowed = if (videoDurationSec > 0f) {
+                        (videoDurationSec - startSec).coerceIn(1f, 15f)
+                    } else 15f
                     Text(
-                        text = "Max Duration: ${currentDur.toInt()}s",
+                        text = "GIF Duration: %.1fs".format(Locale.US, durationSec.coerceIn(1f, maxDurationAllowed)),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Slider(
-                        value = currentDur,
+                        value = durationSec.coerceIn(1f, maxDurationAllowed),
                         onValueChange = { durationSec = it },
-                        valueRange = 1f..maxDur,
-                        steps = if (maxDur > 1f) (maxDur - 1).toInt().coerceAtLeast(0) else 0,
+                        valueRange = 1f..maxDurationAllowed,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
@@ -264,7 +343,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                         Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "image/gif")
+                        FileUtils.shareFile(context.applicationContext, success.outputFile, "image/gif")
                     }
                 )
             }

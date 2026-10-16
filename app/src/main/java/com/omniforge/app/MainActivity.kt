@@ -161,13 +161,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("video_trim") {
-                        VideoTrimMuteScreen(onBack = { navController.popBackStack() })
+                        VideoTrimMuteScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("video_caption") {
                         VideoCaptionScreen(onBack = { navController.popBackStack() })
                     }
                     composable("video_to_gif") {
-                        VideoToGifScreen(onBack = { navController.popBackStack() })
+                        VideoToGifScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("video_convert") {
                         VideoConvertScreen(
@@ -176,7 +182,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("audio_extract") {
-                        AudioExtractScreen(onBack = { navController.popBackStack() })
+                        AudioExtractScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true || incomingMimeType?.startsWith("audio/") == true },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
 
                     // Image Tools
@@ -190,7 +199,10 @@ class MainActivity : ComponentActivity() {
                         DocumentScanScreen(onBack = { navController.popBackStack() })
                     }
                     composable("palette_extractor") {
-                        PaletteExtractorScreen(onBack = { navController.popBackStack() })
+                        PaletteExtractorScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("image_convert") {
                         ImageConvertScreen(

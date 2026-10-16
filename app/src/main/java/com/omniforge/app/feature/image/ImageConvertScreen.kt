@@ -222,8 +222,10 @@ fun ImageConvertScreen(
                     colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        val isLosslessWebp = targetFormat == ImageOutputFormat.WEBP && quality >= 100f
+                        val qualityLabel = if (isLosslessWebp) "Quality: 100% (Lossless WEBP)" else "Quality: ${quality.toInt()}%"
                         Text(
-                            text = "Quality: ${quality.toInt()}%",
+                            text = qualityLabel,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = TextPrimary,
                                 fontWeight = FontWeight.SemiBold
