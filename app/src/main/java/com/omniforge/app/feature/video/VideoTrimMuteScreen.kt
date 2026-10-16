@@ -60,7 +60,7 @@ fun VideoTrimMuteScreen(onBack: () -> Unit) {
     }
 
     ToolScaffold(
-        title = "Lossless Trim & Mute",
+        title = "Trim & Mute",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
         onBack = onBack,

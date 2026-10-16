@@ -55,7 +55,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
     }
 
     ToolScaffold(
-        title = "Video to Smooth GIF Maker",
+        title = "Video to GIF",
         categoryName = "Video & Audio",
         accentColor = AccentVideo,
         onBack = onBack,

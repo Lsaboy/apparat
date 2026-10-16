@@ -59,6 +59,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
     var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
     var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -69,13 +70,20 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
             pdfPassword = null
+            pageCount = null
             processState = ProcessState.Processing(0f, "Opening PDF...")
             generatedFiles = emptyList()
         }
     }
 
+    val currentValidation = when (splitMode) {
+        SplitMode.CUSTOM_RANGES -> validateCustomRanges(customRangesText, pageCount)
+        SplitMode.EVERY_N_PAGES -> validateEveryN(intervalPagesText, pageCount)
+        SplitMode.SINGLE_RANGE -> validateSingleRange(startPageText, endPageText, pageCount)
+    }
+
     ToolScaffold(
-        title = "Split PDF / Multi-File Split",
+        title = "Split PDF",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
         onBack = onBack,
@@ -96,21 +104,32 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                 fileName = fileName,
                 needsCheck = pdfPassword == null,
                 accentColor = AccentPdf,
-                onReady = { password ->
+                onReady = { password, count ->
                     pdfPassword = password
+                    pageCount = count
                     processState = ProcessState.Idle
                 },
                 onFailed = { message ->
                     selectedUri = null
                     fileName = null
                     fileSize = null
+                    pageCount = null
                     processState = ProcessState.Error(message)
                 }
             )
 
+            val details = when {
+                pageCount != null && fileSize != null && fileSize!! > 0 ->
+                    "$pageCount ${if (pageCount == 1) "page" else "pages"} • ${FileUtils.formatFileSize(fileSize!!)}"
+                pageCount != null -> "$pageCount ${if (pageCount == 1) "page" else "pages"}"
+                fileSize != null && fileSize!! > 0 -> FileUtils.formatFileSize(fileSize!!)
+                else -> null
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = details,
                 placeholderText = "Select PDF Document to Split",
                 icon = Icons.Default.PictureAsPdf,
                 accentColor = AccentPdf,
@@ -167,19 +186,34 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text("Comma-separated page ranges", color = TextSecondary) },
                                 placeholder = { Text("e.g. 1-2, 3-5, 6-10", color = TextTertiary) },
+                                isError = currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentPdf,
                                     unfocusedBorderColor = DarkBorder,
                                     focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
+                                    unfocusedTextColor = TextPrimary,
+                                    errorBorderColor = ErrorRed
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Creates a distinct PDF file for each specified range.",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
-                            )
+                            when (currentValidation) {
+                                is RangeValidation.Invalid -> {
+                                    Text(
+                                        text = currentValidation.errorMessage,
+                                        style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
+                                    )
+                                }
+                                is RangeValidation.Valid -> {
+                                    Text(
+                                        text = if (pageCount != null) currentValidation.previewText else "Creates a distinct PDF file for each specified range.",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
                         }
                         SplitMode.EVERY_N_PAGES -> {
                             OutlinedTextField(
@@ -189,19 +223,34 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                 label = { Text("Pages per PDF chunk", color = TextSecondary) },
                                 placeholder = { Text("e.g. 1 for single-page PDFs", color = TextTertiary) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentPdf,
                                     unfocusedBorderColor = DarkBorder,
                                     focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
+                                    unfocusedTextColor = TextPrimary,
+                                    errorBorderColor = ErrorRed
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Splits document into chunks of N pages (use 1 for single-page PDFs).",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
-                            )
+                            when (currentValidation) {
+                                is RangeValidation.Invalid -> {
+                                    Text(
+                                        text = currentValidation.errorMessage,
+                                        style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
+                                    )
+                                }
+                                is RangeValidation.Valid -> {
+                                    Text(
+                                        text = if (pageCount != null) currentValidation.previewText else "Splits document into chunks of N pages (use 1 for single-page PDFs).",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
                         }
                         SplitMode.SINGLE_RANGE -> {
                             Row(
@@ -214,12 +263,14 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                     modifier = Modifier.weight(1f),
                                     label = { Text("Start Page", color = TextSecondary) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    isError = currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = AccentPdf,
                                         unfocusedBorderColor = DarkBorder,
                                         focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary
+                                        unfocusedTextColor = TextPrimary,
+                                        errorBorderColor = ErrorRed
                                     )
                                 )
 
@@ -229,14 +280,34 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                     modifier = Modifier.weight(1f),
                                     label = { Text("End Page", color = TextSecondary) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    isError = currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = AccentPdf,
                                         unfocusedBorderColor = DarkBorder,
                                         focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary
+                                        unfocusedTextColor = TextPrimary,
+                                        errorBorderColor = ErrorRed
                                     )
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            when (currentValidation) {
+                                is RangeValidation.Invalid -> {
+                                    Text(
+                                        text = currentValidation.errorMessage,
+                                        style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
+                                    )
+                                }
+                                is RangeValidation.Valid -> {
+                                    Text(
+                                        text = currentValidation.previewText,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -246,30 +317,15 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
+                    val validRanges = (currentValidation as? RangeValidation.Valid)?.ranges ?: emptyList()
+                    if (validRanges.isEmpty()) {
+                        processState = ProcessState.Error("Please enter valid page ranges")
+                        return@Button
+                    }
+
                     ToolJobs.launch(context, JOB_KEY, "Split PDF") {
                         processState = ProcessState.Processing(0.3f, "Splitting PDF document...")
-                        val ranges: List<IntRange> = when (splitMode) {
-                            SplitMode.CUSTOM_RANGES -> {
-                                parseCustomRanges(customRangesText)
-                            }
-                            SplitMode.EVERY_N_PAGES -> {
-                                val n = intervalPagesText.toIntOrNull()?.coerceAtLeast(1) ?: 1
-                                // 100 pages upper estimate chunked
-                                (1..100 step n).map { it..(it + n - 1) }
-                            }
-                            SplitMode.SINGLE_RANGE -> {
-                                val s = startPageText.toIntOrNull() ?: 1
-                                val e = endPageText.toIntOrNull() ?: s
-                                listOf(s..e)
-                            }
-                        }
-
-                        if (ranges.isEmpty()) {
-                            processState = ProcessState.Error("Please enter valid page ranges")
-                            return@launch
-                        }
-
-                        val result = PdfEngine.multiSplitPdf(context, uri, ranges, password = pdfPassword ?: "")
+                        val result = PdfEngine.multiSplitPdf(context, uri, validRanges, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { files ->
                                 generatedFiles = files
@@ -293,7 +349,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
-                enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
+                enabled = selectedUri != null && pdfPassword != null && pageCount != null && currentValidation is RangeValidation.Valid && processState !is ProcessState.Processing
             ) {
                 Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -373,19 +429,95 @@ fun PdfSplitScreen(onBack: () -> Unit) {
     }
 }
 
-private fun parseCustomRanges(text: String): List<IntRange> {
-    val results = mutableListOf<IntRange>()
+sealed interface RangeValidation {
+    data class Valid(val ranges: List<IntRange>, val previewText: String) : RangeValidation
+    data class Invalid(val errorMessage: String) : RangeValidation
+}
+
+internal fun validateCustomRanges(text: String, totalPages: Int?): RangeValidation {
     val tokens = text.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    if (tokens.isEmpty()) {
+        return RangeValidation.Invalid("Enter at least one page range (e.g. 1-3, 4-6)")
+    }
+    val ranges = mutableListOf<IntRange>()
     for (token in tokens) {
         if (token.contains("-")) {
             val parts = token.split("-").map { it.trim() }
-            val s = parts[0].toIntOrNull() ?: continue
-            val e = parts.getOrNull(1)?.toIntOrNull() ?: s
-            if (s <= e) results.add(s..e)
+            if (parts.size != 2) {
+                return RangeValidation.Invalid("Invalid range '$token'. Use format like '1-3' or '5'")
+            }
+            val s = parts[0].toIntOrNull()
+                ?: return RangeValidation.Invalid("Invalid number '${parts[0]}' in range '$token'")
+            val e = parts[1].toIntOrNull()
+                ?: return RangeValidation.Invalid("Invalid number '${parts[1]}' in range '$token'")
+            if (s < 1) {
+                return RangeValidation.Invalid("Page numbers must be 1 or greater")
+            }
+            if (s > e) {
+                return RangeValidation.Invalid("Range '$token': start page ($s) cannot be greater than end page ($e)")
+            }
+            if (totalPages != null && (s > totalPages || e > totalPages)) {
+                return RangeValidation.Invalid("Range '$token' exceeds document length ($totalPages ${if (totalPages == 1) "page" else "pages"})")
+            }
+            ranges.add(s..e)
         } else {
-            val p = token.toIntOrNull() ?: continue
-            results.add(p..p)
+            val p = token.toIntOrNull()
+                ?: return RangeValidation.Invalid("Invalid page number '$token'")
+            if (p < 1) {
+                return RangeValidation.Invalid("Page number must be 1 or greater")
+            }
+            if (totalPages != null && p > totalPages) {
+                return RangeValidation.Invalid("Page $p exceeds document length ($totalPages ${if (totalPages == 1) "page" else "pages"})")
+            }
+            ranges.add(p..p)
         }
     }
-    return results
+    val count = ranges.size
+    val preview = "Will create $count PDF ${if (count == 1) "file" else "files"}"
+    return RangeValidation.Valid(ranges, preview)
+}
+
+internal fun validateEveryN(intervalText: String, totalPages: Int?): RangeValidation {
+    val n = intervalText.toIntOrNull()
+    if (n == null || n < 1) {
+        return RangeValidation.Invalid("Enter a valid interval (minimum 1 page)")
+    }
+    val count = if (totalPages != null && totalPages > 0) {
+        (totalPages + n - 1) / n
+    } else {
+        null
+    }
+    val preview = if (count != null) {
+        "Will create $count PDF ${if (count == 1) "file" else "files"}"
+    } else {
+        "Splits document into chunks of $n ${if (n == 1) "page" else "pages"}"
+    }
+    val ranges = if (totalPages != null && totalPages > 0) {
+        PdfEngine.computeEveryNChunks(totalPages, n)
+    } else {
+        emptyList()
+    }
+    return RangeValidation.Valid(ranges, preview)
+}
+
+internal fun validateSingleRange(startText: String, endText: String, totalPages: Int?): RangeValidation {
+    val s = startText.toIntOrNull()
+        ?: return RangeValidation.Invalid("Enter a valid start page")
+    val e = endText.toIntOrNull()
+        ?: return RangeValidation.Invalid("Enter a valid end page")
+    if (s < 1) {
+        return RangeValidation.Invalid("Start page must be 1 or greater")
+    }
+    if (e < 1) {
+        return RangeValidation.Invalid("End page must be 1 or greater")
+    }
+    if (s > e) {
+        return RangeValidation.Invalid("Start page ($s) cannot be greater than end page ($e)")
+    }
+    if (totalPages != null && (s > totalPages || e > totalPages)) {
+        return RangeValidation.Invalid("Range exceeds document length ($totalPages ${if (totalPages == 1) "page" else "pages"})")
+    }
+    val pageCount = e - s + 1
+    val preview = "Extracts pages $s to $e ($pageCount ${if (pageCount == 1) "page" else "pages"})"
+    return RangeValidation.Valid(listOf(s..e), preview)
 }

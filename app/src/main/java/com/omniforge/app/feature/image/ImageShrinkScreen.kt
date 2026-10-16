@@ -65,7 +65,7 @@ fun ImageShrinkScreen(
     }
 
     ToolScaffold(
-        title = "Photo Shrinker & Optimizer",
+        title = "Shrink Image",
         categoryName = "Photo & Image",
         accentColor = AccentImage,
         onBack = onBack,
@@ -195,7 +195,7 @@ fun ImageShrinkScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Photo Shrinker") {
+                    ToolJobs.launch(context, JOB_KEY, "Shrink Image") {
                         processState = ProcessState.Processing(0.5f, "Optimizing photo...")
                         val result = ImageEngine.shrinkImage(
                             context = context,

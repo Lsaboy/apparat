@@ -43,6 +43,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
     var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
     var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -53,6 +54,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
             pdfPassword = null
+            pageCount = null
             processState = ProcessState.Processing(0f, "Opening PDF...")
             renderedPages = emptyList()
         }
@@ -80,21 +82,32 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
                 fileName = fileName,
                 needsCheck = pdfPassword == null,
                 accentColor = AccentPdf,
-                onReady = { password ->
+                onReady = { password, count ->
                     pdfPassword = password
+                    pageCount = count
                     processState = ProcessState.Idle
                 },
                 onFailed = { message ->
                     selectedUri = null
                     fileName = null
                     fileSize = null
+                    pageCount = null
                     processState = ProcessState.Error(message)
                 }
             )
 
+            val details = when {
+                pageCount != null && fileSize != null && fileSize!! > 0 ->
+                    "$pageCount ${if (pageCount == 1) "page" else "pages"} • ${FileUtils.formatFileSize(fileSize!!)}"
+                pageCount != null -> "$pageCount ${if (pageCount == 1) "page" else "pages"}"
+                fileSize != null && fileSize!! > 0 -> FileUtils.formatFileSize(fileSize!!)
+                else -> null
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = details,
                 placeholderText = "Select PDF Document",
                 icon = Icons.Default.PictureAsPdf,
                 accentColor = AccentPdf,

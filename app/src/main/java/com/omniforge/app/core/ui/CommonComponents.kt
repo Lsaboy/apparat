@@ -40,6 +40,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.util.FileUtils
 import java.io.File
@@ -147,19 +148,18 @@ private fun ToolJobLifecycle(jobKey: String) {
     }
 }
 
-private var askedForNotifications = false
-
-/** Asks once per app run, when the first job starts, so progress/done notifications can show. */
+/** Asks once per app install/settings, when the first job starts, so progress/done notifications can show. */
 @Composable
 private fun NotificationPermissionOnFirstJob(isRunning: Boolean) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
     val context = LocalContext.current
+    val settings = remember(context) { AppSettings(context.applicationContext) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(isRunning) {
-        if (isRunning && !askedForNotifications &&
+        if (isRunning && !settings.hasAskedNotificationPermission &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
-            askedForNotifications = true
+            settings.hasAskedNotificationPermission = true
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -172,6 +172,7 @@ fun FileSelectionCard(
     placeholderText: String = "Tap to choose a file",
     icon: ImageVector = Icons.Default.Description,
     accentColor: Color = PrimaryTeal,
+    fileDetails: String? = null,
     onClick: () -> Unit
 ) {
     Surface(
@@ -216,9 +217,10 @@ fun FileSelectionCard(
                         ),
                         maxLines = 1
                     )
-                    if (fileSize != null && fileSize > 0) {
+                    val detailsText = fileDetails ?: if (fileSize != null && fileSize > 0) FileUtils.formatFileSize(fileSize) else null
+                    if (detailsText != null) {
                         Text(
-                            text = FileUtils.formatFileSize(fileSize),
+                            text = detailsText,
                             style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                         )
                     }

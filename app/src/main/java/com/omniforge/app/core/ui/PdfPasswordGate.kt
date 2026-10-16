@@ -54,7 +54,7 @@ fun PdfPasswordGate(
     fileName: String?,
     needsCheck: Boolean,
     accentColor: Color,
-    onReady: (password: String) -> Unit,
+    onReady: (password: String, pageCount: Int) -> Unit,
     onFailed: (message: String) -> Unit
 ) {
     val context = LocalContext.current
@@ -66,7 +66,7 @@ fun PdfPasswordGate(
     LaunchedEffect(uri, needsCheck) {
         if (uri == null || !needsCheck) return@LaunchedEffect
         when (val access = PdfEngine.checkAccess(context, uri)) {
-            is PdfAccess.Open -> onReady("")
+            is PdfAccess.Open -> onReady("", access.pageCount)
             is PdfAccess.NeedsPassword -> prompt = false
             is PdfAccess.Damaged -> onFailed(access.message)
         }
@@ -85,7 +85,7 @@ fun PdfPasswordGate(
                 val access = PdfEngine.checkAccess(context, target, password)
                 checking = false
                 when (access) {
-                    is PdfAccess.Open -> { prompt = null; onReady(password) }
+                    is PdfAccess.Open -> { prompt = null; onReady(password, access.pageCount) }
                     is PdfAccess.NeedsPassword -> prompt = true
                     is PdfAccess.Damaged -> { prompt = null; onFailed(access.message) }
                 }

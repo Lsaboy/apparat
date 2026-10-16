@@ -49,6 +49,7 @@ fun PdfShrinkScreen(
     }
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
     var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -58,12 +59,13 @@ fun PdfShrinkScreen(
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
             pdfPassword = null
+            pageCount = null
             processState = ProcessState.Processing(0f, "Opening PDF...")
         }
     }
 
     ToolScaffold(
-        title = "Shrink & Compress PDF",
+        title = "Compress PDF",
         categoryName = "PDF Tools",
         accentColor = AccentPdf,
         onBack = onBack,
@@ -84,21 +86,32 @@ fun PdfShrinkScreen(
                 fileName = fileName,
                 needsCheck = pdfPassword == null,
                 accentColor = AccentPdf,
-                onReady = { password ->
+                onReady = { password, count ->
                     pdfPassword = password
+                    pageCount = count
                     processState = ProcessState.Idle
                 },
                 onFailed = { message ->
                     selectedUri = null
                     fileName = null
                     fileSize = null
+                    pageCount = null
                     processState = ProcessState.Error(message)
                 }
             )
 
+            val details = when {
+                pageCount != null && fileSize != null && fileSize!! > 0 ->
+                    "$pageCount ${if (pageCount == 1) "page" else "pages"} • ${FileUtils.formatFileSize(fileSize!!)}"
+                pageCount != null -> "$pageCount ${if (pageCount == 1) "page" else "pages"}"
+                fileSize != null && fileSize!! > 0 -> FileUtils.formatFileSize(fileSize!!)
+                else -> null
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = details,
                 placeholderText = "Select PDF to Compress",
                 icon = Icons.Default.PictureAsPdf,
                 accentColor = AccentPdf,
@@ -151,9 +164,20 @@ fun PdfShrinkScreen(
                         val result = PdfEngine.compressPdf(context, uri, compressionLevel, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { outputFile ->
-                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
+                                    runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
+                                }
+                                val newBytes = outputFile.length()
+
+                                if (origBytes > 0L && newBytes >= origBytes) {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "PDF is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                    )
+                                } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
                                     val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
                                     if (overwritten) {
+                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original PDF overwritten in-place!"

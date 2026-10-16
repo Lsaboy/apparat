@@ -115,17 +115,17 @@ easy to bisect.
 
 ### 1B. Tools that run but produce wrong / damaged output
 
-- [ ] **1B.1 PDF Split "Every N Pages" assumes 100 pages.** `(1..100 step n)` hard-coded.
+- [x] **1B.1 PDF Split "Every N Pages" assumes 100 pages.** `(1..100 step n)` hard-coded.
   10-page PDF with N=1 → 100 files (90 duplicates of page 10). 150-page PDF → pages 101+ lost.
   - Fix: read page count first; compute chunks from real count. Move chunking into engine.
   - File: `feature/pdf/PdfSplitScreen.kt:231`.
 
-- [ ] **1B.2 PDF Split silently clamps invalid ranges.** "12-15" on a 10-page doc → page 10.
+- [x] **1B.2 PDF Split silently clamps invalid ranges.** "12-15" on a 10-page doc → page 10.
   "5-3" silently skipped. Non-numbers silently ignored.
   - Fix: validate against page count; show inline errors per token; block the button until valid.
   - Files: `PdfSplitScreen.kt:339` (`parseCustomRanges`), `PdfEngine.kt:201-202`.
 
-- [ ] **1B.3 PDF Compress does nothing.** `compressPdf` ignores `imageQuality` and just
+- [x] **1B.3 PDF Compress does nothing.** `compressPdf` ignores `imageQuality` and just
   re-saves. Output can be larger; with "Modify OG" it overwrites the original anyway.
   - Phase 1 fix: never overwrite if output ≥ input; show honest "could not reduce" message.
   - Real compression is Phase 2 (2.6).
@@ -253,7 +253,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Notification tap resets the back stack.** `openToolIntent` uses `FLAG_ACTIVITY_CLEAR_TASK`
   → Activity recreated, other open tool's state dropped. Better: `singleTop` + handle
   `onNewIntent` in `MainActivity` (also needed for share-in, 3B) and navigate there.
-- [ ] **Notification permission nags each app run.** `askedForNotifications` is an in-memory
+- [x] **Notification permission nags each app run.** `askedForNotifications` is an in-memory
   flag. Persist "asked once" in `AppSettings`; after a denial, don't ask again (offer it in
   Settings instead).
 - [ ] **Saves still tied to the screen.** `ResultCard`'s Save and Split / PDF→Images "Save All" run
@@ -306,7 +306,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **README.md** still says "powered by … **FFmpeg-Kit**", lists MKV/WEBM output, "Video
   Format Exchange" (MP4/MKV/WEBM/MOV/GIF), MP3/FLAC audio, `-c copy` trimming. Rewrite the video
   section for Media3: Convert to MP4, M4A/WAV, Android 10+ requirement, new notification permission.
-- [ ] Screen titles don't match the new home titles: "Video to Smooth GIF Maker" (→ "Video to
+- [x] Screen titles don't match the new home titles: "Video to Smooth GIF Maker" (→ "Video to
   GIF"), "Lossless Trim & Mute" (trim optimisation re-encodes the frames before the first
   keyframe, so "lossless" is not quite true → "Trim & Mute"), "Split PDF / Multi-File Split",
   "Shrink & Compress PDF", "Photo Format Exchange". Home tool card "Lossless Trim & Mute" + badge

@@ -33,7 +33,7 @@ val AppAccentSwatches = listOf(
 )
 
 class AppSettings(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("dpk_settings", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("dpk_settings", Context.MODE_PRIVATE)
 
     var themeStyle: ThemeStyle
         get() {
@@ -65,6 +65,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean("is_grid_view", true)
         set(value) = prefs.edit().putBoolean("is_grid_view", value).apply()
 
+    var hasAskedNotificationPermission: Boolean
+        get() = prefs.getBoolean("asked_notification_permission", false)
+        set(value) = prefs.edit().putBoolean("asked_notification_permission", value).apply()
+
     val currentAccentColor: Color
         get() = AppAccentSwatches[accentIndex].color
 }
+

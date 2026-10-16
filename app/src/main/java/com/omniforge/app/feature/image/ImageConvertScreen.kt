@@ -61,7 +61,7 @@ fun ImageConvertScreen(
     }
 
     ToolScaffold(
-        title = "Photo Format Exchange",
+        title = "Convert Image",
         categoryName = "Photo & Image",
         accentColor = AccentImage,
         onBack = onBack,
@@ -138,7 +138,7 @@ fun ImageConvertScreen(
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
-                    ToolJobs.launch(context, JOB_KEY, "Photo Convert") {
+                    ToolJobs.launch(context, JOB_KEY, "Convert Image") {
                         processState = ProcessState.Processing(0.5f, "Converting photo format...")
                         val result = ImageEngine.convertFormat(
                             context = context,

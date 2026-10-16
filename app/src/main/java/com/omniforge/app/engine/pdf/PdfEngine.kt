@@ -263,6 +263,22 @@ object PdfEngine {
     }
 
     /**
+     * Computes consecutive page ranges chunked by [n] pages up to [totalPages] (1-indexed).
+     * e.g. totalPages = 10, n = 3 -> [1..3, 4..6, 7..9, 10..10]
+     */
+    fun computeEveryNChunks(totalPages: Int, n: Int): List<IntRange> {
+        if (totalPages <= 0 || n <= 0) return emptyList()
+        val chunks = ArrayList<IntRange>((totalPages + n - 1) / n)
+        var start = 1
+        while (start <= totalPages) {
+            val end = minOf(start + n - 1, totalPages)
+            chunks.add(start..end)
+            start += n
+        }
+        return chunks
+    }
+
+    /**
      * Splits a PDF to keep only a specific page range (1-indexed).
      */
     suspend fun splitPdf(
@@ -276,25 +292,26 @@ object PdfEngine {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "split_p${startPage}_p$endPage", ".pdf")
 
-            val document = openDocument(context, cachedInput, password)
-            val newDoc = PDDocument(tempFileMemory(context))
-
             try {
-                val totalPages = document.numberOfPages
-                val start = (startPage - 1).coerceIn(0, totalPages - 1)
-                val end = (endPage - 1).coerceIn(start, totalPages - 1)
+                openDocument(context, cachedInput, password).use { document ->
+                    val totalPages = document.numberOfPages
+                    val start = (startPage - 1).coerceIn(0, totalPages - 1)
+                    val end = (endPage - 1).coerceIn(start, totalPages - 1)
 
-                for (i in start..end) {
-                    newDoc.addPage(document.getPage(i))
+                    PDDocument(tempFileMemory(context)).use { newDoc ->
+                        for (i in start..end) {
+                            newDoc.addPage(document.getPage(i))
+                        }
+                        newDoc.save(outputFile)
+                    }
                 }
-                newDoc.save(outputFile)
+                outputFile
+            } catch (t: Throwable) {
+                outputFile.delete()
+                throw t
             } finally {
-                newDoc.close()
-                document.close()
                 cachedInput.delete()
             }
-
-            outputFile
         }
     }
 
@@ -309,29 +326,47 @@ object PdfEngine {
     ): Result<List<File>> = withContext(Dispatchers.IO) {
         runCatching {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val document = openDocument(context, cachedInput, password)
             val outputFiles = mutableListOf<File>()
 
             try {
-                val totalPages = document.numberOfPages
-                for ((index, range) in ranges.withIndex()) {
-                    val newDoc = PDDocument(tempFileMemory(context))
-                    val start = (range.first - 1).coerceIn(0, totalPages - 1)
-                    val end = (range.last - 1).coerceIn(start, totalPages - 1)
-                    for (p in start..end) {
-                        newDoc.addPage(document.getPage(p))
+                openDocument(context, cachedInput, password).use { document ->
+                    val totalPages = document.numberOfPages
+                    val validRanges = ranges.filter { range ->
+                        range.first in 1..totalPages && range.last >= range.first
                     }
-                    val partFile = FileUtils.createTempOutputFile(context, "part_${index + 1}_p${range.first}_p${range.last}", ".pdf")
-                    newDoc.save(partFile)
-                    newDoc.close()
-                    outputFiles.add(partFile)
+                    if (validRanges.isEmpty()) {
+                        throw IllegalArgumentException("No valid page ranges within document (1..$totalPages)")
+                    }
+
+                    for ((index, range) in validRanges.withIndex()) {
+                        val start = range.first - 1
+                        val end = minOf(range.last, totalPages) - 1
+                        val partFile = FileUtils.createTempOutputFile(
+                            context,
+                            "part_${index + 1}_p${range.first}_p${minOf(range.last, totalPages)}",
+                            ".pdf"
+                        )
+                        try {
+                            PDDocument(tempFileMemory(context)).use { newDoc ->
+                                for (p in start..end) {
+                                    newDoc.addPage(document.getPage(p))
+                                }
+                                newDoc.save(partFile)
+                            }
+                            outputFiles.add(partFile)
+                        } catch (e: Throwable) {
+                            partFile.delete()
+                            throw e
+                        }
+                    }
                 }
+                outputFiles
+            } catch (t: Throwable) {
+                outputFiles.forEach { it.delete() }
+                throw t
             } finally {
-                document.close()
                 cachedInput.delete()
             }
-
-            outputFiles
         }
     }
 

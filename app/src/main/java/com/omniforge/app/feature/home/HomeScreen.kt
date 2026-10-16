@@ -48,14 +48,14 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "pdf_shrink",
-        title = "Shrink & Compress PDF",
+        title = "Compress PDF",
         description = "Downsample embedded images and clean redundant streams to reduce size.",
         category = ToolCategory.PDF,
         route = "pdf_shrink"
     ),
     ToolItem(
         id = "pdf_split",
-        title = "Split PDF / Multi-Split",
+        title = "Split PDF",
         description = "Split into multiple PDFs by custom ranges (e.g. 1-3, 4-6) or page intervals.",
         category = ToolCategory.PDF,
         route = "pdf_split",
@@ -86,11 +86,11 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_trim",
-        title = "Lossless Trim & Mute",
-        description = "Cut a clip or remove the sound. No re-encoding, so quality stays the same.",
+        title = "Trim & Mute",
+        description = "Cut a clip or remove sound. Near-lossless fast trimming without quality loss.",
         category = ToolCategory.VIDEO,
         route = "video_trim",
-        badge = "Lossless"
+        badge = "Fast"
     ),
     ToolItem(
         id = "video_caption",
@@ -124,7 +124,7 @@ val ALL_TOOLS = listOf(
     // Image Tools
     ToolItem(
         id = "image_shrink",
-        title = "Photo Shrinker & Optimizer",
+        title = "Shrink Image",
         description = "Compress photo file size with quality slider, resolution downscaling, and EXIF strip.",
         category = ToolCategory.IMAGE,
         route = "image_shrink"
@@ -147,7 +147,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "image_convert",
-        title = "Photo Format Exchange",
+        title = "Convert Image",
         description = "Convert between JPEG, PNG, and WEBP formats seamlessly.",
         category = ToolCategory.IMAGE,
         route = "image_convert"
