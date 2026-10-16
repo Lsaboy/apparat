@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
@@ -34,12 +35,18 @@ import com.omniforge.app.engine.pdf.PdfEngine
 private const val JOB_KEY = "pdf_unlock"
 
 @Composable
-fun PdfUnlockScreen(onBack: () -> Unit) {
+fun PdfUnlockScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
 
-    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
-    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
-    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(initialUri) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(initialUri?.let { FileUtils.getFileSize(context, it) }) }
     var password by retained(JOB_KEY, "password") { mutableStateOf("") }
     var isPasswordVisible by retained(JOB_KEY, "isPasswordVisible") { mutableStateOf(false) }
 
@@ -47,6 +54,23 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
     var accessStatus by retained(JOB_KEY, "accessStatus") { mutableStateOf<PdfAccess?>(null) }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                password = ""
+                accessStatus = null
+                processState = ProcessState.Idle
+            }
+        }
+    }
 
     LaunchedEffect(selectedUri) {
         val uri = selectedUri
@@ -72,6 +96,7 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            pendingShareUri = null
             password = ""
             accessStatus = null
             processState = ProcessState.Idle
@@ -94,6 +119,56 @@ fun PdfUnlockScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Pending share-in warning card (if user shared a file while another is active)
+            if (pendingShareUri != null) {
+                val pendingUri = pendingShareUri!!
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared file: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    password = ""
+                                    accessStatus = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
 
             // File selection
             FileSelectionCard(

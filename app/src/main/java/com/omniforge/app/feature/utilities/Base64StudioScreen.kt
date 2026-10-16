@@ -9,7 +9,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,18 +28,32 @@ import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.ToolScaffold
 import com.omniforge.app.core.jobs.retained
+import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.common.UtilityEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val JOB_KEY = "base64_studio"
 
 @Composable
 fun Base64StudioScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var inputText by retained(JOB_KEY, "inputText") { mutableStateOf("") }
     var outputText by retained(JOB_KEY, "outputText") { mutableStateOf("") }
     var isEncoding by retained(JOB_KEY, "isEncoding") { mutableStateOf(true) }
     var urlSafe by retained(JOB_KEY, "urlSafe") { mutableStateOf(false) }
+
+    var detectedBinaryType by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var decodedBinaryBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var isSavingBinary by remember { mutableStateOf(false) }
 
     ToolScaffold(
         title = "Base64 Studio",
@@ -59,6 +78,8 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                     onClick = {
                         isEncoding = true
                         outputText = ""
+                        detectedBinaryType = null
+                        decodedBinaryBytes = null
                     },
                     label = { Text("Encode to Base64") },
                     modifier = Modifier.weight(1f),
@@ -73,6 +94,8 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                     onClick = {
                         isEncoding = false
                         outputText = ""
+                        detectedBinaryType = null
+                        decodedBinaryBytes = null
                     },
                     label = { Text("Decode from Base64") },
                     modifier = Modifier.weight(1f),
@@ -105,13 +128,68 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                 )
             }
 
+            // Action row: Clear & Paste
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isEncoding) "Input Text" else "Input Base64",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = TextPrimary)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = clipboard.primaryClip
+                            if (clip != null && clip.itemCount > 0) {
+                                val text = clip.getItemAt(0).text?.toString() ?: ""
+                                if (text.isNotBlank()) {
+                                    inputText = text
+                                    outputText = ""
+                                    detectedBinaryType = null
+                                    decodedBinaryBytes = null
+                                    Toast.makeText(context, "Pasted from clipboard", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, tint = AccentUtility, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Paste", color = AccentUtility, fontSize = 12.sp)
+                    }
+
+                    if (inputText.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                inputText = ""
+                                outputText = ""
+                                detectedBinaryType = null
+                                decodedBinaryBytes = null
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Clear, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Clear", color = TextSecondary, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = inputText,
-                onValueChange = { inputText = it },
+                onValueChange = {
+                    inputText = it
+                    detectedBinaryType = null
+                    decodedBinaryBytes = null
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp),
-                label = { Text(if (isEncoding) "Text to Encode" else "Base64 to Decode", color = TextSecondary) },
+                placeholder = { Text(if (isEncoding) "Enter text to encode..." else "Paste Base64 string to decode...", color = TextTertiary) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = AccentUtility,
                     unfocusedBorderColor = DarkBorder,
@@ -125,9 +203,29 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                 onClick = {
                     if (isEncoding) {
                         outputText = UtilityEngine.encodeBase64(inputText, urlSafe = urlSafe)
+                        detectedBinaryType = null
+                        decodedBinaryBytes = null
                     } else {
-                        val result = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
-                        outputText = result.getOrElse { it.localizedMessage ?: "Invalid Base64 string" }
+                        val bytesResult = UtilityEngine.decodeBase64ToBytes(inputText, urlSafe = urlSafe)
+                        if (bytesResult.isFailure) {
+                            outputText = "Invalid Base64 input"
+                            detectedBinaryType = null
+                            decodedBinaryBytes = null
+                        } else {
+                            val bytes = bytesResult.getOrThrow()
+                            val binaryType = UtilityEngine.detectBinaryType(bytes)
+                            if (binaryType != null) {
+                                detectedBinaryType = binaryType
+                                decodedBinaryBytes = bytes
+                                val textResult = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
+                                outputText = textResult.getOrDefault("")
+                            } else {
+                                detectedBinaryType = null
+                                decodedBinaryBytes = null
+                                val textResult = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
+                                outputText = textResult.getOrElse { it.localizedMessage ?: "Invalid Base64 string" }
+                            }
+                        }
                     }
                 },
                 modifier = Modifier
@@ -142,6 +240,88 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                 Text(if (isEncoding) "Encode" else "Decode", color = AmoledBlack, fontWeight = FontWeight.Bold)
             }
 
+            // Detected Binary File Card
+            if (detectedBinaryType != null && decodedBinaryBytes != null) {
+                val mime = detectedBinaryType!!.first
+                val ext = detectedBinaryType!!.second
+                val bytes = decodedBinaryBytes!!
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (ext == ".pdf") Icons.Default.PictureAsPdf else Icons.Default.Image,
+                                contentDescription = null,
+                                tint = AccentUtility,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Binary File: ${mime.substringAfter('/') .uppercase()}",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                )
+                                Text(
+                                    text = "${FileUtils.formatFileSize(bytes.size.toLong())} • Format $ext",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (isSavingBinary) return@Button
+                                isSavingBinary = true
+                                val appContext = context.applicationContext
+                                scope.launch {
+                                    withContext(NonCancellable + Dispatchers.IO) {
+                                        try {
+                                            val tempFile = File.createTempFile("decoded_", ext, appContext.cacheDir)
+                                            tempFile.writeBytes(bytes)
+                                            val filename = "Decoded_${SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())}$ext"
+                                            val saved = FileUtils.saveToDownloads(appContext, tempFile, mime, filename)
+                                            withContext(Dispatchers.Main) {
+                                                if (saved != null) {
+                                                    Toast.makeText(appContext, "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(appContext, "Failed to save file", Toast.LENGTH_SHORT).show()
+                                                }
+                                                isSavingBinary = false
+                                            }
+                                            tempFile.delete()
+                                        } catch (e: Exception) {
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(appContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                isSavingBinary = false
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSavingBinary
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = AmoledBlack)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Output Text Card (for text results or errors)
             if (outputText.isNotBlank()) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -150,7 +330,8 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Result",

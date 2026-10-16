@@ -7,10 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.ToolScaffold
 import com.omniforge.app.core.jobs.retained
@@ -35,20 +37,72 @@ import kotlinx.coroutines.withContext
 
 private const val JOB_KEY = "qr_studio"
 
+enum class QrTemplate(val label: String) {
+    TEXT_URL("Text / URL"),
+    WIFI("Wi-Fi"),
+    UPI("UPI Pay"),
+    VCARD("Contact")
+}
+
 @Composable
-fun QrStudioScreen(onBack: () -> Unit) {
+fun QrStudioScreen(
+    initialText: String? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var inputText by retained(JOB_KEY, "inputText") { mutableStateOf("https://github.com") }
+    var selectedTemplate by retained(JOB_KEY, "selectedTemplate") { mutableStateOf(QrTemplate.TEXT_URL) }
+
+    // Text / URL
+    var rawText by retained(JOB_KEY, "rawText") { mutableStateOf(initialText ?: "https://github.com") }
+
+    // Wi-Fi
+    var wifiSsid by retained(JOB_KEY, "wifiSsid") { mutableStateOf("") }
+    var wifiPassword by retained(JOB_KEY, "wifiPassword") { mutableStateOf("") }
+    var wifiSecurity by retained(JOB_KEY, "wifiSecurity") { mutableStateOf("WPA") } // WPA, WEP, nopass
+    var wifiHidden by retained(JOB_KEY, "wifiHidden") { mutableStateOf(false) }
+
+    // UPI Payment
+    var upiVpa by retained(JOB_KEY, "upiVpa") { mutableStateOf("") }
+    var upiName by retained(JOB_KEY, "upiName") { mutableStateOf("") }
+    var upiAmount by retained(JOB_KEY, "upiAmount") { mutableStateOf("") }
+    var upiNote by retained(JOB_KEY, "upiNote") { mutableStateOf("") }
+
+    // Contact (vCard)
+    var vcardName by retained(JOB_KEY, "vcardName") { mutableStateOf("") }
+    var vcardPhone by retained(JOB_KEY, "vcardPhone") { mutableStateOf("") }
+    var vcardEmail by retained(JOB_KEY, "vcardEmail") { mutableStateOf("") }
+
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(inputText) {
-        if (inputText.isNotBlank()) {
+    LaunchedEffect(initialText) {
+        if (!initialText.isNullOrBlank()) {
+            selectedTemplate = QrTemplate.TEXT_URL
+            rawText = initialText
+        }
+    }
+
+    val activePayload = remember(
+        selectedTemplate, rawText,
+        wifiSsid, wifiPassword, wifiSecurity, wifiHidden,
+        upiVpa, upiName, upiAmount, upiNote,
+        vcardName, vcardPhone, vcardEmail
+    ) {
+        when (selectedTemplate) {
+            QrTemplate.TEXT_URL -> rawText
+            QrTemplate.WIFI -> UtilityEngine.formatWifiQr(wifiSsid, wifiPassword, wifiSecurity, wifiHidden)
+            QrTemplate.UPI -> UtilityEngine.formatUpiQr(upiVpa, upiName, upiAmount, upiNote)
+            QrTemplate.VCARD -> UtilityEngine.formatVCardQr(vcardName, vcardPhone, vcardEmail)
+        }
+    }
+
+    LaunchedEffect(activePayload) {
+        if (activePayload.isNotBlank()) {
             delay(150)
             try {
                 val bmp = withContext(Dispatchers.Default) {
-                    UtilityEngine.generateQrCode(inputText, 512)
+                    UtilityEngine.generateQrCode(activePayload, 512)
                 }
                 qrBitmap = bmp
             } catch (_: Exception) {
@@ -72,24 +126,243 @@ fun QrStudioScreen(onBack: () -> Unit) {
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
+            // Template Selector Row
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Enter Text, URL, or Wi-Fi config", color = TextSecondary) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AccentUtility,
-                    unfocusedBorderColor = DarkBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    cursorColor = AccentUtility
-                ),
-                shape = RoundedCornerShape(14.dp)
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QrTemplate.values().forEach { template ->
+                    FilterChip(
+                        selected = selectedTemplate == template,
+                        onClick = { selectedTemplate = template },
+                        label = { Text(template.label, fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentUtility,
+                            selectedLabelColor = AmoledBlack
+                        )
+                    )
+                }
+            }
+
+            // Template Specific Fields
+            when (selectedTemplate) {
+                QrTemplate.TEXT_URL -> {
+                    OutlinedTextField(
+                        value = rawText,
+                        onValueChange = { rawText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Enter Text, URL, or data", color = TextSecondary) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentUtility,
+                            unfocusedBorderColor = DarkBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = AccentUtility
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        minLines = 3
+                    )
+                }
+
+                QrTemplate.WIFI -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = wifiSsid,
+                            onValueChange = { wifiSsid = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Network Name (SSID)", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        if (wifiSecurity != "nopass") {
+                            OutlinedTextField(
+                                value = wifiPassword,
+                                onValueChange = { wifiPassword = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Wi-Fi Password", color = TextSecondary) },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentUtility,
+                                    unfocusedBorderColor = DarkBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    cursorColor = AccentUtility
+                                ),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                        }
+
+                        // Security type chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("WPA" to "WPA/WPA2", "WEP" to "WEP", "nopass" to "Open (None)").forEach { (key, label) ->
+                                FilterChip(
+                                    selected = wifiSecurity == key,
+                                    onClick = { wifiSecurity = key },
+                                    label = { Text(label, fontSize = 11.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AccentUtility,
+                                        selectedLabelColor = AmoledBlack
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                QrTemplate.UPI -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = upiVpa,
+                            onValueChange = { upiVpa = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("UPI ID / VPA (e.g. merchant@okhdfcbank)", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = upiName,
+                            onValueChange = { upiName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Payee Name (Required by UPI apps)", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = upiAmount,
+                                onValueChange = { upiAmount = it },
+                                modifier = Modifier.weight(1f),
+                                label = { Text("Amount (₹, opt.)", color = TextSecondary) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentUtility,
+                                    unfocusedBorderColor = DarkBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    cursorColor = AccentUtility
+                                ),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = upiNote,
+                                onValueChange = { upiNote = it },
+                                modifier = Modifier.weight(1f),
+                                label = { Text("Note (opt.)", color = TextSecondary) },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentUtility,
+                                    unfocusedBorderColor = DarkBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    cursorColor = AccentUtility
+                                ),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                        }
+                    }
+                }
+
+                QrTemplate.VCARD -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = vcardName,
+                            onValueChange = { vcardName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Full Name", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = vcardPhone,
+                            onValueChange = { vcardPhone = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Phone Number", color = TextSecondary) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = vcardEmail,
+                            onValueChange = { vcardEmail = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Email Address", color = TextSecondary) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentUtility,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = AccentUtility
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                    }
+                }
+            }
 
             // QR Preview
             if (qrBitmap != null) {
@@ -152,6 +425,16 @@ fun QrStudioScreen(onBack: () -> Unit) {
                         Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
+            } else if (activePayload.isNotBlank()) {
+                Text(
+                    text = "Generating QR code...",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            } else {
+                Text(
+                    text = "Fill in the fields above to generate a QR code",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

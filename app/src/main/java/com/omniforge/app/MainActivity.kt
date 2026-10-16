@@ -51,8 +51,16 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    data class SharedPayload(
+        val uri: Uri? = null,
+        val mimeType: String? = null,
+        val text: String? = null,
+        val token: Long = System.currentTimeMillis()
+    )
+
     private lateinit var appSettings: AppSettings
     private val navEvents = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    private var currentSharedPayload by mutableStateOf<SharedPayload?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,21 +68,7 @@ class MainActivity : ComponentActivity() {
 
         appSettings = AppSettings(applicationContext)
 
-        // Parse incoming intent (Share Sheet)
-        val incomingUri: Uri? = if (intent?.action == Intent.ACTION_SEND) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(Intent.EXTRA_STREAM)
-            }
-        } else null
-
-        val incomingMimeType = intent?.type
-
-        if (savedInstanceState == null) {
-            extractRoute(intent)?.let { navEvents.trySend(it) }
-        }
+        handleIncomingIntent(intent)
 
         setContent {
             var themeRecomposeTrigger by remember { mutableIntStateOf(0) }
@@ -86,6 +80,11 @@ class MainActivity : ComponentActivity() {
                 recomposeTrigger = themeRecomposeTrigger
             ) {
                 val navController = rememberNavController()
+
+                val payload = currentSharedPayload
+                val incomingUri = payload?.uri
+                val incomingMimeType = payload?.mimeType
+                val incomingText = payload?.text
 
                 // Handle deep links and notification taps via buffered events
                 LaunchedEffect(navController) {
@@ -127,7 +126,10 @@ class MainActivity : ComponentActivity() {
 
                     // PDF Tools
                     composable("pdf_unlock") {
-                        PdfUnlockScreen(onBack = { navController.popBackStack() })
+                        PdfUnlockScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("pdf_shrink") {
                         PdfShrinkScreen(
@@ -136,10 +138,16 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("pdf_split") {
-                        PdfSplitScreen(onBack = { navController.popBackStack() })
+                        PdfSplitScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("pdf_to_images") {
-                        PdfToImagesScreen(onBack = { navController.popBackStack() })
+                        PdfToImagesScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("images_to_pdf") {
                         ImagesToPdfScreen(onBack = { navController.popBackStack() })
@@ -199,13 +207,22 @@ class MainActivity : ComponentActivity() {
 
                     // Utility Tools
                     composable("qr_studio") {
-                        QrStudioScreen(onBack = { navController.popBackStack() })
+                        QrStudioScreen(
+                            initialText = incomingText,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("hash_verifier") {
-                        HashVerifierScreen(onBack = { navController.popBackStack() })
+                        HashVerifierScreen(
+                            initialUri = incomingUri,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("json_tool") {
-                        JsonToolScreen(onBack = { navController.popBackStack() })
+                        JsonToolScreen(
+                            initialText = incomingText?.takeIf { it.trim().startsWith("{") || it.trim().startsWith("[") },
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("base64_studio") {
                         Base64StudioScreen(onBack = { navController.popBackStack() })
@@ -218,6 +235,46 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        when (action) {
+            Intent.ACTION_VIEW -> {
+                val uri = intent.data
+                val mime = intent.type ?: uri?.let { contentResolver.getType(it) }
+                if (uri != null) {
+                    currentSharedPayload = SharedPayload(uri = uri, mimeType = mime)
+                    navEvents.trySend("home")
+                }
+            }
+            Intent.ACTION_SEND -> {
+                val mime = intent.type
+                val streamUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                } ?: intent.clipData?.getItemAt(0)?.uri
+
+                val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+
+                if (streamUri != null) {
+                    currentSharedPayload = SharedPayload(uri = streamUri, mimeType = mime)
+                    navEvents.trySend("home")
+                } else if (!sharedText.isNullOrBlank()) {
+                    currentSharedPayload = SharedPayload(text = sharedText, mimeType = mime ?: "text/plain")
+                    val trimmed = sharedText.trim()
+                    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+                        navEvents.trySend("json_tool")
+                    } else {
+                        navEvents.trySend("qr_studio")
+                    }
+                }
+            }
+        }
         extractRoute(intent)?.let { navEvents.trySend(it) }
     }
 

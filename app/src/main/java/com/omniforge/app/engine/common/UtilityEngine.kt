@@ -110,25 +110,50 @@ object UtilityEngine {
     }
 
     /**
-     * Base64 encode and decode with URL-safe option and strict UTF-8 validation.
+     * Strips data URL prefix if present (e.g. data:image/png;base64,....).
+     */
+    fun stripDataUrlPrefix(input: String): String {
+        val trimmed = input.trim()
+        if (trimmed.startsWith("data:", ignoreCase = true)) {
+            val commaIndex = trimmed.indexOf(',')
+            if (commaIndex != -1) {
+                return trimmed.substring(commaIndex + 1).trim()
+            }
+        }
+        return trimmed
+    }
+
+    /**
+     * Base64 encode with URL-safe option.
      */
     fun encodeBase64(input: String, urlSafe: Boolean = false): String {
         val flags = Base64.NO_WRAP or (if (urlSafe) Base64.URL_SAFE else 0)
         return Base64.encodeToString(input.toByteArray(Charsets.UTF_8), flags)
     }
 
-    fun decodeBase64(input: String, urlSafe: Boolean = false): Result<String> = runCatching {
-        val clean = input.trim()
-        if (clean.isEmpty()) return@runCatching ""
+    /**
+     * Decodes Base64 to raw bytes, supporting optional data-URL prefix and automatic flag fallback.
+     */
+    fun decodeBase64ToBytes(input: String, urlSafe: Boolean = false): Result<ByteArray> = runCatching {
+        val clean = stripDataUrlPrefix(input)
+        if (clean.isEmpty()) return@runCatching ByteArray(0)
 
         val primaryFlags = if (urlSafe) Base64.URL_SAFE else Base64.DEFAULT
         val fallbackFlags = if (urlSafe) Base64.DEFAULT else Base64.URL_SAFE
 
-        val bytes = try {
+        try {
             Base64.decode(clean, primaryFlags)
         } catch (_: IllegalArgumentException) {
             Base64.decode(clean, fallbackFlags)
         }
+    }
+
+    /**
+     * Decodes Base64 to UTF-8 text with strict validation. Throws if binary data is detected.
+     */
+    fun decodeBase64(input: String, urlSafe: Boolean = false): Result<String> = runCatching {
+        val bytes = decodeBase64ToBytes(input, urlSafe).getOrThrow()
+        if (bytes.isEmpty()) return@runCatching ""
 
         val decoder = Charsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
@@ -138,6 +163,124 @@ object UtilityEngine {
             decoder.decode(ByteBuffer.wrap(bytes)).toString()
         } catch (_: CharacterCodingException) {
             throw IllegalArgumentException("Decoded ${bytes.size} bytes of binary data (not valid UTF-8 text).")
+        }
+    }
+
+    /**
+     * Detects MIME type and file extension from magic bytes for common formats (PNG, JPEG, WebP, GIF, PDF).
+     * Returns null if bytes are insufficient or unrecognized.
+     */
+    fun detectBinaryType(bytes: ByteArray): Pair<String, String>? {
+        if (bytes.size < 12) return null
+
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() &&
+            bytes[2] == 0x4E.toByte() && bytes[3] == 0x47.toByte() &&
+            bytes[4] == 0x0D.toByte() && bytes[5] == 0x0A.toByte() &&
+            bytes[6] == 0x1A.toByte() && bytes[7] == 0x0A.toByte()
+        ) {
+            return Pair("image/png", ".png")
+        }
+
+        // JPEG: FF D8 FF
+        if (bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte()) {
+            return Pair("image/jpeg", ".jpg")
+        }
+
+        // WebP: RIFF....WEBP (bytes 0..3 == RIFF and bytes 8..11 == WEBP)
+        if (bytes[0] == 0x52.toByte() && bytes[1] == 0x49.toByte() &&
+            bytes[2] == 0x46.toByte() && bytes[3] == 0x46.toByte() &&
+            bytes[8] == 0x57.toByte() && bytes[9] == 0x42.toByte() &&
+            bytes[10] == 0x42.toByte() && bytes[11] == 0x50.toByte()
+        ) {
+            return Pair("image/webp", ".webp")
+        }
+
+        // GIF: GIF87a or GIF89a
+        if (bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() &&
+            bytes[2] == 0x46.toByte() && bytes[3] == 0x38.toByte() &&
+            (bytes[4] == 0x37.toByte() || bytes[4] == 0x39.toByte()) &&
+            bytes[5] == 0x61.toByte()
+        ) {
+            return Pair("image/gif", ".gif")
+        }
+
+        // PDF: %PDF-
+        if (bytes[0] == 0x25.toByte() && bytes[1] == 0x50.toByte() &&
+            bytes[2] == 0x44.toByte() && bytes[3] == 0x46.toByte() && bytes[4] == 0x2D.toByte()
+        ) {
+            return Pair("application/pdf", ".pdf")
+        }
+
+        return null
+    }
+
+    /**
+     * Escapes special characters for ZXing Wi-Fi QR format (\, ;, ,, :, ").
+     * Critical: \ must be escaped FIRST to prevent double-escaping.
+     */
+    fun escapeWifiField(input: String): String =
+        input.replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace(":", "\\:")
+            .replace("\"", "\\\"")
+
+    /**
+     * Formats Wi-Fi configuration into standard ZXing QR payload.
+     */
+    fun formatWifiQr(ssid: String, pass: String, sec: String, hidden: Boolean = false): String {
+        if (ssid.isBlank()) return ""
+        val secType = when (sec) {
+            "WEP" -> "WEP"
+            "nopass" -> "nopass"
+            else -> "WPA"
+        }
+        val pPart = if (secType != "nopass" && pass.isNotEmpty()) "P:${escapeWifiField(pass)};" else ""
+        val hPart = if (hidden) "H:true;" else ""
+        return "WIFI:T:$secType;S:${escapeWifiField(ssid)};$pPart$hPart;"
+    }
+
+    /**
+     * Formats NPCI-compliant UPI Payment QR payload.
+     */
+    fun formatUpiQr(vpa: String, name: String, amount: String = "", note: String = ""): String {
+        if (vpa.isBlank()) return ""
+        val encode = { param: String ->
+            try {
+                java.net.URLEncoder.encode(param, "UTF-8").replace("+", "%20")
+            } catch (_: Exception) {
+                param
+            }
+        }
+        return buildString {
+            append("upi://pay?")
+            append("pa=").append(encode(vpa.trim()))
+            if (name.isNotBlank()) {
+                append("&pn=").append(encode(name.trim()))
+            }
+            if (amount.isNotBlank()) {
+                append("&am=").append(encode(amount.trim()))
+            }
+            append("&cu=INR")
+            if (note.isNotBlank()) {
+                append("&tn=").append(encode(note.trim()))
+            }
+        }
+    }
+
+    /**
+     * Formats vCard 3.0 QR payload.
+     */
+    fun formatVCardQr(name: String, phone: String, email: String): String {
+        if (name.isBlank() && phone.isBlank() && email.isBlank()) return ""
+        return buildString {
+            appendLine("BEGIN:VCARD")
+            appendLine("VERSION:3.0")
+            if (name.isNotBlank()) appendLine("FN:${name.trim().replace(";", "\\;").replace(",", "\\,")}")
+            if (phone.isNotBlank()) appendLine("TEL;TYPE=CELL:${phone.trim()}")
+            if (email.isNotBlank()) appendLine("EMAIL;TYPE=INTERNET:${email.trim()}")
+            append("END:VCARD")
         }
     }
 

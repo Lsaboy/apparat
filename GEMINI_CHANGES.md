@@ -19,7 +19,8 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 4. `35c4f6d` - **Batch 4:** ToolJobs Activity leak prevention, singleTop backstack preservation, safe startup cache cleanup, float PCM WAV downsampling, and Media3 README (`1C.5`, `1D.2`, `1D.3`).
 5. `aeb768a` - **Batch 5:** Save completion resilience, share-in rotation safety, animated image notice, and audio/video tooling (`1D.2`, `1D.3`, `3B`).
 6. `3d66375` - **Batch 6:** Hash Verifier multi-digest & FGS, QR Studio 50x speedup, Base64 URL-safe, Media3 HDR tone-mapping, and encryption honesty (`1D.2`, `3D`).
-7. `Pending` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
+7. `85e8fa0` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
+8. `Pending` - **Batch 8:** Comprehensive share sheet & open-with intent routing, initial URI rotation safety, QR Studio templates, and Base64 binary magic-byte detection (`2.8`, `3B`, `3D`, `3F`).
 
 ---
 
@@ -305,6 +306,64 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 
 ---
 
+### Batch 8: Comprehensive Share-In & Open-With Intent Routing, Rotation Safety, QR Studio Templates, and Base64 Binary Detection
+
+#### 1. Comprehensive Share-In & Open-With Intent Routing (`2.8` / `3F` / lines 427, 428, 564)
+- **Root Cause:**
+  - `AndroidManifest.xml` lacked intent-filters for `ACTION_VIEW` for PDFs and `ACTION_SEND` for `text/plain` and generic files `*/*`. Digital Pocket Knife never appeared in Android's "Open with" chooser or system share sheets.
+  - In `MainActivity.kt`, incoming intent handling only ran in `onCreate` and checked `ACTION_SEND` with `EXTRA_STREAM`. When the activity had `launchMode="singleTop"`, receiving an intent while in the background triggered `onNewIntent`, which was ignored, deadlocking incoming shares.
+  - Text payloads (e.g. shared JSON or URLs) were not routed to appropriate utility tools.
+- **Solution:**
+  - In `AndroidManifest.xml`:
+    - Added `ACTION_VIEW` intent-filter for MIME type `application/pdf` with schemes `content` and `file` under `DEFAULT` category (omitting `BROWSABLE` to adhere to Android 12+ strict web-intent verification requirements).
+    - Added `ACTION_SEND` intent-filter for MIME type `text/plain` under `DEFAULT`.
+    - Added `ACTION_SEND` intent-filter for MIME type `*/*` under `DEFAULT` with `android:priority="-1"` so it handles generic file sharing into Hash Verifier without hijacking specialized viewers.
+  - In `MainActivity.kt`:
+    - Defined immutable `SharedPayload(uri: Uri?, mimeType: String?, text: String?, token: Long = System.currentTimeMillis())`.
+    - Managed active payload with `var currentSharedPayload by mutableStateOf<SharedPayload?>(null)`.
+    - Consolidated intent parsing in `handleIncomingIntent(intent)` invoked by both `onCreate` and `onNewIntent`.
+    - Handled text routing: URLs route directly to `qr_studio`, valid JSON strings route to `json_tool`.
+    - For PDF and media files, displayed contextual share banner on `HomeScreen` offering quick action buttons to route into any compatible tool, and forwarded `initialUri` and `initialText` to all destinations in `NavHost`.
+
+#### 2. Initial URI Acceptance & Rotation Safety Across PDF & Utility Tools (`2.8` / `1D.2`)
+- **Root Cause:**
+  - `PdfSplitScreen.kt`, `PdfToImagesScreen.kt`, `PdfUnlockScreen.kt`, and `HashVerifierScreen.kt` lacked `initialUri` parameters and could not accept shared files.
+  - In existing share-in screens, file pickers were updating `lastHandledInitialUri = it`. When the device was rotated, Compose evaluated `initialUri != lastHandledInitialUri` as true because `lastHandledInitialUri` had been overwritten with the user-picked file, reverting the screen back to the stale share URI.
+- **Solution:**
+  - Added `initialUri: Uri? = null` parameter, `lastHandledInitialUri`, and `pendingShareUri` to `PdfSplitScreen.kt`, `PdfToImagesScreen.kt`, `PdfUnlockScreen.kt`, and `HashVerifierScreen.kt`.
+  - Removed `lastHandledInitialUri = it` from file pickers across all screens so external URIs are strictly decoupled from manual file picker selections.
+  - If a job is currently running when a new share arrives, displays a pending share card offering "Switch to New File" or "Dismiss" without interrupting the active background job.
+  - `HashVerifierScreen.kt` automatically triggers single-pass multi-digest calculation immediately upon receiving an initial URI.
+
+#### 3. QR Studio Templates (Wi-Fi, UPI Pay, Contact vCard) with ZXing & NPCI Spec Compliance (`3D` / line 549)
+- **Root Cause:**
+  - `QrStudioScreen.kt` only supported raw text input, requiring users to manually format complex Wi-Fi, UPI, or vCard strings.
+- **Solution:**
+  - In `UtilityEngine.kt`:
+    - Added `escapeWifiField` implementing strict ZXing spec escaping: backslash `\` is escaped first, followed by `;`, `,`, `:`, and `"`.
+    - Added `formatWifiQr(ssid, password, securityType, isHidden)` supporting `WPA`, `WEP`, and `nopass`.
+    - Added `formatUpiQr(vpa, name, amount, note)` following the NPCI UPI QR specification, URL-encoding query parameters (`pa`, `pn`, `am`, `cu=INR`, `tn`) using `URLEncoder.encode(..., "UTF-8")`.
+    - Added `formatVCardQr(name, phone, email, company, title)` conforming to standard vCard 3.0 format.
+  - In `QrStudioScreen.kt`:
+    - Added FilterChips for Text/URL, Wi-Fi, UPI Payment, and Contact.
+    - Rendered dedicated input fields per template with retained state across rotations and live debounced generation on `Dispatchers.Default`.
+
+#### 4. Base64 Binary Magic-Byte Detection, Data URL Stripping & Downloads Export (`3D` / lines 557-558)
+- **Root Cause:**
+  - `Base64StudioScreen.kt` only supported text decoding. Pasting Base64-encoded files (images, PDFs) caused decoding failures or rendered raw binary replacement characters (`\uFFFD`).
+  - Base64 data copied from browsers often includes `data:[<mediatype>][;base64],` prefixes which caused decode errors.
+- **Solution:**
+  - In `UtilityEngine.kt`:
+    - Added `stripDataUrlPrefix` regex stripping `^data:[^,]+;base64,` case-insensitively.
+    - Added `decodeBase64ToBytes` supporting both standard and URL-safe Base64.
+    - Added `detectBinaryType(bytes: ByteArray)` with header guards requiring $\ge 12$ bytes: checks PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG (`FF D8 FF`), WebP (`RIFF` at 0..3 and `WEBP` at 8..11), GIF (`GIF87a`/`GIF89a`), and PDF (`%PDF-`).
+  - In `Base64StudioScreen.kt`:
+    - Added Clear and Paste buttons.
+    - In Decode mode, if binary data is detected, displays a dedicated card showing the detected file format, MIME type, and byte size.
+    - Added "Save Decoded File to Downloads" button running on `Dispatchers.IO + NonCancellable` with timestamped filename (`Decoded_yyyyMMdd_HHmmss.<ext>`).
+
+---
+
 ## 3. Comprehensive File Audit
 
 | File Path | Changes Made |
@@ -312,8 +371,8 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/build.gradle.kts` | Added `base { archivesName.set("DigitalPocketKnife") }`. |
 | `settings.gradle.kts` | Updated `rootProject.name = "DigitalPocketKnife"`. |
 | `app/proguard-rules.pro` | Updated comment reference to Digital Pocket Knife. |
-| `app/src/main/AndroidManifest.xml` | Added `android:launchMode="singleTop"` to `MainActivity`. |
-| `app/src/main/java/com/omniforge/app/MainActivity.kt` | Added `themeRecomposeTrigger` link to `OmniForgeTheme`; added `navEvents` Channel and `onNewIntent` route navigation. |
+| `app/src/main/AndroidManifest.xml` | Added `android:launchMode="singleTop"` to `MainActivity`; registered `ACTION_VIEW` for `application/pdf`, `ACTION_SEND` for `text/plain`, and `ACTION_SEND` for `*/*`. |
+| `app/src/main/java/com/omniforge/app/MainActivity.kt` | Added `themeRecomposeTrigger` link to `OmniForgeTheme`; added `navEvents` Channel and `onNewIntent` route navigation; added `SharedPayload` Compose state, `handleIncomingIntent`, and text/file share routing to all screens. |
 | `app/src/main/java/com/omniforge/app/OmniForgeApp.kt` | Launched `FileUtils.cleanStaleCache` on `Dispatchers.IO` with `appStartTime`. |
 | `app/src/main/java/com/omniforge/app/core/jobs/ToolJobs.kt` | Updated `launch` to pass `appContext: Context` into the coroutine block. |
 | `app/src/main/java/com/omniforge/app/core/jobs/ToolJobService.kt` | Implemented `onTimeout` for Android 15 FGS; switched to `ic_stat_notify`; updated `openToolIntent` flags to `singleTop`. |
@@ -323,25 +382,25 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label. |
 | `app/src/main/java/com/omniforge/app/core/ui/PdfPasswordGate.kt` | Added `pageCount` to `onReady` callback. |
 | `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`. |
-| `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512) with throttled progress; bulk `setPixels` on `ARGB_8888` for QR generation; URL-safe Base64 with resilient fallback and strict UTF-8 validation; JSON line/column error reporting from character offset. |
+| `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512); bulk `setPixels` for QR; URL-safe Base64; JSON line/col reporting; Wi-Fi/UPI/vCard QR formatters; Base64 data URL stripping; magic-byte binary type detector. |
 | `app/src/main/java/com/omniforge/app/engine/image/BitmapDecoder.kt` | Added `isAnimated` and `isAnimatedWebpHeader` zero-allocation animation detection. |
 | `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation. |
 | `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`; explicit `PdfPasswordException` handling and temp file cleanup in `removePassword`. |
 | `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message; configured `Composition` with OpenGL HDR-to-SDR tone-mapping for video re-encoding. |
-| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles; comprehensive search keywords for all 20 tools; whitespace tokenized multi-word search. |
+| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles; comprehensive search keywords for all 20 tools; whitespace tokenized multi-word search; contextual share banner for incoming files. |
 | `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; timestamped `Photos_yyyy-MM-dd_HHmmss.pdf` output naming; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; password retention honesty messages; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count; password removal honesty message. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`; `NonCancellable` Save All with honest progress count. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; background PDF access check; unencrypted PDF detection & disable button; copy cleanup ("DRM-free" removed); appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/utilities/Base64StudioScreen.kt` | Retained state; URL-Safe toggle FilterChip; descriptive decode error reporting. |
-| `app/src/main/java/com/omniforge/app/feature/utilities/HashVerifierScreen.kt` | Retained state; `ToolJobs.launch` background hashing with progress; SHA-256/SHA-512/SHA-1/MD5 cards with copy buttons; 4-algorithm case-insensitive hash comparison; Android 12+ compliant clipboard paste. |
-| `app/src/main/java/com/omniforge/app/feature/utilities/JsonToolScreen.kt` | Retained state; Clear and Paste actions; line/column error display; template branding update. |
-| `app/src/main/java/com/omniforge/app/feature/utilities/QrStudioScreen.kt` | Retained state; 150ms keystroke debounce; `Dispatchers.Default` background QR generation; `NonCancellable` save/share with `appContext`. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count; password removal honesty message; initialUri support & share protection banner. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`; `NonCancellable` Save All with honest progress count; initialUri support & share protection banner. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; background PDF access check; unencrypted PDF detection & disable button; copy cleanup ("DRM-free" removed); initialUri support & share protection banner; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/Base64StudioScreen.kt` | Retained state; URL-Safe toggle FilterChip; descriptive decode error reporting; Clear & Paste actions; binary file magic-byte detection card & Downloads export. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/HashVerifierScreen.kt` | Retained state; `ToolJobs.launch` background hashing with progress; SHA-256/SHA-512/SHA-1/MD5 cards with copy buttons; 4-algorithm case-insensitive hash comparison; Android 12+ compliant clipboard paste; initialUri auto-hash support & share protection banner. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/JsonToolScreen.kt` | Retained state; Clear and Paste actions; line/column error display; template branding update; initialText support. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/QrStudioScreen.kt` | Retained state; 150ms keystroke debounce; `Dispatchers.Default` background QR generation; `NonCancellable` save/share with `appContext`; Wi-Fi, UPI Pay, and Contact vCard templates; initialText support. |
 | `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; removed invalid SaveModeSelector; share-in protection banner; appContext Toast/Save. |
@@ -349,14 +408,14 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; Start Offset slider; clamped duration; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/res/drawable/ic_stat_notify.xml` | Created 24dp monochrome notification icon. |
-| `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Added unit tests for MessageDigest verification, string casing, and JSON line/col error formatting. |
+| `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Unit tests for MessageDigest verification, string casing, JSON line/col errors, data URL stripping, binary magic-byte detection, and Wi-Fi/UPI/vCard formatting. |
 | `app/src/test/java/com/omniforge/app/engine/image/BitmapDecoderTest.kt` | Added unit tests for WebP header animation flag detection. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfA4FitTest.kt` | Added unit tests for A4 image scaling and margins. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfSplitTest.kt` | Added unit tests for PDF chunking and bounds. |
 | `app/src/test/java/com/omniforge/app/core/util/FileUtilsTest.kt` | Added unit tests for MIME format matching and cache cleanup. |
 | `app/src/test/java/com/omniforge/app/feature/home/HomeSearchTest.kt` | Added 5 unit tests for tool keywords, multi-word matching, trailing spaces, and verb aliases. |
 | `README.md` | Updated for Media3 architecture and current features. |
-| `FIX_PLAN.md` | Checked off all completed items across Batches 1–7. |
+| `FIX_PLAN.md` | Checked off all completed items across Batches 1–8. |
 
 ---
 
@@ -369,7 +428,7 @@ When reviewing these changes, please inspect:
 4. **Cache Cleanup Race Conditions:** Inspect `FileUtils.cleanStaleCacheDir` to verify that `appStartTime` properly protects freshly created input files from being pruned by the background startup cleanup.
 5. **Lossless EXIF Tag Stripping:** Inspect `ImageEngine.stripExif` to confirm that `TAG_ORIENTATION` is preserved on JPEG while clearing privacy tags (`GPS`, `Make`, `Model`, `DateTime`, etc.).
 6. **NonCancellable Save Scopes:** Check `CommonComponents.kt:ResultCard` and `PdfSplitScreen.kt` / `PdfToImagesScreen.kt` to ensure `NonCancellable` properly finishes writing files to disk even if the user navigates away or rotates during export.
-7. **Share-In State Retain Safety:** Verify that `lastHandledInitialUri` correctly prevents screen rotations from reverting user-picked files back to initial share URIs across the 6 share-in screens.
+7. **Share-In State Retain Safety:** Verify that `lastHandledInitialUri` correctly prevents screen rotations from reverting user-picked files back to initial share URIs across all screens, and that manual file picker updates do not overwrite `lastHandledInitialUri`.
 8. **WebP Header Bit Parsing:** Inspect `BitmapDecoder.isAnimatedWebpHeader` to confirm RFC 6386 bit compliance (byte 20, bit 1 = 0x02 for animation).
 9. **Single-Pass Multi-Digest Streaming:** Inspect `UtilityEngine.calculateChecksums` to verify that all 4 algorithms (`SHA-256`, `SHA-512`, `SHA-1`, `MD5`) read from the stream in one pass, throttle progress to $\ge 100\text{ms}$, handle `fileSize <= 0` gracefully, and check `coroutineContext.ensureActive()`.
 10. **Bulk JNI setPixels Stride:** Verify that `UtilityEngine.generateQrCode` correctly maps indices as `[y * size + x]` to avoid matrix transposition when calling native `setPixels` on `ARGB_8888`.
@@ -378,5 +437,10 @@ When reviewing these changes, please inspect:
 13. **Search Tokenization Efficiency:** Inspect `HomeScreen.kt` search filtering logic to verify that `tokens.all { ... }` runs efficiently with zero frame drops, handles uppercase/lowercase queries, and tolerates leading/trailing/multiple consecutive spaces.
 14. **PDF Unlock Pre-check & Cleanup:** Inspect `PdfUnlockScreen.kt` and `PdfEngine.kt:removePassword` to verify that unencrypted PDFs prevent redundant unlocking operations, and that temp files in cache are reliably cleaned up if password removal throws.
 15. **JSON Line/Column Offset Math:** Inspect `UtilityEngine.formatJson` to confirm that converting `org.json.JSONException` character offset into 1-based line and column handles newlines (`\n`, `\r\n`) accurately.
+16. **SharedPayload Reactive Observation:** In `MainActivity.kt`, inspect `currentSharedPayload` Compose state and verify that `onNewIntent` updates trigger immediate recomposition and route navigation without activity restart.
+17. **Wi-Fi QR Escaping Order:** Inspect `UtilityEngine.escapeWifiField` to ensure that backslash `\` is replaced before `;`, `,`, `:`, and `"` to prevent double-escaping.
+18. **UPI QR Spec Compliance:** Verify `UtilityEngine.formatUpiQr` includes mandatory `pa`, `pn`, and `cu=INR` parameters with UTF-8 URL encoding conforming to NPCI UPI specifications.
+19. **Magic-Byte False Positive Prevention:** In `UtilityEngine.detectBinaryType`, inspect the length guard (`bytes.size < 12`) and dual-offset WebP verification (`RIFF` at 0..3 and `WEBP` at 8..11) to ensure WAV/AVI files are not misidentified as WebP.
+20. **Base64 Decoded File Export:** Check `Base64StudioScreen.kt` binary export to verify `withContext(Dispatchers.IO + NonCancellable)` ensures safe writing to `Downloads/DigitalPocketKnife` with unique timestamped filenames.
 
 

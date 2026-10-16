@@ -424,9 +424,8 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 ### 2.8 PDF share-in / open-with
 
-- [ ] Shared PDF reaches every PDF tool (today only Compress gets it).
-- [ ] Register `ACTION_VIEW` for `application/pdf` so the app appears in "Open with"; show a
-  PDF action sheet (Split / Merge / Compress / Unlock / To Images / Organize).
+- [x] Shared PDF reaches every PDF tool (Compress, Unlock, Split, To Images) via `initialUri` and rotation-safe `lastHandledInitialUri`.
+- [x] Register `ACTION_VIEW` for `application/pdf` so the app appears in "Open with", landing on home with contextual action sheet.
 
 ### 2.9 Later / optional PDF features (ask user before building)
 
@@ -546,7 +545,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 - [x] **QR Studio:** QR generated on main thread on every keystroke with a 262k `setPixel`
   loop → typing lag. Fixed with 150ms debounce + `Dispatchers.Default` background generation + bulk `setPixels` on `ARGB_8888`.
-  Still to do: templates (Wi-Fi, UPI payment QR, vCard). (Save PNG / Share already exist.)
+  Templates added for Wi-Fi (ZXing escaping), UPI payment (NPCI spec with URL encoding), Contact vCard 3.0, and Text/URL with reactive live preview.
 - [ ] **QR scanning** (camera via CameraX + ZXing, and "scan from screenshot/gallery") with
   actions: open URL, copy, connect to Wi-Fi, add contact. Styling/SVG export: skip unless asked.
 - [x] **Hash Verifier:** Run via `ToolJobs` (1D.2) with retained state; single-pass multi-digest computing
@@ -554,14 +553,13 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   supporting all 4 digests and clipboard auto-paste.
 - [x] **Base64:** Added URL-safe toggle (`URL_SAFE` flag with resilient fallback) and strict UTF-8 decoding
   guarding against corrupted binary input strings.
-- [ ] **Base64 (cont.):** detect file type from decoded bytes (PDF/PNG/JPEG) and offer
-  preview + "Save as file"; data-URL prefix toggle.
+- [x] **Base64 (cont.):** Detect file type from decoded bytes (PNG, JPEG, WebP, GIF, PDF) with magic-byte detection; offer "Save Decoded File to Downloads" on IO dispatcher with NonCancellable; strip `data:` URL prefix; Clear & Paste buttons.
 - [x] **JSON:** Error line and column reporting implemented via character index offset calculation; retained state and clear/paste buttons added. Syntax colours / collapsible tree: low priority.
 
 ### 3F. OS integration (low priority, after core tools are solid)
 
 - [ ] `ACTION_PROCESS_TEXT` (select text in any app → "Make QR / Format JSON / Base64 / Hash").
-- [ ] `text/plain` share routing (JSON → JSON tool, URL → QR) and `*/*` → Hash Verifier.
+- [x] `text/plain` share routing (JSON → JSON tool, URL/text → QR Studio) and `*/*` → Hash Verifier, with reactive `SharedPayload` updating across `onNewIntent`.
 - [ ] Quick Settings tile for "Scan QR" / "Shrink last photo" (optional).
 - [ ] Drag-and-drop onto file cards (tablets / split-screen).
 

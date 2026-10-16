@@ -41,13 +41,19 @@ enum class SplitMode(val label: String) {
 private const val JOB_KEY = "pdf_split"
 
 @Composable
-fun PdfSplitScreen(onBack: () -> Unit) {
+fun PdfSplitScreen(
+    initialUri: Uri? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
-    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
-    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(initialUri) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(initialUri?.let { FileUtils.getFileName(context, it) }) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var splitMode by retained(JOB_KEY, "splitMode") { mutableStateOf(SplitMode.CUSTOM_RANGES) }
     var customRangesText by retained(JOB_KEY, "customRangesText") { mutableStateOf("1-3, 4-6") }
@@ -62,6 +68,24 @@ fun PdfSplitScreen(onBack: () -> Unit) {
     var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
     var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                pdfPassword = null
+                pageCount = null
+                processState = ProcessState.Processing(0f, "Opening PDF...")
+                generatedFiles = emptyList()
+            }
+        }
+    }
+
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -69,6 +93,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            pendingShareUri = null
             pdfPassword = null
             pageCount = null
             processState = ProcessState.Processing(0f, "Opening PDF...")
@@ -98,6 +123,57 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Pending share-in warning card
+            if (pendingShareUri != null) {
+                val pendingUri = pendingShareUri!!
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared file: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    pdfPassword = null
+                                    pageCount = null
+                                    processState = ProcessState.Processing(0f, "Opening PDF...")
+                                    generatedFiles = emptyList()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
 
             PdfPasswordGate(
                 uri = selectedUri,
