@@ -16,6 +16,20 @@ Order of work:
 Check items off as they land. Keep one commit per item (or small group) so regressions are
 easy to bisect.
 
+## Status (updated 2026-10-16)
+
+- **Done:** all of 1A (1A.1–1A.8), plus 1B.4, 1B.6, 1B.9, which the same changes fixed.
+  Commits `f7a7c19` … `33a52a8` on local `master`, **not pushed**.
+- **Nothing in 1A has run on a device or emulator yet.** It builds, and the unit tests
+  (GIF encoder, subtitle parser, decode-size maths) pass. See **1D.1** first: device
+  verification of 1A comes before new work.
+- **Next, in order:** 1D.1 (verify 1A) → 1D.2 (bugs/risks in the new 1A code) → rest of 1B →
+  1C → rest of 1D → Phase 2.
+- **Build environment:** `JAVA_HOME` isn't set system-wide. Use
+  `export JAVA_HOME=$JAVA_HOME` before `./gradlew`. The SDK's
+  `system-images/android-34/google_apis/x86_64` is an empty stub (never downloaded) and no AVD
+  exists. Installing the image (~1.5 GB) needs the user's OK. `/dev/kvm` is available.
+
 ---
 
 ## Phase 1 — App-breaking & wrong-output bugs
@@ -79,6 +93,8 @@ easy to bisect.
   `PdfRenderer`). Very common for Indian bank statements, e-Aadhaar, Form 16.
   - Fix: detect encryption on file pick; show a password dialog (shared component) and pass
     the password through the engine. Reuse in all PDF tools.
+  - Done via `core/ui/PdfPasswordGate.kt` + `PdfEngine.checkAccess`. **Not yet used by** Unlock
+    (has its own field; see 2.7) or Merge (no screen yet; `mergePdfs` has no password param, see 2.2).
 
 - [x] **1A.7 Saving broken on Android 8/9 (API 26–28).** Pre-Q branch inserts into
   `MediaStore.Files` with no path and no write permission.
@@ -163,6 +179,158 @@ easy to bisect.
   `Downloads/DigitalPocketKnife`. Centralise the folder name in one constant.
 - [ ] **1C.5 Temp files never deleted.** `cache/outputs/` grows forever (PDF→Images PNGs are
   big). Clean outputs older than N hours on app start + clear on new job per tool.
+  Also clean (added in 1A): `cache/pdfbox/` (PDFBox scratch files left after a crash),
+  `cache/decrypted_*.pdf` (PDF→Images on protected PDFs), `cache/input_*` copies. **Never**
+  delete files belonging to a job that `ToolJobs` reports as running, or a result still shown.
+
+### 1D. Follow-ups found while fixing 1A (2026-10-16)
+
+Problems and risks found during the 1A work. **1D.1 and 1D.2 are blockers**: do them before
+continuing with 1B/1C. The rest can be slotted in where noted.
+
+#### 1D.1 Verify 1A on a device (blocker — nothing has been run yet)
+
+- [ ] Get a test device: install the API 34 (and ideally API 29 + 35) system image and create
+  AVDs, or use the user's phone over `adb`. Ask the user before the download.
+- [ ] **Video (1A.1)**: run every video tool once on a real phone (emulator software codecs are
+  slow and not representative):
+  - Shrink: 1080p and 4K landscape + **portrait** clips. Check output orientation and size, and that
+    the requested bitrate is honoured (some encoders ignore it).
+  - Trim: start/duration in middle of clip; start past end → error; MP4 and MKV input. Confirm
+    trim optimisation doesn't produce a frozen first second.
+  - Mute: output has no audio track, video bit-identical length.
+  - Convert to MP4: MKV (H.264), WEBM (VP9 + Opus), MOV, 3GP, HEVC input.
+  - Audio: M4A from AAC source (should copy) and from Opus source (re-encode); WAV plays in
+    another app and has correct duration (header patched correctly).
+  - Burn Subtitles: SRT and VTT, multi-line cues, landscape + portrait video. Check the text box is
+    bottom-centred and sized sensibly, no flicker between cues, and gaps show nothing.
+  - Video→GIF: 5 s at 15 fps on 480 px. Time it: frame grabbing uses `OPTION_CLOSEST`, which
+    seeks from a keyframe per frame (see 1D.4). Check colours/banding.
+  - Progress bar moves for each; **cancel** (back → Stop) actually stops the encode and deletes
+    the partial file.
+- [ ] **Deep link (1A.2)**: `adb shell am start -a android.intent.action.VIEW -d dpk://nonsense`
+  → app opens on home, no crash. `dpk://pdf_split` → opens Split. Launcher shortcuts still work.
+- [ ] **Photos (1A.3/1B.4/1B.9)**: 108 MP (or 200 MP) photo through every image tool and
+  Photos→PDF: no crash. Portrait photo (EXIF orientation 6) comes out upright everywhere.
+  Shrink with "keep EXIF" doesn't double-rotate. HEIC input works. Max-dimension 1920 → exactly
+  1920 px.
+- [ ] **PDF memory (1A.4)**: 100+ page scanned PDF (~100 MB) through Split, Compress, PDF→Images.
+  Check `cache/pdfbox` temp files are removed after each job.
+- [ ] **Saving (1A.5)**: save a 500 MB video and 50 split files; UI stays responsive, button
+  shows "Saving…". Check no half-written/pending entries remain in Downloads after a failed save.
+- [ ] **Passwords (1A.6)**: user-password PDF (bank statement style) in Split / Compress /
+  PDF→Images: dialog appears, wrong password re-asks, right one works. Owner-password-only PDF
+  (opens without password but has restrictions) renders in PDF→Images (SecurityException
+  fallback path). Damaged/non-PDF file → "isn't a readable PDF". Cancel dialog → selection cleared.
+- [ ] **Android 10+ (1A.7)**: install on API 29: saving to Downloads works without any storage
+  permission; pickers and share-in still work.
+- [ ] **Background jobs (1A.8)**: start a long video shrink → back → "Keep running" → home
+  screen → switch apps for several minutes → job finishes → "finished" notification → tap opens
+  the tool with the result. Also: back → "Stop" → reopen tool shows Idle, not stuck on
+  "Processing". Rotate / dark-mode switch during a job. Deny notification permission → job
+  still completes. Check Android 14 (`dataSync`) and 15 (`mediaProcessing`) FGS types are
+  accepted (no `MissingForegroundServiceTypeException`).
+
+#### 1D.2 Bugs / risks in the new 1A code (blocker — fix before moving on)
+
+- [ ] **Foreground service timeout on Android 15.** `dataSync` and `mediaProcessing` FGS have a
+  6-hour daily limit on API 35; when hit, the system calls `Service.onTimeout(startId, fgsType)`
+  and **crashes the app if the service doesn't stop** within seconds. `ToolJobService` doesn't
+  implement `onTimeout`. Fix: override it, cancel running jobs (or let them finish without FGS),
+  call `stopSelf()`. File: `core/jobs/ToolJobService.kt`.
+- [ ] **Notification small icon.** Progress/done notifications use
+  `R.drawable.ic_launcher_foreground` (full-colour adaptive-icon layer). Status bar will likely
+  show a white square/blob. Add a monochrome 24dp vector (`ic_stat_notify`) and use it.
+- [ ] **Jobs hold the Activity.** The job lambdas capture `LocalContext.current` (the Activity).
+  A job that outlives the screen keeps the destroyed Activity alive until it finishes (memory
+  leak during long encodes; Toasts from a dead Activity). Fix: in `ToolJobs.launch`, pass
+  `applicationContext` into the block (e.g. `block: suspend CoroutineScope.(Context) -> Unit`)
+  and use that in every screen's job body.
+- [ ] **Stale state when a new file is shared into a busy tool.** `retained(...)` keeps the old
+  `selectedUri` while that tool's job runs, so a new share-in (`initialUri`) is ignored without
+  any message. Fix: if `initialUri` differs and a job is running, show "Busy with <file> —
+  wait or stop it" banner; if idle, take the new URI.
+- [ ] **Notification tap resets the back stack.** `openToolIntent` uses `FLAG_ACTIVITY_CLEAR_TASK`
+  → Activity recreated, other open tool's state dropped. Better: `singleTop` + handle
+  `onNewIntent` in `MainActivity` (also needed for share-in, 3B) and navigate there.
+- [ ] **Notification permission nags each app run.** `askedForNotifications` is an in-memory
+  flag. Persist "asked once" in `AppSettings`; after a denial, don't ask again (offer it in
+  Settings instead).
+- [ ] **Saves still tied to the screen.** `ResultCard`'s Save and Split / PDF→Images "Save All" run
+  in the screen's coroutine scope. Leaving mid-save cancels it; the partial entry is deleted,
+  but for Save All some files are saved and the rest silently aren't. Fix: run saves through
+  `ToolJobs` too (or `NonCancellable` + finish), and report "Saved 7 of 12".
+- [ ] **Two heavy jobs at once.** `ToolJobs` lets every tool run a job at the same time (e.g. two
+  video encodes); hardware encoders are limited and may fail with `ENCODER_INIT_FAILED`.
+  Fix: queue video jobs (one at a time) and show "Waiting…" in the second tool.
+- [ ] **Process death loses results.** The retained store is in memory only. If the OS kills the
+  process (rare with the FGS, possible after the job finishes and the FGS stops), the result
+  card is gone and the output file sits orphaned in `cache/outputs`. Acceptable for now. Revisit
+  with ViewModel + `SavedStateHandle` (3E) and the cache cleanup (1C.5).
+- [ ] **Not converted to background jobs:** Hash Verifier (multi-GB files can take a while),
+  Palette, QR. Hash should move to `ToolJobs` (with progress, see 3D).
+- [ ] **Password gate copies the PDF twice.** `PdfEngine.checkAccess` copies the whole file to
+  cache and parses it on pick; the tool then copies it again to run. Slow on 100 MB PDFs, and
+  "Opening PDF…" has no progress or cancel. Fix with 2.0 "PDF info on pick": copy once, keep
+  the cached file + page count + encryption flag for the whole screen session.
+- [ ] **Encryption of outputs is inconsistent.** With a password-protected input, Split outputs
+  are written **without** a password (pages copied into new documents), while Compress re-saves
+  the original document and probably **keeps** the encryption. Verify, then decide and tell the
+  user in the result ("Output has no password" / "Output keeps the same password"). Ties to 2.7.
+- [ ] **Media3 HDR input.** Phone cameras record HDR10/HLG. Transformer's default with H.264 SDR
+  output may fail or look washed out. Set
+  `Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL` (or MediaCodec tone-map where
+  supported) for Shrink / Convert / Captions. Verify with an HDR clip.
+- [ ] **Shrink can make files bigger.** For small/low-bitrate inputs the requested bitrate can
+  exceed the source (capped at 80 % of the source bitrate only when the bitrate is readable).
+  Show "could not reduce" and don't offer overwrite when output ≥ input (same rule as 1B.3/1B.7).
+- [ ] **WAV assumes 16-bit PCM.** `decodeToWav` writes a 16-bit header always; if a decoder
+  outputs float PCM (`KEY_PCM_ENCODING` = `ENCODING_PCM_FLOAT`), the WAV is noise. Read the
+  output format's PCM encoding and write format 3 (float) or convert to 16-bit.
+- [ ] **Image decode cap silently lowers resolution.** `BitmapDecoder` caps at 24 MP (12 MP on
+  low-RAM, 16 MP for scanner / Photos→PDF). A 50 MP photo through **Convert** or **EXIF strip**
+  comes out at 24 MP without telling the user. Fix: show "Reduced to W×H to fit in memory" in
+  the result, and for EXIF strip on JPEG skip decoding entirely (1B.11 lossless path).
+- [ ] **Animated images lose animation.** `ImageDecoder.decodeBitmap` returns only the first
+  frame of animated GIF/WEBP; Convert/Shrink silently output a still. Detect (`ImageDecoder`
+  returns `AnimatedImageDrawable` via `decodeDrawable`) and warn.
+- [ ] **Wide-gamut / 16-bit images.** `ImageDecoder` may return `RGBA_F16` / Display-P3 bitmaps
+  for some HEIF/PNG. Check `Bitmap.compress` and PDFBox `JPEGFactory` handle them; if not, force
+  `setTargetColorSpace(sRGB)` and `ARGB_8888` in `BitmapDecoder`.
+- [ ] **Run Android lint** (`./gradlew lintDebug`); not run during 1A. Expect `MissingPermission`
+  (suppressed on `ToolJobService`), possible `NewApi`, unused imports and the now-unused
+  `scope` vals in converted screens. Fix what it reports.
+
+#### 1D.3 Stale text left behind by 1A (do with 3B copy cleanup, or sooner — it's quick)
+
+- [ ] **README.md** still says "powered by … **FFmpeg-Kit**", lists MKV/WEBM output, "Video
+  Format Exchange" (MP4/MKV/WEBM/MOV/GIF), MP3/FLAC audio, `-c copy` trimming. Rewrite the video
+  section for Media3: Convert to MP4, M4A/WAV, Android 10+ requirement, new notification permission.
+- [ ] Screen titles don't match the new home titles: "Video to Smooth GIF Maker" (→ "Video to
+  GIF"), "Lossless Trim & Mute" (trim optimisation re-encodes the frames before the first
+  keyframe, so "lossless" is not quite true → "Trim & Mute"), "Split PDF / Multi-File Split",
+  "Shrink & Compress PDF", "Photo Format Exchange". Home tool card "Lossless Trim & Mute" + badge
+  "Lossless" too. Pick one name per tool and use it in home, screen title, `ToolJobs` title,
+  notifications and launcher shortcuts.
+- [ ] `VideoCaptionScreen`'s font-size slider says "pt"; it's now "relative to 720p height"
+  (`SubtitleOverlay`). Rename to "Text size" with S/M/L or a preview.
+- [ ] Convert to MP4 still shows the **Save Mode** selector. "Modify original" on an `.mkv`
+  writes MP4 bytes into the `.mkv` (1B.7). Until 1B.7 lands, hide Save Mode on Convert.
+
+#### 1D.4 Quality/performance improvements to the new video code (after 1D.1 numbers)
+
+- [ ] **Video→GIF speed:** replace per-frame `getScaledFrameAtTime(OPTION_CLOSEST)` with one
+  sequential `MediaExtractor` + `MediaCodec` decode to a `ImageReader`/Surface, sampling frames
+  at the target fps. If the 1D.1 timing is acceptable, keep as is.
+- [ ] **Video→GIF quality:** add ordered (Bayer) or Floyd–Steinberg dithering option in
+  `GifEncoder`, and frame-diff transparency to shrink files. Median-cut per frame is O(colours ×
+  256), fine at 480 px; re-check at 720 px.
+- [ ] **Media3 version:** project pins 1.4.1. Newer 1.5+/1.6+ improve trim optimisation, HDR
+  handling and add `Transformer` features. Evaluate the upgrade once 1D.1 baselines exist.
+- [ ] **Instrumented tests:** add `androidTest` with tiny bundled sample clips (MP4 H.264+AAC,
+  WEBM VP9+Opus, portrait MP4, SRT) exercising each `VideoEngine` function and checking
+  duration / track count / dimensions with `MediaMetadataRetriever`. Same for `BitmapDecoder`
+  (EXIF-rotated JPEG, HEIC, PNG with alpha) and `PdfEngine` (encrypted PDF, 150-page PDF).
 
 ---
 
@@ -331,7 +499,9 @@ easy to bisect.
 - [ ] **Result card upgrade:** preview output, Open, rename before save, "Save As…" (pick
   folder via `CreateDocument`), "Show in folder", Share all for multi-file.
 - [ ] **"Continue with…"** chaining: Split→Compress, Photos→PDF→Compress, Shrink→Share.
-- [ ] **Real progress + Cancel** everywhere (fake fixed 0.3/0.5 values today).
+- [ ] **Real progress + Cancel** everywhere. Video tools have real progress and cancel (via
+  back → Stop) since 1A. PDF and image tools still use fixed 0.3/0.5 values and have no
+  visible Cancel button.
 - [ ] **Share-in to every tool:** currently only 6 routes receive the shared URI. Add
   `ACTION_SEND_MULTIPLE` (images → Photos→PDF / batch shrink; PDFs → Merge). Shared-file banner
   should show a thumbnail and be dismissible. Handle `onNewIntent` if app already open.
@@ -361,15 +531,14 @@ easy to bisect.
 - [ ] **Video→GIF:** start time is hard-coded `0` (`VideoToGifScreen.kt:155`) — add start selection
   with preview; show estimated size.
 - [ ] **Audio Extract:** picker only allows `video/*` though home routes audio shares to it.
-- [ ] **Burn Subtitles:** path escaping does `replace(":")` then `replace("\\","/")`, which breaks
-  its own escape (`VideoEngine.kt:108`); `.vtt` copied as `subtitles.srt`; needs libass-enabled
-  build. Add preview of first subtitle line.
-- [ ] **Video Convert:** home says MOV is supported; it isn't. Becomes "Convert to MP4" (1A.1).
+- [x] ~~**Burn Subtitles:** FFmpeg path escaping / `.vtt` as `.srt` / libass~~ — obsolete, FFmpeg
+  removed in 1A.1 (own SRT/VTT parser). Still to do: preview of first subtitle line.
+- [x] **Video Convert:** became "Convert to MP4" (1A.1); MOV input accepted.
 - [ ] **Shrink:** add "target size (e.g. 16 MB for WhatsApp, 25 MB for email)" mode; show
   input resolution/duration.
-- [ ] Real progress from encoder callbacks (Media3 `getProgress` / FFmpeg statistics).
-- [ ] Media3 only (no FFmpeg). Transformer copies streams when no effects apply (trim, mute,
-  remux, AAC rip). It re-encodes on hardware only when needed.
+- [x] Real progress from encoder callbacks — done in 1A.1 (`Transformer.getProgress`, per-frame for
+  GIF, per-buffer for WAV).
+- [x] Media3 only (no FFmpeg) — done in 1A.1.
 - [ ] Convert: show input codec/resolution (MediaExtractor/MediaMetadataRetriever); say
   "instant, no quality loss" when it will only remux.
 - [ ] Audio Extract: AAC → M4A without re-encoding; optional start/end range.
@@ -386,7 +555,7 @@ easy to bisect.
   share-in.
 - [ ] **QR scanning** (camera via CameraX + ZXing, and "scan from screenshot/gallery") with
   actions: open URL, copy, connect to Wi-Fi, add contact. Styling/SVG export: skip unless asked.
-- [ ] **Hash Verifier:** reads the file twice (MD5 then SHA-256) — compute both in one pass;
+- [ ] **Hash Verifier:** run via `ToolJobs` (1D.2); reads the file twice (MD5 then SHA-256) — compute both in one pass;
   home description claims SHA-1 (not offered — add SHA-1/SHA-512); progress for big files;
   text-hash mode; compare two files; detect a hash in clipboard and auto-compare; show hash in
   4-char groups with mismatches highlighted.
@@ -410,14 +579,17 @@ easy to bisect.
   x86/x86_64 → bigger APK. Enable R8 + resource shrinking, use ABI splits / App Bundle.
 - [ ] `window.statusBarColor` / `navigationBarColor` are no-ops on Android 15 with
   edge-to-edge (targetSdk 35) — rely on `enableEdgeToEdge` + insets.
-- [ ] Remove `ffmpeg-kit` + `smart-exception` deps and the JitPack repo (1A.1). Drop
-  `pickFirsts libc++_shared.so` if nothing else needs it. Add `media3-exoplayer`/`ui` only if
+- [x] Remove `ffmpeg-kit` dep, JitPack repo and `pickFirsts libc++_shared.so` — done in 1A.1.
+  (`smart-exception` was never a direct dependency.) Add `media3-exoplayer`/`ui` only if
   video previews get built (3C).
 - [ ] With FFmpeg gone, re-check APK size; likely possible to drop x86/x86_64 from `abiFilters`
   entirely (only emulators use them).
-- [ ] Move screen state + logic into ViewModels (also fixes 1A.8, process death).
-- [ ] **No tests exist.** Add unit tests for: page range parsing/validation, split chunking,
-  target-size search, output naming, orientation handling.
+- [ ] Move screen state + logic into ViewModels + `SavedStateHandle` (process death; see 1D.2).
+  1A.8 was solved without ViewModels (`core/jobs/ToolJobs` + `retained` store); a later
+  ViewModel move should keep jobs in `ToolJobs` so they still survive leaving the screen.
+- [ ] **Tests:** JUnit added in 1A (`app/src/test`: GifEncoder, SubtitleParser, BitmapDecoder
+  size maths). Still to add: page range parsing/validation, split chunking, target-size search,
+  output naming; instrumented tests per 1D.4.
 - [ ] `versionCode`/`versionName` still 1 / 1.0.0 — bump per release.
 
 ---
@@ -451,7 +623,9 @@ Still open (ask when reached):
 
 ## Verification checklist per phase
 
-- Build: `./gradlew assembleDebug` clean.
+- Build: `JAVA_HOME=$JAVA_HOME ./gradlew assembleDebug testDebugUnitTest` clean;
+  `lintDebug` with no new errors.
+- Phase 1A specifics: see 1D.1 (detailed per-item device checks).
 - Phase 1: test on API 29 + API 35 emulators and a real phone: 10-page and 150-page PDFs,
   encrypted PDF, 100 MB scanned PDF, 108 MP portrait photo, PNG with transparency, every video
   tool once, deep link `adb shell am start -d dpk://nonsense`.
