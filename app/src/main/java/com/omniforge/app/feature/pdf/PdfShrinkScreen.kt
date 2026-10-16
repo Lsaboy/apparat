@@ -39,7 +39,11 @@ fun PdfShrinkScreen(
 
     var compressionLevel by remember { mutableFloatStateOf(0.6f) }
     var saveMode by remember { mutableStateOf(SaveMode.NEW_COPY) }
-    var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var processState by remember {
+        mutableStateOf<ProcessState>(if (initialUri != null) ProcessState.Processing(0f, "Opening PDF...") else ProcessState.Idle)
+    }
+    // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
+    var pdfPassword by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -48,7 +52,8 @@ fun PdfShrinkScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            processState = ProcessState.Idle
+            pdfPassword = null
+            processState = ProcessState.Processing(0f, "Opening PDF...")
         }
     }
 
@@ -67,6 +72,23 @@ fun PdfShrinkScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            PdfPasswordGate(
+                uri = selectedUri,
+                fileName = fileName,
+                needsCheck = pdfPassword == null,
+                accentColor = AccentPdf,
+                onReady = { password ->
+                    pdfPassword = password
+                    processState = ProcessState.Idle
+                },
+                onFailed = { message ->
+                    selectedUri = null
+                    fileName = null
+                    fileSize = null
+                    processState = ProcessState.Error(message)
+                }
+            )
 
             FileSelectionCard(
                 fileName = fileName,
@@ -120,7 +142,7 @@ fun PdfShrinkScreen(
                     val uri = selectedUri ?: return@Button
                     scope.launch {
                         processState = ProcessState.Processing(0.4f, "Compressing PDF streams...")
-                        val result = PdfEngine.compressPdf(context, uri, compressionLevel)
+                        val result = PdfEngine.compressPdf(context, uri, compressionLevel, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { outputFile ->
                                 if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
@@ -154,7 +176,7 @@ fun PdfShrinkScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
-                enabled = selectedUri != null && processState !is ProcessState.Processing
+                enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
                 Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))

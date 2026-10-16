@@ -52,6 +52,8 @@ fun PdfSplitScreen(onBack: () -> Unit) {
 
     var generatedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
+    var pdfPassword by remember { mutableStateOf<String?>(null) }
     var saveProgress by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -61,7 +63,8 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            processState = ProcessState.Idle
+            pdfPassword = null
+            processState = ProcessState.Processing(0f, "Opening PDF...")
             generatedFiles = emptyList()
         }
     }
@@ -81,6 +84,23 @@ fun PdfSplitScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            PdfPasswordGate(
+                uri = selectedUri,
+                fileName = fileName,
+                needsCheck = pdfPassword == null,
+                accentColor = AccentPdf,
+                onReady = { password ->
+                    pdfPassword = password
+                    processState = ProcessState.Idle
+                },
+                onFailed = { message ->
+                    selectedUri = null
+                    fileName = null
+                    fileSize = null
+                    processState = ProcessState.Error(message)
+                }
+            )
 
             FileSelectionCard(
                 fileName = fileName,
@@ -243,7 +263,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                             return@launch
                         }
 
-                        val result = PdfEngine.multiSplitPdf(context, uri, ranges)
+                        val result = PdfEngine.multiSplitPdf(context, uri, ranges, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { files ->
                                 generatedFiles = files
@@ -267,7 +287,7 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
-                enabled = selectedUri != null && processState !is ProcessState.Processing
+                enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
                 Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))

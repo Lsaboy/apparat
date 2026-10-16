@@ -36,6 +36,8 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
 
     var renderedPages by remember { mutableStateOf<List<File>>(emptyList()) }
     var processState by remember { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
+    var pdfPassword by remember { mutableStateOf<String?>(null) }
     var saveProgress by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -45,7 +47,8 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            processState = ProcessState.Idle
+            pdfPassword = null
+            processState = ProcessState.Processing(0f, "Opening PDF...")
             renderedPages = emptyList()
         }
     }
@@ -66,6 +69,23 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
+            PdfPasswordGate(
+                uri = selectedUri,
+                fileName = fileName,
+                needsCheck = pdfPassword == null,
+                accentColor = AccentPdf,
+                onReady = { password ->
+                    pdfPassword = password
+                    processState = ProcessState.Idle
+                },
+                onFailed = { message ->
+                    selectedUri = null
+                    fileName = null
+                    fileSize = null
+                    processState = ProcessState.Error(message)
+                }
+            )
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
@@ -80,7 +100,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
                     val uri = selectedUri ?: return@Button
                     scope.launch {
                         processState = ProcessState.Processing(0.3f, "Rendering pages into PNG images...")
-                        val result = PdfEngine.pdfToImages(context, uri)
+                        val result = PdfEngine.pdfToImages(context, uri, password = pdfPassword ?: "")
                         result.fold(
                             onSuccess = { files ->
                                 renderedPages = files
@@ -104,7 +124,7 @@ fun PdfToImagesScreen(onBack: () -> Unit) {
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
-                enabled = selectedUri != null && processState !is ProcessState.Processing
+                enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
                 Icon(imageVector = Icons.Default.Collections, contentDescription = null, tint = AmoledBlack)
                 Spacer(modifier = Modifier.width(8.dp))

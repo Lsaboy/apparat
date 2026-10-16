@@ -8,6 +8,7 @@ import com.omniforge.app.engine.image.BitmapDecoder
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
@@ -21,6 +22,18 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
+/** Thrown when a PDF needs a password, or the one given is wrong. */
+class PdfPasswordException(val wrongPassword: Boolean) : Exception(
+    if (wrongPassword) "Wrong password for this PDF" else "This PDF is password-protected"
+)
+
+sealed interface PdfAccess {
+    data class Open(val pageCount: Int, val isEncrypted: Boolean) : PdfAccess
+    /** [wrongPassword] is true when a password was given but didn't match. */
+    data class NeedsPassword(val wrongPassword: Boolean) : PdfAccess
+    data class Damaged(val message: String) : PdfAccess
+}
+
 object PdfEngine {
 
     /**
@@ -30,8 +43,45 @@ object PdfEngine {
     private fun tempFileMemory(context: Context): MemoryUsageSetting =
         MemoryUsageSetting.setupTempFileOnly().setTempDir(File(context.cacheDir, "pdfbox").apply { mkdirs() })
 
+    /** Opens with PDFBox; a missing/wrong password surfaces as [PdfPasswordException]. */
     private fun openDocument(context: Context, file: File, password: String = ""): PDDocument =
-        PDDocument.load(file, password, tempFileMemory(context))
+        try {
+            PDDocument.load(file, password, tempFileMemory(context))
+        } catch (e: InvalidPasswordException) {
+            throw PdfPasswordException(wrongPassword = password.isNotEmpty())
+        }
+
+    /**
+     * Checks whether [inputUri] opens with [password] ("" = no password). Call on file pick
+     * to decide whether to ask for a password before running a tool.
+     */
+    suspend fun checkAccess(context: Context, inputUri: Uri, password: String = ""): PdfAccess =
+        withContext(Dispatchers.IO) {
+            val cachedInput = try {
+                FileUtils.copyUriToCache(context, inputUri)
+            } catch (e: Exception) {
+                return@withContext PdfAccess.Damaged("Could not read the selected file. Pick it again.")
+            }
+            try {
+                openDocument(context, cachedInput, password).use { PdfAccess.Open(it.numberOfPages, it.isEncrypted) }
+            } catch (e: PdfPasswordException) {
+                PdfAccess.NeedsPassword(e.wrongPassword)
+            } catch (e: Exception) {
+                PdfAccess.Damaged("This file isn't a readable PDF (it may be damaged).")
+            } finally {
+                cachedInput.delete()
+            }
+        }
+
+    /** Writes a password-free copy of [file] for PdfRenderer, which can't take a password. */
+    private fun decryptToTemp(context: Context, file: File, password: String): File {
+        val out = File(context.cacheDir, "decrypted_${System.currentTimeMillis()}.pdf")
+        openDocument(context, file, password).use { doc ->
+            doc.isAllSecurityToBeRemoved = true
+            doc.save(out)
+        }
+        return out
+    }
 
     /**
      * Removes password protection from an encrypted PDF.
@@ -75,13 +125,14 @@ object PdfEngine {
     suspend fun compressPdf(
         context: Context,
         inputUri: Uri,
-        imageQuality: Float = 0.6f
+        imageQuality: Float = 0.6f,
+        password: String = ""
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "compressed", ".pdf")
 
-            val document = openDocument(context, cachedInput)
+            val document = openDocument(context, cachedInput, password)
             try {
                 // PDFBox compression: optimize stream filters and resave
                 document.save(outputFile)
@@ -166,13 +217,14 @@ object PdfEngine {
         context: Context,
         inputUri: Uri,
         startPage: Int,
-        endPage: Int
+        endPage: Int,
+        password: String = ""
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "split_p${startPage}_p$endPage", ".pdf")
 
-            val document = openDocument(context, cachedInput)
+            val document = openDocument(context, cachedInput, password)
             val newDoc = PDDocument(tempFileMemory(context))
 
             try {
@@ -200,11 +252,12 @@ object PdfEngine {
     suspend fun multiSplitPdf(
         context: Context,
         inputUri: Uri,
-        ranges: List<IntRange>
+        ranges: List<IntRange>,
+        password: String = ""
     ): Result<List<File>> = withContext(Dispatchers.IO) {
         runCatching {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val document = openDocument(context, cachedInput)
+            val document = openDocument(context, cachedInput, password)
             val outputFiles = mutableListOf<File>()
 
             try {
@@ -235,14 +288,32 @@ object PdfEngine {
      */
     suspend fun pdfToImages(
         context: Context,
-        inputUri: Uri
+        inputUri: Uri,
+        password: String = ""
     ): Result<List<File>> = withContext(Dispatchers.IO) {
         runCatching {
-            val cachedInput = FileUtils.copyUriToCache(context, inputUri)
+            var cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val renderedFiles = mutableListOf<File>()
 
-            val pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
-            val renderer = android.graphics.pdf.PdfRenderer(pfd)
+            fun decrypted(): File {
+                try {
+                    return decryptToTemp(context, cachedInput, password)
+                } finally {
+                    cachedInput.delete()
+                }
+            }
+            if (password.isNotEmpty()) cachedInput = decrypted()
+
+            var pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+            val renderer = try {
+                android.graphics.pdf.PdfRenderer(pfd)
+            } catch (e: SecurityException) {
+                // Encrypted (e.g. owner-password only): decrypt with PDFBox, then render.
+                pfd.close()
+                cachedInput = decrypted()
+                pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+                android.graphics.pdf.PdfRenderer(pfd)
+            }
 
             try {
                 for (i in 0 until renderer.pageCount) {

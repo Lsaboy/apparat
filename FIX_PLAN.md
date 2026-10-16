@@ -74,7 +74,7 @@ easy to bisect.
   - Fix: make `saveToDownloads` `suspend` + `Dispatchers.IO`, show progress, disable button
     while saving.
 
-- [ ] **1A.6 Password-protected PDFs fail in Split / Compress / PDF→Images** with a raw
+- [x] **1A.6 Password-protected PDFs fail in Split / Compress / PDF→Images** with a raw
   exception message (`InvalidPasswordException` from PDFBox, `SecurityException` from
   `PdfRenderer`). Very common for Indian bank statements, e-Aadhaar, Form 16.
   - Fix: detect encryption on file pick; show a password dialog (shared component) and pass
