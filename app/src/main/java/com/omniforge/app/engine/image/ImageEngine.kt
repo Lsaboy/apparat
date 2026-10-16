@@ -148,23 +148,95 @@ object ImageEngine {
         }
     }
 
+    private val TAGS_TO_PRESERVE = setOf(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.TAG_IMAGE_WIDTH,
+        ExifInterface.TAG_IMAGE_LENGTH
+    )
+
+    private val ALL_EXIF_TAGS: List<String> by lazy {
+        ExifInterface::class.java.fields
+            .filter { it.name.startsWith("TAG_") && it.type == String::class.java }
+            .mapNotNull { runCatching { it.get(null) as? String }.getOrNull() }
+            .filter { it !in TAGS_TO_PRESERVE }
+    }
+
     /**
      * Strips all EXIF metadata (camera, location, timestamps) for privacy.
+     * Uses lossless tag clearing for JPEG (preserving orientation), and preserves
+     * native format for PNG and WEBP.
      */
     suspend fun stripExif(
         context: Context,
         inputUri: Uri
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val bitmap = BitmapDecoder.decode(context, inputUri)
+            val mime = context.contentResolver.getType(inputUri)?.lowercase()
+            val ext = FileUtils.getFileName(context, inputUri).substringAfterLast('.', "").lowercase()
+            val isJpeg = mime in listOf("image/jpeg", "image/jpg") || ext in listOf("jpg", "jpeg", "jpe")
+            val isPng = mime == "image/png" || ext == "png"
+            val isWebp = mime == "image/webp" || ext == "webp"
 
-            // Re-encoding directly strips all original metadata
-            val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
-            FileOutputStream(outputFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+            if (isJpeg) {
+                val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
+                try {
+                    // Step 1: Copy raw bytes directly (zero generation loss, fast)
+                    context.contentResolver.openInputStream(inputUri)?.use { input ->
+                        FileOutputStream(outputFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    } ?: throw java.io.IOException("Cannot read input: $inputUri")
+
+                    // Step 2: Clear metadata tags while strictly preserving TAG_ORIENTATION
+                    val exif = ExifInterface(outputFile.absolutePath)
+                    for (tag in ALL_EXIF_TAGS) {
+                        exif.setAttribute(tag, null)
+                    }
+                    exif.saveAttributes()
+                    outputFile
+                } catch (e: Exception) {
+                    // Step 3: Fallback if JPEG has non-consecutive thumbnail strips or malformed APP1
+                    outputFile.delete()
+                    val fallbackFile = FileUtils.createTempOutputFile(context, "clean_exif_fallback", ".jpg")
+                    val bitmap = BitmapDecoder.decode(context, inputUri)
+                    FileOutputStream(fallbackFile).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                    }
+                    bitmap.recycle()
+                    fallbackFile
+                }
+            } else if (isPng) {
+                val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".png")
+                val bitmap = BitmapDecoder.decode(context, inputUri)
+                FileOutputStream(outputFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                bitmap.recycle()
+                outputFile
+            } else if (isWebp) {
+                val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".webp")
+                val bitmap = BitmapDecoder.decode(context, inputUri)
+                FileOutputStream(outputFile).use { out ->
+                    val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Bitmap.CompressFormat.WEBP_LOSSLESS
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Bitmap.CompressFormat.WEBP
+                    }
+                    bitmap.compress(format, 100, out)
+                }
+                bitmap.recycle()
+                outputFile
+            } else {
+                // Fallback for HEIC or other formats
+                val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
+                val bitmap = BitmapDecoder.decode(context, inputUri)
+                FileOutputStream(outputFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                }
+                bitmap.recycle()
+                outputFile
             }
-            bitmap.recycle()
-            outputFile
         }
     }
 

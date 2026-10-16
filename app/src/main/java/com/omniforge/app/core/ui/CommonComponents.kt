@@ -445,8 +445,16 @@ fun ProcessStateView(
 fun SaveModeSelector(
     saveMode: com.omniforge.app.core.settings.SaveMode,
     onSaveModeChange: (com.omniforge.app.core.settings.SaveMode) -> Unit,
-    accentColor: Color = MaterialTheme.colorScheme.primary
+    accentColor: Color = MaterialTheme.colorScheme.primary,
+    allowOverwrite: Boolean = true,
+    disallowedReason: String? = null
 ) {
+    LaunchedEffect(allowOverwrite) {
+        if (!allowOverwrite && saveMode == com.omniforge.app.core.settings.SaveMode.OVERWRITE_ORIGINAL) {
+            onSaveModeChange(com.omniforge.app.core.settings.SaveMode.NEW_COPY)
+        }
+    }
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
@@ -466,15 +474,22 @@ fun SaveModeSelector(
             ) {
                 com.omniforge.app.core.settings.SaveMode.entries.forEach { mode ->
                     val isSelected = saveMode == mode
+                    val isEnabled = mode != com.omniforge.app.core.settings.SaveMode.OVERWRITE_ORIGINAL || allowOverwrite
                     OutlinedButton(
                         onClick = { onSaveModeChange(mode) },
+                        enabled = isEnabled,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (isSelected) accentColor else Color.Transparent,
-                            contentColor = if (isSelected) AmoledBlack else TextPrimary
+                            contentColor = if (isSelected) AmoledBlack else TextPrimary,
+                            disabledContainerColor = Color.Transparent,
+                            disabledContentColor = TextSecondary.copy(alpha = 0.38f)
                         ),
-                        border = BorderStroke(1.dp, if (isSelected) accentColor else DarkBorder)
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) accentColor else DarkBorder
+                        )
                     ) {
                         Text(
                             text = if (mode == com.omniforge.app.core.settings.SaveMode.NEW_COPY) "New Copy" else "Modify OG",
@@ -486,8 +501,11 @@ fun SaveModeSelector(
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = saveMode.description,
-                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp)
+                text = if (!allowOverwrite && disallowedReason != null) disallowedReason else saveMode.description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = if (!allowOverwrite && disallowedReason != null) ErrorRed else TextSecondary,
+                    fontSize = 11.sp
+                )
             )
         }
     }

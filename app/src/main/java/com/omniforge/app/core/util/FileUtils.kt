@@ -140,4 +140,29 @@ object FileUtils {
             false
         }
     }
+
+    fun isImageFormatMatching(mime: String?, fileName: String, target: com.omniforge.app.engine.image.ImageOutputFormat): Boolean {
+        val lowerMime = mime?.lowercase()
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return when (target) {
+            com.omniforge.app.engine.image.ImageOutputFormat.JPEG -> lowerMime in listOf("image/jpeg", "image/jpg") || ext in listOf("jpg", "jpeg", "jpe")
+            com.omniforge.app.engine.image.ImageOutputFormat.PNG -> lowerMime == "image/png" || ext == "png"
+            com.omniforge.app.engine.image.ImageOutputFormat.WEBP -> lowerMime == "image/webp" || ext == "webp"
+        }
+    }
+
+    fun isImageFormatMatching(context: Context, uri: Uri, target: com.omniforge.app.engine.image.ImageOutputFormat): Boolean {
+        return isImageFormatMatching(context.contentResolver.getType(uri), getFileName(context, uri), target)
+    }
+
+    fun isVideoMp4(mime: String?, fileName: String): Boolean {
+        val lowerMime = mime?.lowercase()
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return lowerMime == "video/mp4" || ext in listOf("mp4", "m4v")
+    }
+
+    fun isVideoMp4(context: Context, uri: Uri): Boolean {
+        return isVideoMp4(context.contentResolver.getType(uri), getFileName(context, uri))
+    }
 }
+

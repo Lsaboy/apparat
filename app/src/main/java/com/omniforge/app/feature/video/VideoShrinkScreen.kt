@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -45,7 +46,7 @@ fun VideoShrinkScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var selectedPreset by retained(JOB_KEY, "selectedPreset") { mutableStateOf(VideoShrinkPreset.DISCORD_FAST) }
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -59,6 +60,13 @@ fun VideoShrinkScreen(
             processState = ProcessState.Idle
         }
     }
+
+    val isFormatMismatch = selectedUri != null && !FileUtils.isVideoMp4(context, selectedUri!!)
+    val allowOverwrite = !isFormatMismatch
+    val disallowedReason = if (isFormatMismatch) {
+        val inputExt = fileName?.substringAfterLast('.', "")?.uppercase() ?: "original"
+        "Cannot modify original: output is MP4 but original is $inputExt"
+    } else null
 
     ToolScaffold(
         title = "Video Shrinker",
@@ -90,7 +98,9 @@ fun VideoShrinkScreen(
             SaveModeSelector(
                 saveMode = saveMode,
                 onSaveModeChange = { saveMode = it },
-                accentColor = AccentVideo
+                accentColor = AccentVideo,
+                allowOverwrite = allowOverwrite,
+                disallowedReason = disallowedReason
             )
 
             // Preset Selection
@@ -145,9 +155,20 @@ fun VideoShrinkScreen(
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
+                                    runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
+                                }
+                                val newBytes = outputFile.length()
+
+                                if (origBytes > 0L && newBytes >= origBytes) {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Video is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                    )
+                                } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
                                     if (overwritten) {
+                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original video overwritten in-place!"
@@ -155,7 +176,7 @@ fun VideoShrinkScreen(
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Compressed! (Saved as copy in Downloads)"
+                                            message = "Processed! (Original is read-only — tap Save below to save copy)"
                                         )
                                     }
                                 } else {

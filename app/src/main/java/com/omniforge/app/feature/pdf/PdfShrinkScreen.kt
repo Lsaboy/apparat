@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -43,7 +44,7 @@ fun PdfShrinkScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var compressionLevel by retained(JOB_KEY, "compressionLevel") { mutableFloatStateOf(0.6f) }
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
     var processState by retained(JOB_KEY, "processState") {
         mutableStateOf<ProcessState>(if (initialUri != null) ProcessState.Processing(0f, "Opening PDF...") else ProcessState.Idle)
     }
@@ -185,7 +186,7 @@ fun PdfShrinkScreen(
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Compressed! (Original protected, saved as copy)"
+                                            message = "Compressed! (Original is read-only — tap Save below to save copy)"
                                         )
                                     }
                                 } else {

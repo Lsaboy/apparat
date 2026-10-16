@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -45,7 +46,7 @@ fun ImageConvertScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var targetFormat by retained(JOB_KEY, "targetFormat") { mutableStateOf(ImageOutputFormat.PNG) }
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
     var quality by retained(JOB_KEY, "quality") { mutableFloatStateOf(90f) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -59,6 +60,13 @@ fun ImageConvertScreen(
             processState = ProcessState.Idle
         }
     }
+
+    val isFormatMismatch = selectedUri != null && !FileUtils.isImageFormatMatching(context, selectedUri!!, targetFormat)
+    val allowOverwrite = !isFormatMismatch
+    val disallowedReason = if (isFormatMismatch) {
+        val inputExt = fileName?.substringAfterLast('.', "")?.uppercase() ?: "original"
+        "Cannot modify original: format differs ($inputExt → ${targetFormat.name})"
+    } else null
 
     ToolScaffold(
         title = "Convert Image",
@@ -105,7 +113,9 @@ fun ImageConvertScreen(
             SaveModeSelector(
                 saveMode = saveMode,
                 onSaveModeChange = { saveMode = it },
-                accentColor = AccentImage
+                accentColor = AccentImage,
+                allowOverwrite = allowOverwrite,
+                disallowedReason = disallowedReason
             )
 
             if (targetFormat != ImageOutputFormat.PNG) {
@@ -148,7 +158,7 @@ fun ImageConvertScreen(
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
                                     if (overwritten) {
                                         processState = ProcessState.Success(
@@ -158,7 +168,7 @@ fun ImageConvertScreen(
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Converted! (Saved as copy in Downloads)"
+                                            message = "Converted! (Original is read-only — tap Save below to save copy)"
                                         )
                                     }
                                 } else {

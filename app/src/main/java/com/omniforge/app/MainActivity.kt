@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
             OmniForgeTheme(
                 themeStyle = appSettings.themeStyle,
                 accentColor = appSettings.currentAccentColor,
-                isDynamicColor = appSettings.isDynamicColorEnabled
+                isDynamicColor = appSettings.isDynamicColorEnabled,
+                recomposeTrigger = themeRecomposeTrigger
             ) {
                 val navController = rememberNavController()
 

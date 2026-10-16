@@ -68,6 +68,7 @@ fun OmniForgeTheme(
     themeStyle: ThemeStyle = ThemeStyle.AMOLED,
     accentColor: Color = PrimaryTeal,
     isDynamicColor: Boolean = true,
+    recomposeTrigger: Int = 0,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current

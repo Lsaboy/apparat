@@ -144,7 +144,7 @@ easy to bisect.
 - [x] **1B.6 Video Shrinker ignores container choice.** Always MP4, saved as `.mkv`/`.webm`.
   - Resolved by 1A.1: Media3 outputs MP4 only, so remove the container selector.
 
-- [ ] **1B.7 "Modify Original" corrupts files when format changes.** PNG→JPG with Modify OG
+- [x] **1B.7 "Modify Original" corrupts files when format changes.** PNG→JPG with Modify OG
   writes JPEG bytes into the `.png`. Same for Shrink→WEBP, Video→MKV etc.
   - Fix: only allow overwrite when output format == input format; otherwise disable the option
     with an explanation. Also refuse overwrite when output is larger (Shrink/Compress).
@@ -162,17 +162,17 @@ easy to bisect.
   - Phase 1 fix: default to A4 fit with margins. Full options in Phase 2 (2.5).
   - File: `PdfEngine.kt:101`.
 
-- [ ] **1B.11 EXIF "strip" re-encodes at q95 and forces JPEG.** PNG input becomes JPG,
+- [x] **1B.11 EXIF "strip" re-encodes at q95 and forces JPEG.** PNG input becomes JPG,
   quality loss, file can grow.
   - Fix: for JPEG, remove tags with `ExifInterface` (no re-encode). For PNG/WEBP keep format.
 
 ### 1C. Settings / features that silently do nothing
 
-- [ ] **1C.1 Theme change doesn't apply until restart.** **[verify]** `themeRecomposeTrigger`
+- [x] **1C.1 Theme change doesn't apply until restart.** **[verify]** `themeRecomposeTrigger`
   is incremented but never read; `appSettings.*` are plain getters → no recomposition.
   - Fix: expose settings as Compose state / `StateFlow` (DataStore), read in `setContent`.
   - File: `MainActivity.kt:68,106`, `core/settings/AppSettings.kt`.
-- [ ] **1C.2 "Default Save Mode" setting is never read.** Every tool hard-codes `NEW_COPY`.
+- [x] **1C.2 "Default Save Mode" setting is never read.** Every tool hard-codes `NEW_COPY`.
 - [ ] **1C.3 "Share Sheet Shortcuts" setting is never read.** Launcher shortcuts are static
   in `res/xml/shortcuts.xml`. Either wire to `ShortcutManagerCompat` dynamic shortcuts or remove.
 - [x] **1C.4 Toasts lie about save folder.** 11 places say "Downloads/OmniForge"; files go to

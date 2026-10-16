@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -45,7 +46,7 @@ fun ImageShrinkScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var outputFormat by retained(JOB_KEY, "outputFormat") { mutableStateOf(ImageOutputFormat.JPEG) }
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
 
     var quality by retained(JOB_KEY, "quality") { mutableFloatStateOf(75f) }
     var maxDimension by retained(JOB_KEY, "maxDimension") { mutableFloatStateOf(1920f) }
@@ -63,6 +64,13 @@ fun ImageShrinkScreen(
             processState = ProcessState.Idle
         }
     }
+
+    val isFormatMismatch = selectedUri != null && !FileUtils.isImageFormatMatching(context, selectedUri!!, outputFormat)
+    val allowOverwrite = !isFormatMismatch
+    val disallowedReason = if (isFormatMismatch) {
+        val inputExt = fileName?.substringAfterLast('.', "")?.uppercase() ?: "original"
+        "Cannot modify original: format differs ($inputExt → ${outputFormat.name})"
+    } else null
 
     ToolScaffold(
         title = "Shrink Image",
@@ -109,7 +117,9 @@ fun ImageShrinkScreen(
             SaveModeSelector(
                 saveMode = saveMode,
                 onSaveModeChange = { saveMode = it },
-                accentColor = AccentImage
+                accentColor = AccentImage,
+                allowOverwrite = allowOverwrite,
+                disallowedReason = disallowedReason
             )
 
             // Compression Settings Card
@@ -207,9 +217,20 @@ fun ImageShrinkScreen(
                         )
                         result.fold(
                             onSuccess = { outputFile ->
-                                if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
+                                val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
+                                    runCatching { context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
+                                }
+                                val newBytes = outputFile.length()
+
+                                if (origBytes > 0L && newBytes >= origBytes) {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = "Image is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                    )
+                                } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
                                     if (overwritten) {
+                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original photo overwritten in-place!"
@@ -217,7 +238,7 @@ fun ImageShrinkScreen(
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Processed! (Original not directly writable, saved as copy)"
+                                            message = "Processed! (Original is read-only — tap Save below to save copy)"
                                         )
                                     }
                                 } else {

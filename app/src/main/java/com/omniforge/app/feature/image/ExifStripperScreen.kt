@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
+import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.settings.SaveMode
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
@@ -43,7 +44,7 @@ fun ExifStripperScreen(
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
     var exifInfo by retained(JOB_KEY, "exifInfo") { mutableStateOf<ExifInfo?>(null) }
-    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(SaveMode.NEW_COPY) }
+    var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -140,6 +141,7 @@ fun ExifStripperScreen(
                                 if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
                                     val overwritten = FileUtils.overwriteOriginal(context, uri, outputFile)
                                     if (overwritten) {
+                                        fileSize = outputFile.length()
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original photo stripped of EXIF in-place!"
@@ -147,7 +149,7 @@ fun ExifStripperScreen(
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Metadata stripped! (Saved as copy in Downloads)"
+                                            message = "Metadata stripped! (Original is read-only — tap Save below to save copy)"
                                         )
                                     }
                                 } else {
