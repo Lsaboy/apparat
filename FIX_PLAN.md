@@ -57,7 +57,7 @@ easy to bisect.
   - Fix: whitelist known routes; ignore others. Remove `BROWSABLE` (shortcuts don't need it).
   - Files: `MainActivity.kt:63-82`, `AndroidManifest.xml`.
 
-- [ ] **1A.3 Out-of-memory crashes on large photos.** `convertFormat`, `stripExif`,
+- [x] **1A.3 Out-of-memory crashes on large photos.** `convertFormat`, `stripExif`,
   `enhanceDocumentScan`, `extractColorPalette`, `PdfEngine.imagesToPdf` decode the full
   bitmap. 50–200 MP phone photos → ~200–800 MB ARGB → OOM.
   - Fix: one shared `decodeBitmap(uri, maxPixels)` helper that samples with `inSampleSize`,
@@ -115,7 +115,7 @@ easy to bisect.
   - Real compression is Phase 2 (2.6).
   - File: `engine/pdf/PdfEngine.kt:61-79`.
 
-- [ ] **1B.4 Photos come out rotated.** `BitmapFactory` ignores the EXIF orientation tag;
+- [x] **1B.4 Photos come out rotated.** `BitmapFactory` ignores the EXIF orientation tag;
   outputs drop/strip it. Portrait phone photos turn sideways in Shrink (strip on), Convert,
   EXIF Strip, Scanner, Photos→PDF.
   - Fix: read `ExifInterface.rotationDegrees`/flip and apply a matrix in the shared decoder (1A.3).
@@ -138,7 +138,7 @@ easy to bisect.
 - [ ] **1B.8 PNG/WEBP with transparency → black background** when converted to JPEG.
   - Fix: draw onto white canvas before JPEG encode.
 
-- [ ] **1B.9 Max-dimension resize is inaccurate.** `inSampleSize` is rounded down to a power
+- [x] **1B.9 Max-dimension resize is inaccurate.** `inSampleSize` is rounded down to a power
   of 2 → "1920px" yields 2000–3999px. Fix in shared decoder (sample, then exact scale).
   - File: `ImageEngine.kt:149-169`.
 

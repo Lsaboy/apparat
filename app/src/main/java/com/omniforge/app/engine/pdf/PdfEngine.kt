@@ -2,9 +2,9 @@ package com.omniforge.app.engine.pdf
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import com.omniforge.app.core.util.FileUtils
+import com.omniforge.app.engine.image.BitmapDecoder
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
@@ -93,11 +93,9 @@ object PdfEngine {
 
             try {
                 for (uri in imageUris) {
-                    val inputStream = context.contentResolver.openInputStream(uri)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream?.close()
-
-                    if (bitmap != null) {
+                    // 16 MP keeps A4 at 300 DPI (~8.7 MP) sharp while bounding memory per photo.
+                    val bitmap = BitmapDecoder.decode(context, uri, maxPixels = 16_000_000L)
+                    try {
                         val page = PDPage(PDRectangle(bitmap.width.toFloat(), bitmap.height.toFloat()))
                         document.addPage(page)
 
@@ -105,6 +103,7 @@ object PdfEngine {
                         val contentStream = PDPageContentStream(document, page)
                         contentStream.drawImage(pdImage, 0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
                         contentStream.close()
+                    } finally {
                         bitmap.recycle()
                     }
                 }

@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.max
 
 enum class ImageOutputFormat(val extension: String, val mimeType: String) {
     JPEG(".jpg", "image/jpeg"),
@@ -42,8 +41,7 @@ object ImageEngine {
         stripExif: Boolean = true
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val bitmap = decodeSampledBitmap(context, inputUri, maxDimension)
-                ?: throw IllegalStateException("Failed to decode image")
+            val bitmap = BitmapDecoder.decode(context, inputUri, maxDimension = maxDimension)
 
             val outputFile = FileUtils.createTempOutputFile(context, "shrunk", ".jpg")
             FileOutputStream(outputFile).use { out ->
@@ -75,11 +73,7 @@ object ImageEngine {
         quality: Int = 90
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val inputStream = context.contentResolver.openInputStream(inputUri)
-                ?: throw IllegalStateException("Could not open input image")
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-                ?: throw IllegalStateException("Could not decode image")
-            inputStream.close()
+            val bitmap = BitmapDecoder.decode(context, inputUri)
 
             val outputFile = FileUtils.createTempOutputFile(context, "converted", targetFormat.extension)
             FileOutputStream(outputFile).use { out ->
@@ -110,11 +104,7 @@ object ImageEngine {
         inputUri: Uri
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val inputStream = context.contentResolver.openInputStream(inputUri)
-                ?: throw IllegalStateException("Could not open input image")
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-                ?: throw IllegalStateException("Could not decode image")
-            inputStream.close()
+            val bitmap = BitmapDecoder.decode(context, inputUri)
 
             // Re-encoding directly strips all original metadata
             val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
@@ -146,34 +136,12 @@ object ImageEngine {
         } ?: ExifInfo()
     }
 
-    private fun decodeSampledBitmap(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, options)
-        }
-
-        var sampleSize = 1
-        val origMax = max(options.outWidth, options.outHeight)
-        if (origMax > maxDimension) {
-            sampleSize = (origMax.toFloat() / maxDimension.toFloat()).toInt()
-        }
-
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-        }
-        return context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, decodeOptions)
-        }
-    }
-
     private fun copyExifTags(src: ExifInterface, dst: ExifInterface) {
         val tags = arrayOf(
             ExifInterface.TAG_DATETIME,
             ExifInterface.TAG_MAKE,
             ExifInterface.TAG_MODEL,
-            ExifInterface.TAG_ORIENTATION,
+            // TAG_ORIENTATION is deliberately not copied: BitmapDecoder already rotated the pixels.
             ExifInterface.TAG_WHITE_BALANCE,
             ExifInterface.TAG_FOCAL_LENGTH,
             ExifInterface.TAG_FLASH
@@ -193,11 +161,8 @@ object ImageEngine {
         convertToMonochrome: Boolean = true
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
-            val inputStream = context.contentResolver.openInputStream(inputUri)
-                ?: throw IllegalStateException("Could not open input image")
-            val original = BitmapFactory.decodeStream(inputStream)
-                ?: throw IllegalStateException("Could not decode image")
-            inputStream.close()
+            // Input + output bitmap are alive together, so use a smaller budget.
+            val original = BitmapDecoder.decode(context, inputUri, maxPixels = 16_000_000L)
 
             val outputBitmap = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(outputBitmap)
@@ -239,11 +204,7 @@ object ImageEngine {
         count: Int = 6
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         runCatching {
-            val inputStream = context.contentResolver.openInputStream(inputUri)
-                ?: throw IllegalStateException("Could not open image")
-            val original = BitmapFactory.decodeStream(inputStream)
-                ?: throw IllegalStateException("Could not decode image")
-            inputStream.close()
+            val original = BitmapDecoder.decode(context, inputUri, maxDimension = 256)
 
             // Downsample for fast color sampling
             val scaled = Bitmap.createScaledBitmap(original, 64, 64, true)
