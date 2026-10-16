@@ -81,7 +81,6 @@ fun PdfShrinkScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            lastHandledInitialUri = it
             pendingShareUri = null
             pdfPassword = null
             pageCount = null

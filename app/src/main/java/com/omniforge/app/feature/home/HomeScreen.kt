@@ -257,6 +257,10 @@ fun HomeScreen(
     val filteredTools = remember(searchQuery, selectedCategory, compatibleCategory) {
         ALL_TOOLS.filter { tool ->
             val matchesCategory = when {
+                sharedUri != null && compatibleCategory == null -> {
+                    // Arbitrary file shared (e.g. ZIP, ISO, APK, binary) -> filter to Hash Verifier
+                    tool.id == "hash_verifier"
+                }
                 compatibleCategory != null -> {
                     if (sharedMimeType?.startsWith("audio/") == true) {
                         tool.id == "audio_extract" || tool.id == "video_trim" || tool.id == "hash_verifier"

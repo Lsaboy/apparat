@@ -82,7 +82,6 @@ fun ImageShrinkScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            lastHandledInitialUri = it
             pendingShareUri = null
             processState = ProcessState.Idle
         }
