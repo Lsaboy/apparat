@@ -121,7 +121,7 @@ object PdfEngine {
     /**
      * Removes password protection from an encrypted PDF.
      * Takes the user's password, decrypts the document, strips all security,
-     * and saves an unlocked, permanent DRM-free copy.
+     * and saves an unlocked, unrestricted copy.
      */
     suspend fun removePassword(
         context: Context,
@@ -134,9 +134,17 @@ object PdfEngine {
 
             val document = try {
                 openDocument(context, cachedInput, password)
+            } catch (e: PdfPasswordException) {
+                cachedInput.delete()
+                outputFile.delete()
+                throw IllegalArgumentException(
+                    if (e.wrongPassword) "Incorrect password for this PDF"
+                    else "Password required to unlock this PDF"
+                )
             } catch (e: Exception) {
                 cachedInput.delete()
-                throw IllegalArgumentException("Incorrect password or corrupt PDF: ${e.message}")
+                outputFile.delete()
+                throw IllegalArgumentException("Corrupt or invalid PDF file: ${e.localizedMessage ?: "Unknown error"}")
             }
 
             try {
@@ -145,12 +153,14 @@ object PdfEngine {
                     document.isAllSecurityToBeRemoved = true
                 }
                 document.save(outputFile)
+                outputFile
+            } catch (t: Throwable) {
+                outputFile.delete()
+                throw t
             } finally {
                 document.close()
                 cachedInput.delete()
             }
-
-            outputFile
         }
     }
 

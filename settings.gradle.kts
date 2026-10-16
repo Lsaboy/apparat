@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OmniForge"
+rootProject.name = "DigitalPocketKnife"
 include(":app")

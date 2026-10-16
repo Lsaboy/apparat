@@ -143,11 +143,12 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                     message = success.message,
                     onSaveToDownloads = {
                         val appContext = context.applicationContext
+                        val timeStamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())
                         val saved = FileUtils.saveToDownloads(
                             context = appContext,
                             file = success.outputFile,
                             mimeType = "application/pdf",
-                            displayName = "combined_photos.pdf"
+                            displayName = "Photos_$timeStamp.pdf"
                         )
                         Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },

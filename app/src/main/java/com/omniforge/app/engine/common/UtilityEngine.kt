@@ -142,17 +142,39 @@ object UtilityEngine {
     }
 
     /**
-     * Prettifies or minifies JSON strings.
+     * Prettifies or minifies JSON strings with line and column reporting on syntax errors.
      */
     fun formatJson(jsonString: String, pretty: Boolean = true): Result<String> = runCatching {
         val trimmed = jsonString.trim()
-        val indent = if (pretty) 4 else 0
-        if (trimmed.startsWith("{")) {
-            org.json.JSONObject(trimmed).toString(indent)
-        } else if (trimmed.startsWith("[")) {
-            org.json.JSONArray(trimmed).toString(indent)
-        } else {
-            throw IllegalArgumentException("Not a valid JSON object or array")
+        if (trimmed.isEmpty()) {
+            throw IllegalArgumentException("JSON input is empty")
+        }
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+            throw IllegalArgumentException("JSON must start with '{' or '[' (root must be an object or array)")
+        }
+
+        try {
+            val indent = if (pretty) 4 else 0
+            if (trimmed.startsWith("{")) {
+                org.json.JSONObject(trimmed).toString(indent)
+            } else {
+                org.json.JSONArray(trimmed).toString(indent)
+            }
+        } catch (e: org.json.JSONException) {
+            val message = e.message ?: "Invalid JSON syntax"
+            val match = Regex("""at character\s+(\d+)""").find(message)
+            if (match != null) {
+                val charIndex = match.groupValues[1].toIntOrNull() ?: 0
+                val safeIndex = charIndex.coerceIn(0, trimmed.length)
+                val prefix = trimmed.take(safeIndex)
+                val lines = prefix.split('\n')
+                val line = lines.size
+                val column = lines.last().length + 1
+                val cleanDesc = message.substringBefore(" at character")
+                throw IllegalArgumentException("Line $line, Col $column: $cleanDesc")
+            } else {
+                throw IllegalArgumentException(message)
+            }
         }
     }
 

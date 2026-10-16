@@ -4,6 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+base {
+    archivesName.set("DigitalPocketKnife")
+}
+
 android {
     namespace = "com.omniforge.app"
     compileSdk = 35

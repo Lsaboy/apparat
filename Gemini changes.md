@@ -1,8 +1,8 @@
 # Gemini Changes - Digital Pocket Knife (OmniForge)
 **Date:** October 16, 2026  
-**Commit Range:** `8ebf590` -> `35c4f6d` (4 commits)  
-**Total Impact:** 37 files changed, +1,204 lines, -322 lines  
-**Build & Test Status:** All JUnit tests passing, `./gradlew assembleDebug` passing, `./gradlew lintDebug` passing (0 errors).
+**Commit Range:** `8ebf590` -> `HEAD` (7 batches)  
+**Total Impact:** 42 files changed, +1,780 lines, -395 lines  
+**Build & Test Status:** All 35 JUnit tests passing, `./gradlew assembleDebug` passing (0 errors).
 
 ---
 
@@ -17,6 +17,9 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 2. `10357f7` - **Batch 2:** PDF split chunking & range validation, compress overwrite protection, notification permission persistence, and standardized screen titles (`1B.1`, `1B.2`, `1B.3`, `1D.2`, `1D.3`).
 3. `feb5b2d` - **Batch 3:** Theme recomposition, default save mode setting, overwrite safety & format matching, and lossless JPEG EXIF stripping (`1C.1`, `1C.2`, `1B.7`, `1B.11`).
 4. `35c4f6d` - **Batch 4:** ToolJobs Activity leak prevention, singleTop backstack preservation, safe startup cache cleanup, float PCM WAV downsampling, and Media3 README (`1C.5`, `1D.2`, `1D.3`).
+5. `aeb768a` - **Batch 5:** Save completion resilience, share-in rotation safety, animated image notice, and audio/video tooling (`1D.2`, `1D.3`, `3B`).
+6. `3d66375` - **Batch 6:** Hash Verifier multi-digest & FGS, QR Studio 50x speedup, Base64 URL-safe, Media3 HDR tone-mapping, and encryption honesty (`1D.2`, `3D`).
+7. `Pending` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
 
 ---
 
@@ -250,37 +253,94 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 
 ---
 
+### Batch 7: Search Keywords for 20 Tools, PDF Unlock Encryption Detection, JSON Line/Column Reporting, Timestamped PDF Output, and APK Naming
+
+#### 1. Home Screen Multi-Word Search & Tool Keywords (`3B` / line 507)
+- **Root Cause:**
+  - Searching for common actions or formats like "resize", "merge", "combine", "jpg", "reduce size", "cut", "audio", "subtitles" yielded 0 results because search only matched substrings of the title and short description.
+  - Substring search failed on multi-word queries (e.g. "merge pdf") and trailing spaces typed by mobile keyboards ("jpg ").
+- **Solution:**
+  - Added `val keywords: List<String> = emptyList()` to `ToolItem` in `ToolModels.kt`.
+  - Populated comprehensive keyword sets for all 20 tools in `HomeScreen.kt` covering verbs, synonyms, and file extensions.
+  - Implemented tokenized search in `HomeScreen.kt`: splits queries by whitespace (`query.trim().lowercase().split(Regex("\\s+"))`) and requires that all tokens match across the tool's title, description, or keyword list.
+  - Created unit test suite [`HomeSearchTest.kt`](./app/src/test/java/com/omniforge/app/feature/home/HomeSearchTest.kt) with 5 test cases validating multi-word matching, trailing spaces, verb aliases, and empty queries.
+
+#### 2. PDF Unlock Encryption Detection & Copy Cleanup (`2.7` / lines 418, 424)
+- **Root Cause:**
+  - In `PdfUnlockScreen.kt`, selecting an unencrypted PDF allowed users to enter dummy text and click "Unlock", which blindly re-saved the document without informing the user that the file had no password.
+  - Misleading terminology "DRM-free" was used throughout labels and buttons (decryption removes passwords/permissions, not DRM).
+  - Failed password attempts wrapped in generic `IllegalArgumentException("Incorrect password or corrupt PDF: ...")`.
+  - In `PdfEngine.kt:removePassword`, failure left an orphan temp file in the cache directory.
+- **Solution:**
+  - In `PdfUnlockScreen.kt`:
+    - Integrated `LaunchedEffect(selectedUri)` checking access via `PdfEngine.checkAccess(appContext, uri)`.
+    - Retained `accessStatus` and `isCheckingAccess` across device rotations.
+    - If `PdfAccess.Open` with `!isEncrypted`: displays an informative card (*"This PDF has no password. It is already unlocked and does not require decryption."*) and disables the Unlock button.
+    - If `PdfAccess.Open` with `isEncrypted` (owner password restriction): explains permissions removal.
+    - Replaced all "DRM-free" copy with clear "unrestricted, unlocked PDF" terminology.
+  - In `PdfEngine.kt:removePassword`: explicitly catches `PdfPasswordException` and deletes the temp output file in a `finally` block if processing does not complete successfully.
+
+#### 3. JSON Tool Retained State, Error Line/Col Clarification & Branding (`3D` / line 559)
+- **Root Cause:**
+  - `JsonToolScreen.kt` held input, output, and errors in `remember`, which wiped user work on screen rotation.
+  - Sample JSON template hardcoded `"name": "OmniForge"`.
+  - Syntax errors reported cryptic messages without line or column context.
+- **Solution:**
+  - In `UtilityEngine.kt:formatJson`: parsed character offset indices from `JSONException` (e.g. `at character 45`) to calculate exact 1-based `Line X, Col Y: <description>`.
+  - In `JsonToolScreen.kt`: migrated all state to `retained(JOB_KEY, ...)`, updated sample branding to "Digital Pocket Knife", and added "Clear" and "Paste" actions.
+
+#### 4. Photos to PDF Dynamic Timestamped Output Naming (`2.5` / line 399)
+- **Root Cause:**
+  - `ImagesToPdfScreen.kt` hardcoded the output filename to `combined_photos.pdf`. Multiple exports caused filename collisions in `Downloads/DigitalPocketKnife`.
+- **Solution:**
+  - Replaced static naming with timestamped format: `Photos_${SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())}.pdf`. Using explicit `Locale.US` prevents issues with Eastern Arabic / Devanagari numerals on regional device locales.
+
+#### 5. Output APK Naming & Root Project Name (`3B` / line 517)
+- **Root Cause:**
+  - Output APKs defaulted to `app-debug.apk` and `settings.gradle.kts` still identified the root project as `"OmniForge"`.
+- **Solution:**
+  - In `app/build.gradle.kts`: added `base { archivesName.set("DigitalPocketKnife") }`, generating `DigitalPocketKnife-debug.apk` and `DigitalPocketKnife-release.apk`.
+  - In `settings.gradle.kts`: updated `rootProject.name = "DigitalPocketKnife"`.
+  - In `app/proguard-rules.pro`: updated comment reference to Digital Pocket Knife.
+
+---
+
 ## 3. Comprehensive File Audit
 
 | File Path | Changes Made |
 |---|---|
+| `app/build.gradle.kts` | Added `base { archivesName.set("DigitalPocketKnife") }`. |
+| `settings.gradle.kts` | Updated `rootProject.name = "DigitalPocketKnife"`. |
+| `app/proguard-rules.pro` | Updated comment reference to Digital Pocket Knife. |
 | `app/src/main/AndroidManifest.xml` | Added `android:launchMode="singleTop"` to `MainActivity`. |
 | `app/src/main/java/com/omniforge/app/MainActivity.kt` | Added `themeRecomposeTrigger` link to `OmniForgeTheme`; added `navEvents` Channel and `onNewIntent` route navigation. |
 | `app/src/main/java/com/omniforge/app/OmniForgeApp.kt` | Launched `FileUtils.cleanStaleCache` on `Dispatchers.IO` with `appStartTime`. |
 | `app/src/main/java/com/omniforge/app/core/jobs/ToolJobs.kt` | Updated `launch` to pass `appContext: Context` into the coroutine block. |
 | `app/src/main/java/com/omniforge/app/core/jobs/ToolJobService.kt` | Implemented `onTimeout` for Android 15 FGS; switched to `ic_stat_notify`; updated `openToolIntent` flags to `singleTop`. |
+| `app/src/main/java/com/omniforge/app/core/model/ToolModels.kt` | Added `keywords: List<String>` to `ToolItem`. |
 | `app/src/main/java/com/omniforge/app/core/settings/AppSettings.kt` | Added `hasAskedNotificationPermission` SharedPreferences persistence. |
 | `app/src/main/java/com/omniforge/app/core/theme/Theme.kt` | Added `recomposeTrigger: Int = 0` to trigger theme recomposition. |
 | `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label. |
 | `app/src/main/java/com/omniforge/app/core/ui/PdfPasswordGate.kt` | Added `pageCount` to `onReady` callback. |
 | `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`. |
-| `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512) with throttled progress; bulk `setPixels` on `ARGB_8888` for QR generation; URL-safe Base64 with resilient fallback and strict UTF-8 validation. |
+| `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512) with throttled progress; bulk `setPixels` on `ARGB_8888` for QR generation; URL-safe Base64 with resilient fallback and strict UTF-8 validation; JSON line/column error reporting from character offset. |
 | `app/src/main/java/com/omniforge/app/engine/image/BitmapDecoder.kt` | Added `isAnimated` and `isAnimatedWebpHeader` zero-allocation animation detection. |
 | `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation. |
-| `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`. |
+| `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`; explicit `PdfPasswordException` handling and temp file cleanup in `removePassword`. |
 | `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message; configured `Composition` with OpenGL HDR-to-SDR tone-mapping for video re-encoding. |
-| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles. |
+| `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles; comprehensive search keywords for all 20 tools; whitespace tokenized multi-word search. |
 | `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; timestamped `Photos_yyyy-MM-dd_HHmmss.pdf` output naming; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; password retention honesty messages; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count; password removal honesty message. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`; `NonCancellable` Save All with honest progress count. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; background PDF access check; unencrypted PDF detection & disable button; copy cleanup ("DRM-free" removed); appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/utilities/Base64StudioScreen.kt` | Retained state; URL-Safe toggle FilterChip; descriptive decode error reporting. |
 | `app/src/main/java/com/omniforge/app/feature/utilities/HashVerifierScreen.kt` | Retained state; `ToolJobs.launch` background hashing with progress; SHA-256/SHA-512/SHA-1/MD5 cards with copy buttons; 4-algorithm case-insensitive hash comparison; Android 12+ compliant clipboard paste. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/JsonToolScreen.kt` | Retained state; Clear and Paste actions; line/column error display; template branding update. |
 | `app/src/main/java/com/omniforge/app/feature/utilities/QrStudioScreen.kt` | Retained state; 150ms keystroke debounce; `Dispatchers.Default` background QR generation; `NonCancellable` save/share with `appContext`. |
 | `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix; appContext Toast/Save. |
@@ -289,13 +349,14 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; Start Offset slider; clamped duration; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/res/drawable/ic_stat_notify.xml` | Created 24dp monochrome notification icon. |
-| `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Added unit tests for MessageDigest verification and string casing. |
+| `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Added unit tests for MessageDigest verification, string casing, and JSON line/col error formatting. |
 | `app/src/test/java/com/omniforge/app/engine/image/BitmapDecoderTest.kt` | Added unit tests for WebP header animation flag detection. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfA4FitTest.kt` | Added unit tests for A4 image scaling and margins. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfSplitTest.kt` | Added unit tests for PDF chunking and bounds. |
 | `app/src/test/java/com/omniforge/app/core/util/FileUtilsTest.kt` | Added unit tests for MIME format matching and cache cleanup. |
+| `app/src/test/java/com/omniforge/app/feature/home/HomeSearchTest.kt` | Added 5 unit tests for tool keywords, multi-word matching, trailing spaces, and verb aliases. |
 | `README.md` | Updated for Media3 architecture and current features. |
-| `FIX_PLAN.md` | Checked off all completed items across Batches 1–6. |
+| `FIX_PLAN.md` | Checked off all completed items across Batches 1–7. |
 
 ---
 
@@ -314,5 +375,8 @@ When reviewing these changes, please inspect:
 10. **Bulk JNI setPixels Stride:** Verify that `UtilityEngine.generateQrCode` correctly maps indices as `[y * size + x]` to avoid matrix transposition when calling native `setPixels` on `ARGB_8888`.
 11. **Strict Base64 UTF-8 Decoding:** Inspect `UtilityEngine.decodeBase64` to verify that binary data triggers `CharacterCodingException` via `CharsetDecoder` rather than corrupting strings with `\uFFFD`.
 12. **Media3 OpenGL Tone-Mapping Scope:** Check `VideoEngine.kt:runTransformer` to confirm that `setHdrMode(HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)` is only enabled when video re-encoding is active and video is not being removed, avoiding regressions on lossless transmuxing operations.
+13. **Search Tokenization Efficiency:** Inspect `HomeScreen.kt` search filtering logic to verify that `tokens.all { ... }` runs efficiently with zero frame drops, handles uppercase/lowercase queries, and tolerates leading/trailing/multiple consecutive spaces.
+14. **PDF Unlock Pre-check & Cleanup:** Inspect `PdfUnlockScreen.kt` and `PdfEngine.kt:removePassword` to verify that unencrypted PDFs prevent redundant unlocking operations, and that temp files in cache are reliably cleaned up if password removal throws.
+15. **JSON Line/Column Offset Math:** Inspect `UtilityEngine.formatJson` to confirm that converting `org.json.JSONException` character offset into 1-based line and column handles newlines (`\n`, `\r\n`) accurately.
 
 

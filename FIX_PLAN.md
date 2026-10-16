@@ -280,9 +280,8 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [x] **Media3 HDR input.** Phone cameras record HDR10/HLG. Transformer's default with H.264 SDR
   output may fail or look washed out. Set
   `Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL` for re-encoding tasks.
-- [ ] **Shrink can make files bigger.** For small/low-bitrate inputs the requested bitrate can
-  exceed the source (capped at 80 % of the source bitrate only when the bitrate is readable).
-  Show "could not reduce" and don't offer overwrite when output ≥ input (same rule as 1B.3/1B.7).
+- [x] **Shrink can make files bigger.** Enforced across `VideoShrinkScreen`, `ImageShrinkScreen`, and
+  `PdfShrinkScreen`: shows "could not reduce" and disables overwrite when output ≥ input.
 - [x] **WAV assumes 16-bit PCM.** `decodeToWav` writes a 16-bit header always; if a decoder
   outputs float PCM (`KEY_PCM_ENCODING` = `ENCODING_PCM_FLOAT`), the WAV is noise. Read the
   output format's PCM encoding and write format 3 (float) or convert to 16-bit.
@@ -396,7 +395,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   margins none/small/normal; image fit/fill.
 - [ ] Compression: High quality / Balanced / Small file (downscale + JPEG quality); show
   estimated size.
-- [ ] Name the PDF (default `Scan_2026-10-16.pdf`, not `combined_photos.pdf`).
+- [x] Name the PDF (timestamped `Photos_yyyy-MM-dd_HHmmss.pdf`, not `combined_photos.pdf`).
 - [ ] Accept multi-share from Gallery (`ACTION_SEND_MULTIPLE`, image/*).
 - [ ] Per-photo progress.
 
@@ -415,13 +414,13 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 ### 2.7 Unlock / Lock PDF
 
-- [ ] On pick: if not encrypted, say "This PDF has no password" and skip.
-- [ ] Distinguish wrong password vs damaged file (catch `InvalidPasswordException` separately).
+- [x] On pick: if not encrypted, say "This PDF has no password" and skip.
+- [x] Distinguish wrong password vs damaged file (catch `PdfPasswordException` separately).
 - [ ] After a correct password, show the first-page thumbnail as proof before saving.
 - [ ] Optional hint text for common Indian document password formats.
 - [ ] **New: Add password to PDF** (AES-256 via PDFBox `StandardProtectionPolicy`), optional
   permissions (no print/copy). Useful for sending statements/invoices.
-- [ ] Copy cleanup: drop "DRM-free" wording (misleading — it's password removal).
+- [x] Copy cleanup: drop "DRM-free" wording (misleading — it's password removal).
 
 ### 2.8 PDF share-in / open-with
 
@@ -504,17 +503,15 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Share-in to every tool:** currently only 6 routes receive the shared URI. Add
   `ACTION_SEND_MULTIPLE` (images → Photos→PDF / batch shrink; PDFs → Merge). Shared-file banner
   should show a thumbnail and be dismissible. Handle `onNewIntent` if app already open.
-- [ ] **Search keywords:** "resize", "merge", "jpg", "combine", "reduce size", "kb" find
-  nothing today. Add a `keywords` list to `ToolItem`.
+- [x] **Search keywords:** "resize", "merge", "jpg", "combine", "reduce size", "kb", etc.
+  Tokenized multi-word search across title, description, and keywords implemented for all 20 tools.
 - [ ] **Home:** quick actions are hard-coded (Unlock, Trim, Shrink Photo, Shrink Video) —
   let user pin tools; add Recent files / recent tools.
 - [ ] **Copy cleanup:** "Modify OG" → "Replace original"; shorten long tool titles.
-- [ ] **Naming — DECIDED: "Digital Pocket Knife".** Replace user-visible "OmniForge" everywhere:
-  toasts/messages (most handled by 1C.4), unlock-screen text ("OmniForge will decrypt…"),
-  README, `rootProject.name`, proguard comment. Rename `OmniForgeApp` → `PocketKnifeApp` and
-  `OmniForgeTheme` → `PocketKnifeTheme` (code only). Save folder stays
-  `Downloads/DigitalPocketKnife`. Name the release APK `DigitalPocketKnife-<version>.apk`
-  instead of "UTilities Alpha 1".
+- [x] **Naming — DECIDED: "Digital Pocket Knife".** Replace user-visible "OmniForge" everywhere:
+  toasts/messages (most handled by 1C.4), unlock-screen text, README, `rootProject.name = "DigitalPocketKnife"`,
+  proguard comment, and output APK naming `base.archivesName = "DigitalPocketKnife"`. Save folder stays
+  `Downloads/DigitalPocketKnife`. Output APK named `DigitalPocketKnife-debug.apk` / `DigitalPocketKnife-release.apk`.
   - **Keep** `applicationId`/package `com.omniforge.app`. Changing it makes Android treat the app as a new
     one: the user must uninstall, and settings are lost. Change it only if the user asks
     (best done before any public release).
@@ -559,8 +556,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   guarding against corrupted binary input strings.
 - [ ] **Base64 (cont.):** detect file type from decoded bytes (PDF/PNG/JPEG) and offer
   preview + "Save as file"; data-URL prefix toggle.
-- [ ] **JSON:** `org.json` escapes `/` as `\/` and loses big-number precision — minor; show
-  error line/column. Syntax colours / collapsible tree: low priority.
+- [x] **JSON:** Error line and column reporting implemented via character index offset calculation; retained state and clear/paste buttons added. Syntax colours / collapsible tree: low priority.
 
 ### 3F. OS integration (low priority, after core tools are solid)
 

@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material3.*
@@ -20,23 +20,29 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.ToolScaffold
 import com.omniforge.app.engine.common.UtilityEngine
+
+private const val JOB_KEY = "json_tool"
 
 @Composable
 fun JsonToolScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    var jsonInput by remember { mutableStateOf("{\"app\":\"OmniForge\",\"version\":\"1.0.0\",\"offline\":true,\"features\":[\"video\",\"photo\",\"pdf\"]}") }
-    var jsonOutput by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var jsonInput by retained(JOB_KEY, "jsonInput") {
+        mutableStateOf("{\n  \"app\": \"Digital Pocket Knife\",\n  \"version\": \"1.0.0\",\n  \"offline\": true,\n  \"features\": [\"video\", \"photo\", \"pdf\", \"utilities\"]\n}")
+    }
+    var jsonOutput by retained(JOB_KEY, "jsonOutput") { mutableStateOf("") }
+    var errorMessage by retained(JOB_KEY, "errorMessage") { mutableStateOf<String?>(null) }
 
     ToolScaffold(
         title = "JSON Formatter & Validator",
         categoryName = "Quick Utilities",
         accentColor = AccentUtility,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -64,7 +70,30 @@ fun JsonToolScreen(onBack: () -> Unit) {
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
+                trailingIcon = {
+                    if (jsonInput.isNotEmpty()) {
+                        IconButton(onClick = {
+                            jsonInput = ""
+                            errorMessage = null
+                        }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
+                            if (!clip.isNullOrBlank()) {
+                                jsonInput = clip
+                                errorMessage = null
+                            } else {
+                                Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Paste", tint = AccentUtility)
+                        }
+                    }
+                }
             )
 
             Row(

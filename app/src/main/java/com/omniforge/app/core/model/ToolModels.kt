@@ -20,7 +20,8 @@ data class ToolItem(
     val description: String,
     val category: ToolCategory,
     val route: String,
-    val badge: String? = null
+    val badge: String? = null,
+    val keywords: List<String> = emptyList()
 )
 
 sealed interface ProcessState {
