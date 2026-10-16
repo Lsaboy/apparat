@@ -64,7 +64,7 @@ easy to bisect.
     then exact-scales; apply EXIF rotation there too (see 1B.4).
   - Files: `engine/image/ImageEngine.kt`, `engine/pdf/PdfEngine.kt`.
 
-- [ ] **1A.4 Out-of-memory on big PDFs.** `PDDocument.load(file)` defaults to main memory.
+- [x] **1A.4 Out-of-memory on big PDFs.** `PDDocument.load(file)` defaults to main memory.
   Large scanned PDFs (bank statements, 100+ page scans) can OOM.
   - Fix: `PDDocument.load(file, password, MemoryUsageSetting.setupTempFileOnly())` everywhere.
 

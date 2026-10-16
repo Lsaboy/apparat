@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.BitmapDecoder
+import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
@@ -16,8 +17,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 object PdfEngine {
+
+    /**
+     * PDFBox buffers in temp files under cache/pdfbox instead of the heap, so 100+ page
+     * scanned PDFs don't run out of memory.
+     */
+    private fun tempFileMemory(context: Context): MemoryUsageSetting =
+        MemoryUsageSetting.setupTempFileOnly().setTempDir(File(context.cacheDir, "pdfbox").apply { mkdirs() })
+
+    private fun openDocument(context: Context, file: File, password: String = ""): PDDocument =
+        PDDocument.load(file, password, tempFileMemory(context))
 
     /**
      * Removes password protection from an encrypted PDF.
@@ -34,7 +48,7 @@ object PdfEngine {
             val outputFile = FileUtils.createTempOutputFile(context, "unlocked", ".pdf")
 
             val document = try {
-                PDDocument.load(cachedInput, password)
+                openDocument(context, cachedInput, password)
             } catch (e: Exception) {
                 cachedInput.delete()
                 throw IllegalArgumentException("Incorrect password or corrupt PDF: ${e.message}")
@@ -67,7 +81,7 @@ object PdfEngine {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "compressed", ".pdf")
 
-            val document = PDDocument.load(cachedInput)
+            val document = openDocument(context, cachedInput)
             try {
                 // PDFBox compression: optimize stream filters and resave
                 document.save(outputFile)
@@ -89,7 +103,7 @@ object PdfEngine {
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val outputFile = FileUtils.createTempOutputFile(context, "converted", ".pdf")
-            val document = PDDocument()
+            val document = PDDocument(tempFileMemory(context))
 
             try {
                 for (uri in imageUris) {
@@ -136,7 +150,7 @@ object PdfEngine {
                     cachedFiles.add(file)
                     merger.addSource(file)
                 }
-                merger.mergeDocuments(null)
+                merger.mergeDocuments(tempFileMemory(context))
             } finally {
                 cachedFiles.forEach { it.delete() }
             }
@@ -158,8 +172,8 @@ object PdfEngine {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "split_p${startPage}_p$endPage", ".pdf")
 
-            val document = PDDocument.load(cachedInput)
-            val newDoc = PDDocument()
+            val document = openDocument(context, cachedInput)
+            val newDoc = PDDocument(tempFileMemory(context))
 
             try {
                 val totalPages = document.numberOfPages
@@ -190,13 +204,13 @@ object PdfEngine {
     ): Result<List<File>> = withContext(Dispatchers.IO) {
         runCatching {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val document = PDDocument.load(cachedInput)
+            val document = openDocument(context, cachedInput)
             val outputFiles = mutableListOf<File>()
 
             try {
                 val totalPages = document.numberOfPages
                 for ((index, range) in ranges.withIndex()) {
-                    val newDoc = PDDocument()
+                    val newDoc = PDDocument(tempFileMemory(context))
                     val start = (range.first - 1).coerceIn(0, totalPages - 1)
                     val end = (range.last - 1).coerceIn(start, totalPages - 1)
                     for (p in start..end) {
@@ -233,8 +247,11 @@ object PdfEngine {
             try {
                 for (i in 0 until renderer.pageCount) {
                     val page = renderer.openPage(i)
-                    // Render at 2x density for crisp quality
-                    val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                    // Render at 2x (144 DPI) for crisp quality, capped at 16 MP so huge pages can't OOM.
+                    val scale = min(2.0, sqrt(16_000_000.0 / (page.width.toDouble() * page.height)))
+                    val bitmap = Bitmap.createBitmap(
+                        max(1, (page.width * scale).toInt()), max(1, (page.height * scale).toInt()), Bitmap.Config.ARGB_8888
+                    )
                     val canvas = android.graphics.Canvas(bitmap)
                     canvas.drawColor(android.graphics.Color.WHITE) // White background for transparent pages
                     page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
