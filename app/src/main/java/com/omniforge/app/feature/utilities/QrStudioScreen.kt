@@ -24,22 +24,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.ToolScaffold
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.common.UtilityEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private const val JOB_KEY = "qr_studio"
 
 @Composable
 fun QrStudioScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var inputText by remember { mutableStateOf("https://github.com") }
+    var inputText by retained(JOB_KEY, "inputText") { mutableStateOf("https://github.com") }
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(inputText) {
         if (inputText.isNotBlank()) {
+            delay(150)
             try {
-                qrBitmap = UtilityEngine.generateQrCode(inputText, 512)
+                val bmp = withContext(Dispatchers.Default) {
+                    UtilityEngine.generateQrCode(inputText, 512)
+                }
+                qrBitmap = bmp
             } catch (_: Exception) {
                 qrBitmap = null
             }
@@ -104,10 +115,13 @@ fun QrStudioScreen(onBack: () -> Unit) {
                     Button(
                         onClick = {
                             val bmp = qrBitmap ?: return@Button
+                            val appContext = context.applicationContext
                             scope.launch {
-                                val file = UtilityEngine.saveQrToFile(context, bmp)
-                                val saved = FileUtils.saveToDownloads(context, file, "image/png", "qrcode_${System.currentTimeMillis()}.png")
-                                Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                                withContext(NonCancellable) {
+                                    val file = UtilityEngine.saveQrToFile(appContext, bmp)
+                                    val saved = FileUtils.saveToDownloads(appContext, file, "image/png", "qrcode_${System.currentTimeMillis()}.png")
+                                    Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -122,9 +136,12 @@ fun QrStudioScreen(onBack: () -> Unit) {
                     OutlinedButton(
                         onClick = {
                             val bmp = qrBitmap ?: return@OutlinedButton
+                            val appContext = context.applicationContext
                             scope.launch {
-                                val file = UtilityEngine.saveQrToFile(context, bmp)
-                                FileUtils.shareFile(context, file, "image/png")
+                                withContext(NonCancellable) {
+                                    val file = UtilityEngine.saveQrToFile(appContext, bmp)
+                                    FileUtils.shareFile(appContext, file, "image/png")
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f),

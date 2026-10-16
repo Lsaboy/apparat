@@ -330,9 +330,14 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                             onSuccess = { files ->
                                 generatedFiles = files
                                 if (files.isNotEmpty()) {
+                                    val msg = if (!pdfPassword.isNullOrEmpty()) {
+                                        "Split into ${files.size} PDF files! (Output files have no password)"
+                                    } else {
+                                        "Split into ${files.size} PDF files successfully!"
+                                    }
                                     processState = ProcessState.Success(
                                         outputFile = files.first(),
-                                        message = "Split into ${files.size} PDF files successfully!"
+                                        message = msg
                                     )
                                 } else {
                                     processState = ProcessState.Error("No files generated")

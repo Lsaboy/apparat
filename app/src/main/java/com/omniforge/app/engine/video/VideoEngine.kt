@@ -19,6 +19,7 @@ import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
@@ -358,7 +359,13 @@ object VideoEngine {
                     output.delete()
                 }
             }
-            transformer.start(item, output.absolutePath)
+            val shouldToneMap = (forceVideoEncode || videoMimeType != null || item.effects.videoEffects.isNotEmpty()) && !item.removeVideo
+            val composition = Composition.Builder(EditedMediaItemSequence(item)).apply {
+                if (shouldToneMap) {
+                    setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
+                }
+            }.build()
+            transformer.start(composition, output.absolutePath)
         }
         } finally {
             poller?.cancel()

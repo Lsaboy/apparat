@@ -242,10 +242,12 @@ fun PdfShrinkScreen(
                                 }
                                 val newBytes = outputFile.length()
 
+                                val passwordSuffix = if (!pdfPassword.isNullOrEmpty()) " (Original password kept)" else ""
+
                                 if (origBytes > 0L && newBytes >= origBytes) {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "PDF is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                        message = "PDF is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further.$passwordSuffix"
                                     )
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
@@ -253,18 +255,18 @@ fun PdfShrinkScreen(
                                         fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Original PDF overwritten in-place!"
+                                            message = "Original PDF overwritten in-place!$passwordSuffix"
                                         )
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Compressed! (Original is read-only — tap Save below to save copy)"
+                                            message = "Compressed! (Original is read-only — tap Save below to save copy)$passwordSuffix"
                                         )
                                     }
                                 } else {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "PDF compressed successfully!"
+                                        message = "PDF compressed successfully!$passwordSuffix"
                                     )
                                 }
                             },

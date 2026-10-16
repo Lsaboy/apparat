@@ -25,26 +25,54 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omniforge.app.core.jobs.ToolJobs
+import com.omniforge.app.core.jobs.retained
+import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.FileSelectionCard
+import com.omniforge.app.core.ui.ProcessStateView
 import com.omniforge.app.core.ui.ToolScaffold
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.common.UtilityEngine
-import kotlinx.coroutines.launch
+
+private const val JOB_KEY = "hash_verifier"
 
 @Composable
 fun HashVerifierScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var fileName by remember { mutableStateOf<String?>(null) }
-    var fileSize by remember { mutableStateOf<Long?>(null) }
+    var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
+    var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
+    var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
 
-    var md5Hash by remember { mutableStateOf<String?>(null) }
-    var sha256Hash by remember { mutableStateOf<String?>(null) }
-    var compareHash by remember { mutableStateOf("") }
-    var isCalculating by remember { mutableStateOf(false) }
+    var calculatedHashes by retained(JOB_KEY, "calculatedHashes") { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var compareHash by retained(JOB_KEY, "compareHash") { mutableStateOf("") }
+    var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    val startCalculation: (Uri) -> Unit = { uri ->
+        ToolJobs.launch(context, JOB_KEY, "Hash Verifier") { appContext ->
+            processState = ProcessState.Processing(0f, "Calculating checksums...")
+            val result = UtilityEngine.calculateChecksums(
+                context = appContext,
+                uri = uri,
+                algorithms = listOf("SHA-256", "SHA-512", "SHA-1", "MD5"),
+                onProgress = { p ->
+                    val percent = (p * 100).toInt()
+                    val msg = if (p > 0f) "Calculating checksums... $percent%" else "Calculating checksums..."
+                    processState = ProcessState.Processing(p, msg)
+                }
+            )
+            result.fold(
+                onSuccess = { hashes ->
+                    calculatedHashes = hashes
+                    processState = ProcessState.Idle
+                },
+                onFailure = { err ->
+                    processState = ProcessState.Error(err.localizedMessage ?: "Failed to calculate checksums")
+                }
+            )
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -53,12 +81,8 @@ fun HashVerifierScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
-            isCalculating = true
-            scope.launch {
-                md5Hash = UtilityEngine.calculateChecksum(context, it, "MD5").getOrNull()
-                sha256Hash = UtilityEngine.calculateChecksum(context, it, "SHA-256").getOrNull()
-                isCalculating = false
-            }
+            calculatedHashes = emptyMap()
+            startCalculation(it)
         }
     }
 
@@ -66,7 +90,8 @@ fun HashVerifierScreen(onBack: () -> Unit) {
         title = "Checksum & Hash Verifier",
         categoryName = "Quick Utilities",
         accentColor = AccentUtility,
-        onBack = onBack
+        onBack = onBack,
+        jobKey = JOB_KEY
     ) { padding ->
         Column(
             modifier = Modifier
@@ -87,36 +112,45 @@ fun HashVerifierScreen(onBack: () -> Unit) {
                 onClick = { picker.launch(arrayOf("*/*")) }
             )
 
-            if (isCalculating) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = AccentUtility,
-                    trackColor = DarkBorder
-                )
+            ProcessStateView(state = processState, accentColor = AccentUtility)
+
+            if (selectedUri != null && calculatedHashes.isEmpty() && processState !is ProcessState.Processing) {
+                Button(
+                    onClick = { selectedUri?.let { startCalculation(it) } },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                ) {
+                    Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = AmoledBlack)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Calculate Checksums", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                }
             }
 
-            if (sha256Hash != null) {
-                HashCard(
-                    title = "SHA-256 Checksum",
-                    hash = sha256Hash!!,
-                    onCopy = {
-                        copyToClipboard(context, "SHA-256", sha256Hash!!)
-                        Toast.makeText(context, "Copied SHA-256", Toast.LENGTH_SHORT).show()
+            if (calculatedHashes.isNotEmpty()) {
+                listOf("SHA-256", "SHA-512", "SHA-1", "MD5").forEach { algo ->
+                    calculatedHashes[algo]?.let { hash ->
+                        HashCard(
+                            title = "$algo Checksum",
+                            hash = hash,
+                            onCopy = {
+                                copyToClipboard(context, algo, hash)
+                                Toast.makeText(context, "Copied $algo", Toast.LENGTH_SHORT).show()
+                            }
+                        )
                     }
-                )
-
-                HashCard(
-                    title = "MD5 Checksum",
-                    hash = md5Hash ?: "Calculating...",
-                    onCopy = {
-                        md5Hash?.let {
-                            copyToClipboard(context, "MD5", it)
-                            Toast.makeText(context, "Copied MD5", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
+                }
 
                 // Comparison Box
+                val cleanCompare = compareHash.trim()
+                val matchedAlgo = if (cleanCompare.isNotEmpty()) {
+                    calculatedHashes.entries.firstOrNull { (_, hash) ->
+                        cleanCompare.equals(hash, ignoreCase = true)
+                    }?.key
+                } else null
+
                 OutlinedTextField(
                     value = compareHash,
                     onValueChange = { compareHash = it },
@@ -130,27 +164,38 @@ fun HashVerifierScreen(onBack: () -> Unit) {
                     ),
                     shape = RoundedCornerShape(14.dp),
                     trailingIcon = {
-                        if (compareHash.isNotBlank()) {
-                            val cleanCompare = compareHash.trim()
-                            val isMatch = cleanCompare.equals(sha256Hash, ignoreCase = true) ||
-                                    cleanCompare.equals(md5Hash, ignoreCase = true)
-                            Icon(
-                                imageVector = if (isMatch) Icons.Default.Check else Icons.Default.Close,
-                                contentDescription = null,
-                                tint = if (isMatch) SuccessGreen else ErrorRed
-                            )
+                        if (cleanCompare.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (matchedAlgo != null) Icons.Default.Check else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (matchedAlgo != null) SuccessGreen else ErrorRed
+                                )
+                                IconButton(onClick = { compareHash = "" }) {
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                                }
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
+                                if (!clip.isNullOrBlank()) {
+                                    compareHash = clip
+                                } else {
+                                    Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Paste from clipboard", tint = AccentUtility)
+                            }
                         }
                     }
                 )
 
-                if (compareHash.isNotBlank()) {
-                    val cleanCompare = compareHash.trim()
-                    val isMatch = cleanCompare.equals(sha256Hash, ignoreCase = true) ||
-                            cleanCompare.equals(md5Hash, ignoreCase = true)
+                if (cleanCompare.isNotEmpty()) {
                     Text(
-                        text = if (isMatch) "✓ Checksum Match: File integrity confirmed!" else "✗ Checksum Mismatch: File altered or invalid hash!",
+                        text = if (matchedAlgo != null) "✓ Checksum Match ($matchedAlgo): File integrity confirmed!" else "✗ Checksum Mismatch: File altered or invalid hash!",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = if (isMatch) SuccessGreen else ErrorRed,
+                            color = if (matchedAlgo != null) SuccessGreen else ErrorRed,
                             fontWeight = FontWeight.Bold
                         )
                     )

@@ -4,30 +4,40 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Base64
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.omniforge.app.core.util.FileUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
+import kotlin.coroutines.coroutineContext
 
 object UtilityEngine {
 
     /**
      * Generates a high-resolution QR code bitmap 100% offline using ZXing.
+     * Uses a single bulk setPixels() call on ARGB_8888 avoiding hundreds of thousands of JNI crossings.
      */
     fun generateQrCode(text: String, size: Int = 512): Bitmap {
         val writer = QRCodeWriter()
         val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                bitmap.setPixel(x, y, if (bitMatrix.get(x, y)) AndroidColor.BLACK else AndroidColor.WHITE)
+        val pixels = IntArray(size * size)
+        for (y in 0 until size) {
+            val offset = y * size
+            for (x in 0 until size) {
+                pixels[offset + x] = if (bitMatrix.get(x, y)) AndroidColor.BLACK else AndroidColor.WHITE
             }
         }
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        bitmap.setPixels(pixels, 0, size, 0, 0, size, size)
         return bitmap
     }
 
@@ -43,36 +53,92 @@ object UtilityEngine {
     }
 
     /**
-     * Calculates MD5, SHA-1, SHA-256, or SHA-512 checksum of any file without reading it into memory all at once.
+     * Calculates MD5, SHA-1, SHA-256, and/or SHA-512 checksums in a single streaming pass
+     * with a 64KB buffer, throttled progress notifications (>= 100ms), and cancellation safety.
+     */
+    suspend fun calculateChecksums(
+        context: Context,
+        uri: Uri,
+        algorithms: List<String> = listOf("MD5", "SHA-1", "SHA-256", "SHA-512"),
+        onProgress: (Float) -> Unit = {}
+    ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val digests = algorithms.associateWith { MessageDigest.getInstance(it) }
+            val buffer = ByteArray(65536)
+            val fileSize = runCatching {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+            }.getOrNull()?.takeIf { it > 0L } ?: 0L
+
+            var bytesReadTotal = 0L
+            var lastProgressTime = 0L
+
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                var read: Int
+                while (stream.read(buffer).also { read = it } != -1) {
+                    coroutineContext.ensureActive()
+                    for (d in digests.values) {
+                        d.update(buffer, 0, read)
+                    }
+                    bytesReadTotal += read
+
+                    val now = SystemClock.uptimeMillis()
+                    if (now - lastProgressTime >= 100L) {
+                        lastProgressTime = now
+                        val progress = if (fileSize > 0L) (bytesReadTotal.toFloat() / fileSize).coerceIn(0f, 1f) else 0f
+                        onProgress(progress)
+                    }
+                }
+            } ?: throw IllegalStateException("Could not read input file")
+
+            onProgress(1f)
+            digests.mapValues { (_, d) ->
+                d.digest().joinToString("") { "%02x".format(it) }
+            }
+        }
+    }
+
+    /**
+     * Calculates MD5, SHA-1, SHA-256, or SHA-512 checksum of any file.
+     * Delegates to single-pass [calculateChecksums].
      */
     suspend fun calculateChecksum(
         context: Context,
         uri: Uri,
         algorithm: String = "SHA-256"
-    ): Result<String> = withContext(Dispatchers.IO) {
-        runCatching {
-            val digest = MessageDigest.getInstance(algorithm)
-            val buffer = ByteArray(8192)
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                var read: Int
-                while (stream.read(buffer).also { read = it } != -1) {
-                    digest.update(buffer, 0, read)
-                }
-            } ?: throw IllegalStateException("Could not read input file")
-
-            val hashBytes = digest.digest()
-            hashBytes.joinToString("") { "%02x".format(it) }
-        }
+    ): Result<String> = calculateChecksums(context, uri, listOf(algorithm)).map {
+        it[algorithm] ?: throw IllegalStateException("Checksum $algorithm missing")
     }
 
     /**
-     * Base64 encode and decode
+     * Base64 encode and decode with URL-safe option and strict UTF-8 validation.
      */
-    fun encodeBase64(input: String): String =
-        Base64.encodeToString(input.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+    fun encodeBase64(input: String, urlSafe: Boolean = false): String {
+        val flags = Base64.NO_WRAP or (if (urlSafe) Base64.URL_SAFE else 0)
+        return Base64.encodeToString(input.toByteArray(Charsets.UTF_8), flags)
+    }
 
-    fun decodeBase64(input: String): Result<String> = runCatching {
-        String(Base64.decode(input, Base64.DEFAULT), Charsets.UTF_8)
+    fun decodeBase64(input: String, urlSafe: Boolean = false): Result<String> = runCatching {
+        val clean = input.trim()
+        if (clean.isEmpty()) return@runCatching ""
+
+        val primaryFlags = if (urlSafe) Base64.URL_SAFE else Base64.DEFAULT
+        val fallbackFlags = if (urlSafe) Base64.DEFAULT else Base64.URL_SAFE
+
+        val bytes = try {
+            Base64.decode(clean, primaryFlags)
+        } catch (_: IllegalArgumentException) {
+            Base64.decode(clean, fallbackFlags)
+        }
+
+        val decoder = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+
+        try {
+            decoder.decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (_: CharacterCodingException) {
+            throw IllegalArgumentException("Decoded ${bytes.size} bytes of binary data (not valid UTF-8 text).")
+        }
     }
 
     /**

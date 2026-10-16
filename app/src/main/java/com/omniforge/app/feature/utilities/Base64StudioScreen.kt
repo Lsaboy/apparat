@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -21,15 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.ToolScaffold
+import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.engine.common.UtilityEngine
+
+private const val JOB_KEY = "base64_studio"
 
 @Composable
 fun Base64StudioScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    var inputText by remember { mutableStateOf("") }
-    var outputText by remember { mutableStateOf("") }
-    var isEncoding by remember { mutableStateOf(true) }
+    var inputText by retained(JOB_KEY, "inputText") { mutableStateOf("") }
+    var outputText by retained(JOB_KEY, "outputText") { mutableStateOf("") }
+    var isEncoding by retained(JOB_KEY, "isEncoding") { mutableStateOf(true) }
+    var urlSafe by retained(JOB_KEY, "urlSafe") { mutableStateOf(false) }
 
     ToolScaffold(
         title = "Base64 Studio",
@@ -78,6 +83,28 @@ fun Base64StudioScreen(onBack: () -> Unit) {
                 )
             }
 
+            // URL Safe Option
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = urlSafe,
+                    onClick = { urlSafe = !urlSafe },
+                    label = { Text("URL-Safe (- and _)") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentUtility,
+                        selectedLabelColor = AmoledBlack
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (urlSafe) "URL-safe format (- and _ instead of + and /)" else "Standard Base64 format (+ and /)",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    fontSize = 11.sp
+                )
+            }
+
             OutlinedTextField(
                 value = inputText,
                 onValueChange = { inputText = it },
@@ -97,10 +124,10 @@ fun Base64StudioScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (isEncoding) {
-                        outputText = UtilityEngine.encodeBase64(inputText)
+                        outputText = UtilityEngine.encodeBase64(inputText, urlSafe = urlSafe)
                     } else {
-                        val result = UtilityEngine.decodeBase64(inputText)
-                        outputText = result.getOrElse { "Invalid Base64 string" }
+                        val result = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
+                        outputText = result.getOrElse { it.localizedMessage ?: "Invalid Base64 string" }
                     }
                 },
                 modifier = Modifier

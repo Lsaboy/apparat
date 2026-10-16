@@ -195,6 +195,61 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 
 ---
 
+### Batch 6: Hash Verifier Multi-Digest & FGS, QR Studio 50x Speedup, Base64 URL-Safe & Strict Decoding, Media3 HDR Tone-Mapping, and Encryption Honesty
+
+#### 1. Hash Verifier Single-Pass Multi-Digest & Background Execution (`1D.2` / `3D`)
+- **Root Cause:**
+  - `HashVerifierScreen.kt` ran hashing directly on local coroutine scope without `ToolJobs`, meaning navigation or app backgrounding cancelled long hashes on multi-GB files.
+  - State used `remember`, wiped on device rotation.
+  - Files were read sequentially twice (once for MD5, once for SHA-256) with small 8KB buffers, doubling disk IO and battery drain. SHA-1 (advertised on home screen) and SHA-512 were missing.
+  - Hash comparison was limited to SHA-256 and MD5, and had no clipboard auto-check or paste action.
+- **Solution:**
+  - In `UtilityEngine.kt`, implemented `calculateChecksums(context, uri, algorithms, onProgress)`: reads the file in a single streaming pass using a 64KB buffer, updating `MessageDigest` instances concurrently. Emits throttled progress updates ($\ge 100\text{ms}$) to avoid main thread UI jank, safeguards against unreadable or zero-byte file sizes (`fileSize <= 0`), and ensures coroutine cooperative cancellation via `coroutineContext.ensureActive()`.
+  - In `HashVerifierScreen.kt`:
+    - Migrated all screen state to `retained(JOB_KEY, ...)` and integrated `ToolJobs.launch(context, JOB_KEY, "Hash Verifier") { appContext -> ... }` with `ProcessStateView` and `ToolScaffold(jobKey = JOB_KEY)`.
+    - Render cards for all 4 computed hashes (SHA-256, SHA-512, SHA-1, MD5) with individual copy buttons.
+    - Added hash comparison field checking against all 4 computed hashes case-insensitively, with visual match/mismatch cues and an Android 12+ compliant "Paste from Clipboard" button that avoids unsolicited clipboard access toasts.
+
+#### 2. QR Studio 50x Optimization, Keystroke Debounce & Background Generation (`3D`)
+- **Root Cause:**
+  - `UtilityEngine.generateQrCode` executed 262,144 JNI `setPixel(x, y)` calls in a nested loop for every keystroke directly on the main thread, causing severe UI freezes and frame drops.
+  - Saving and sharing ran directly in the UI scope without `NonCancellable` or `appContext`.
+- **Solution:**
+  - In `UtilityEngine.kt`, refactored `generateQrCode` to populate an in-memory `IntArray(size * size)` with row-major stride `[y * size + x]` and dispatch a single bulk JNI `bitmap.setPixels(pixels, 0, size, 0, 0, size, size)` call using `Bitmap.Config.ARGB_8888`.
+  - In `QrStudioScreen.kt`:
+    - Added 150ms debounce (`delay(150)`) and offloaded QR generation to `Dispatchers.Default`.
+    - Retained user input text across device rotations via `retained(JOB_KEY, "inputText")`.
+    - Protected file save and share actions with `withContext(NonCancellable)` and `appContext`.
+
+#### 3. Base64 URL-Safe Toggle & Resilient Strict UTF-8 Decoding (`3D`)
+- **Root Cause:**
+  - `UtilityEngine.decodeBase64` used `Base64.DEFAULT`. When decoding URL-safe Base64 strings (containing `-` or `_`), it crashed with `IllegalArgumentException: bad base-64`.
+  - Decoding binary data (e.g. image/PDF Base64) with `String(bytes, UTF_8)` silently injected Unicode replacement characters (`\uFFFD`) and corrupted data.
+- **Solution:**
+  - In `UtilityEngine.kt`:
+    - Added `urlSafe: Boolean` parameter to `encodeBase64` and `decodeBase64`.
+    - Made `decodeBase64` resilient by attempting primary flags (`DEFAULT` vs `URL_SAFE`) and automatically falling back to alternate flags before failing.
+    - Replaced naive string conversion with a strict `CharsetDecoder` configured with `CodingErrorAction.REPORT`. If binary data is passed, it throws a descriptive exception: `"Decoded N bytes of binary data (not valid UTF-8 text)."`.
+  - In `Base64StudioScreen.kt`:
+    - Added a URL-Safe FilterChip toggle allowing users to switch between standard (`+`, `/`) and URL-safe (`-`, `_`) modes.
+    - Retained mode, input, and output across screen rotations.
+
+#### 4. Media3 OpenGL HDR Input Tone-Mapping to SDR (`1D.2`)
+- **Root Cause:**
+  - Phone cameras (Pixel, Samsung, iPhone) record 10-bit HDR (HDR10/HLG). Media3 Transformer with H.264 SDR output failed with `ENCODER_INIT_FAILED` / `DECODING_FORMAT_UNSUPPORTED` or produced washed-out grey footage.
+- **Solution:**
+  - In `VideoEngine.kt:runTransformer`, wrapped the media item in `EditedMediaItemSequence(item)` and built a `Composition` with `setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)` whenever video re-encoding is active (`forceVideoEncode || videoMimeType != null || item.effects.videoEffects.isNotEmpty()`) and video is not being removed.
+  - Pure transmuxing operations (`losslessTrim`, `stripAudio`, `extractAudio`) omit tone-mapping to preserve instantaneous lossless stream copying.
+
+#### 5. Encryption Honesty in Output Messages (`1D.2`)
+- **Root Cause:**
+  - When processing encrypted PDFs, `PdfSplitScreen` stripped the encryption dictionary (output files have no password), while `PdfShrinkScreen` re-saved the document preserving the original encryption dictionary. Users were not told what happened to their document passwords.
+- **Solution:**
+  - In `PdfSplitScreen.kt`: if `!pdfPassword.isNullOrEmpty()`, appended `(Output files have no password)` to the success message.
+  - In `PdfShrinkScreen.kt`: if `!pdfPassword.isNullOrEmpty()`, appended `(Original password kept)` across all completion scenarios (standard compress, in-place overwrite, and already-optimized).
+
+---
+
 ## 3. Comprehensive File Audit
 
 | File Path | Changes Made |
@@ -209,20 +264,24 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label. |
 | `app/src/main/java/com/omniforge/app/core/ui/PdfPasswordGate.kt` | Added `pageCount` to `onReady` callback. |
 | `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`. |
+| `app/src/main/java/com/omniforge/app/engine/common/UtilityEngine.kt` | Single-pass `calculateChecksums` (MD5/SHA-1/SHA-256/SHA-512) with throttled progress; bulk `setPixels` on `ARGB_8888` for QR generation; URL-safe Base64 with resilient fallback and strict UTF-8 validation. |
 | `app/src/main/java/com/omniforge/app/engine/image/BitmapDecoder.kt` | Added `isAnimated` and `isAnimatedWebpHeader` zero-allocation animation detection. |
 | `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation. |
 | `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`. |
-| `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message. |
+| `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message; configured `Composition` with OpenGL HDR-to-SDR tone-mapping for video re-encoding. |
 | `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles. |
 | `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; appContext Toast/Save. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; password retention honesty messages; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count; password removal honesty message. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`; `NonCancellable` Save All with honest progress count. |
 | `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/Base64StudioScreen.kt` | Retained state; URL-Safe toggle FilterChip; descriptive decode error reporting. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/HashVerifierScreen.kt` | Retained state; `ToolJobs.launch` background hashing with progress; SHA-256/SHA-512/SHA-1/MD5 cards with copy buttons; 4-algorithm case-insensitive hash comparison; Android 12+ compliant clipboard paste. |
+| `app/src/main/java/com/omniforge/app/feature/utilities/QrStudioScreen.kt` | Retained state; 150ms keystroke debounce; `Dispatchers.Default` background QR generation; `NonCancellable` save/share with `appContext`. |
 | `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; removed invalid SaveModeSelector; share-in protection banner; appContext Toast/Save. |
@@ -230,12 +289,13 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; Start Offset slider; clamped duration; appContext Toast/Save. |
 | `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/res/drawable/ic_stat_notify.xml` | Created 24dp monochrome notification icon. |
+| `app/src/test/java/com/omniforge/app/engine/common/UtilityEngineTest.kt` | Added unit tests for MessageDigest verification and string casing. |
 | `app/src/test/java/com/omniforge/app/engine/image/BitmapDecoderTest.kt` | Added unit tests for WebP header animation flag detection. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfA4FitTest.kt` | Added unit tests for A4 image scaling and margins. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfSplitTest.kt` | Added unit tests for PDF chunking and bounds. |
 | `app/src/test/java/com/omniforge/app/core/util/FileUtilsTest.kt` | Added unit tests for MIME format matching and cache cleanup. |
 | `README.md` | Updated for Media3 architecture and current features. |
-| `FIX_PLAN.md` | Checked off all completed items across Batches 1–5. |
+| `FIX_PLAN.md` | Checked off all completed items across Batches 1–6. |
 
 ---
 
@@ -250,4 +310,9 @@ When reviewing these changes, please inspect:
 6. **NonCancellable Save Scopes:** Check `CommonComponents.kt:ResultCard` and `PdfSplitScreen.kt` / `PdfToImagesScreen.kt` to ensure `NonCancellable` properly finishes writing files to disk even if the user navigates away or rotates during export.
 7. **Share-In State Retain Safety:** Verify that `lastHandledInitialUri` correctly prevents screen rotations from reverting user-picked files back to initial share URIs across the 6 share-in screens.
 8. **WebP Header Bit Parsing:** Inspect `BitmapDecoder.isAnimatedWebpHeader` to confirm RFC 6386 bit compliance (byte 20, bit 1 = 0x02 for animation).
+9. **Single-Pass Multi-Digest Streaming:** Inspect `UtilityEngine.calculateChecksums` to verify that all 4 algorithms (`SHA-256`, `SHA-512`, `SHA-1`, `MD5`) read from the stream in one pass, throttle progress to $\ge 100\text{ms}$, handle `fileSize <= 0` gracefully, and check `coroutineContext.ensureActive()`.
+10. **Bulk JNI setPixels Stride:** Verify that `UtilityEngine.generateQrCode` correctly maps indices as `[y * size + x]` to avoid matrix transposition when calling native `setPixels` on `ARGB_8888`.
+11. **Strict Base64 UTF-8 Decoding:** Inspect `UtilityEngine.decodeBase64` to verify that binary data triggers `CharacterCodingException` via `CharsetDecoder` rather than corrupting strings with `\uFFFD`.
+12. **Media3 OpenGL Tone-Mapping Scope:** Check `VideoEngine.kt:runTransformer` to confirm that `setHdrMode(HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)` is only enabled when video re-encoding is active and video is not being removed, avoiding regressions on lossless transmuxing operations.
+
 

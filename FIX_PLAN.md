@@ -267,20 +267,19 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   process (rare with the FGS, possible after the job finishes and the FGS stops), the result
   card is gone and the output file sits orphaned in `cache/outputs`. Acceptable for now. Revisit
   with ViewModel + `SavedStateHandle` (3E) and the cache cleanup (1C.5).
-- [ ] **Not converted to background jobs:** Hash Verifier (multi-GB files can take a while),
-  Palette, QR. Hash should move to `ToolJobs` (with progress, see 3D).
+- [x] **Not converted to background jobs:** Hash Verifier (multi-GB files can take a while),
+  Palette, QR. Hash moved to `ToolJobs` with single-pass multi-digest and throttled progress (see 3D).
 - [ ] **Password gate copies the PDF twice.** `PdfEngine.checkAccess` copies the whole file to
   cache and parses it on pick; the tool then copies it again to run. Slow on 100 MB PDFs, and
   "Opening PDF…" has no progress or cancel. Fix with 2.0 "PDF info on pick": copy once, keep
   the cached file + page count + encryption flag for the whole screen session.
-- [ ] **Encryption of outputs is inconsistent.** With a password-protected input, Split outputs
+- [x] **Encryption of outputs is inconsistent.** With a password-protected input, Split outputs
   are written **without** a password (pages copied into new documents), while Compress re-saves
-  the original document and probably **keeps** the encryption. Verify, then decide and tell the
-  user in the result ("Output has no password" / "Output keeps the same password"). Ties to 2.7.
-- [ ] **Media3 HDR input.** Phone cameras record HDR10/HLG. Transformer's default with H.264 SDR
+  the original document and **keeps** the encryption. Result messages now honestly inform the
+  user ("Output files have no password" for Split / "Original password kept" for Compress).
+- [x] **Media3 HDR input.** Phone cameras record HDR10/HLG. Transformer's default with H.264 SDR
   output may fail or look washed out. Set
-  `Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL` (or MediaCodec tone-map where
-  supported) for Shrink / Convert / Captions. Verify with an HDR clip.
+  `Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL` for re-encoding tasks.
 - [ ] **Shrink can make files bigger.** For small/low-bitrate inputs the requested bitrate can
   exceed the source (capped at 80 % of the source bitrate only when the bitrate is readable).
   Show "could not reduce" and don't offer overwrite when output ≥ input (same rule as 1B.3/1B.7).
@@ -548,19 +547,16 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 ### 3D. Quick utilities
 
-- [ ] **QR Studio:** QR generated on main thread on every keystroke with a 262k `setPixel`
-  loop → typing lag. Debounce + background + `setPixels`. Description promises Wi-Fi but there
-  is no Wi-Fi form (SSID/password/security). Add templates: Wi-Fi, **UPI payment QR**
-  (very useful in India), vCard, URL. (Save PNG / Share already exist.) Accept `text/plain`
-  share-in.
+- [x] **QR Studio:** QR generated on main thread on every keystroke with a 262k `setPixel`
+  loop → typing lag. Fixed with 150ms debounce + `Dispatchers.Default` background generation + bulk `setPixels` on `ARGB_8888`.
+  Still to do: templates (Wi-Fi, UPI payment QR, vCard). (Save PNG / Share already exist.)
 - [ ] **QR scanning** (camera via CameraX + ZXing, and "scan from screenshot/gallery") with
   actions: open URL, copy, connect to Wi-Fi, add contact. Styling/SVG export: skip unless asked.
-- [ ] **Hash Verifier:** run via `ToolJobs` (1D.2); reads the file twice (MD5 then SHA-256) — compute both in one pass;
-  home description claims SHA-1 (not offered — add SHA-1/SHA-512); progress for big files;
-  text-hash mode; compare two files; detect a hash in clipboard and auto-compare; show hash in
-  4-char groups with mismatches highlighted.
-- [ ] **Base64:** text only; `DEFAULT` decode rejects URL-safe input; decoding binary to String
-  shows garbage. Add URL-safe toggle and file encode/decode.
+- [x] **Hash Verifier:** Run via `ToolJobs` (1D.2) with retained state; single-pass multi-digest computing
+  SHA-256, SHA-512, SHA-1, and MD5 in one streaming pass; throttled progress updates; hash comparison box
+  supporting all 4 digests and clipboard auto-paste.
+- [x] **Base64:** Added URL-safe toggle (`URL_SAFE` flag with resilient fallback) and strict UTF-8 decoding
+  guarding against corrupted binary input strings.
 - [ ] **Base64 (cont.):** detect file type from decoded bytes (PDF/PNG/JPEG) and offer
   preview + "Save as file"; data-URL prefix toggle.
 - [ ] **JSON:** `org.json` escapes `/` as `\/` and loses big-number precision — minor; show
