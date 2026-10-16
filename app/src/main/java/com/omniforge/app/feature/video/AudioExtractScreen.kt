@@ -74,10 +74,10 @@ fun AudioExtractScreen(onBack: () -> Unit) {
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
-                placeholderText = "Select Video to Rip Audio",
-                icon = Icons.Default.VideoFile,
+                placeholderText = "Select Video or Audio to Convert",
+                icon = Icons.Default.Audiotrack,
                 accentColor = AccentVideo,
-                onClick = { picker.launch(arrayOf("video/*")) }
+                onClick = { picker.launch(arrayOf("video/*", "audio/*")) }
             )
 
             Card(
@@ -172,14 +172,15 @@ fun AudioExtractScreen(onBack: () -> Unit) {
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val baseName = (fileName ?: "audio").substringBeforeLast(".")
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = targetFormat.mimeType,
                             displayName = "${baseName}_extracted${targetFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)

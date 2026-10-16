@@ -24,6 +24,11 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
+import android.media.MediaMetadataRetriever
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.launch
 
 /** Nav route; also the key for this tool's background job and retained state. */
@@ -40,8 +45,34 @@ fun VideoToGifScreen(onBack: () -> Unit) {
 
     var fps by retained(JOB_KEY, "fps") { mutableFloatStateOf(15f) }
     var width by retained(JOB_KEY, "width") { mutableFloatStateOf(480f) }
+    var startSec by retained(JOB_KEY, "startSec") { mutableFloatStateOf(0f) }
     var durationSec by retained(JOB_KEY, "durationSec") { mutableFloatStateOf(5f) }
+    var videoDurationSec by retained(JOB_KEY, "videoDurationSec") { mutableFloatStateOf(0f) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(selectedUri) {
+        val uri = selectedUri
+        if (uri != null) {
+            withContext(Dispatchers.IO) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(context, uri)
+                    val durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                    videoDurationSec = durMs / 1000f
+                    if (videoDurationSec > 1f && startSec >= videoDurationSec) {
+                        startSec = (videoDurationSec - 1f).coerceAtLeast(0f)
+                    }
+                } catch (_: Exception) {
+                    videoDurationSec = 0f
+                } finally {
+                    retriever.release()
+                }
+            }
+        } else {
+            videoDurationSec = 0f
+            startSec = 0f
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -125,20 +156,45 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                         )
                     )
 
+                    val maxStart = if (videoDurationSec > 1f) (videoDurationSec - 1f).coerceIn(0f, 60f) else 0f
+                    if (maxStart > 0f) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Start Offset: ${startSec.toInt()}s",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                        Slider(
+                            value = startSec.coerceIn(0f, maxStart),
+                            onValueChange = { startSec = it },
+                            valueRange = 0f..maxStart,
+                            steps = (maxStart - 1).toInt().coerceAtLeast(0),
+                            colors = SliderDefaults.colors(
+                                thumbColor = AccentVideo,
+                                activeTrackColor = AccentVideo,
+                                inactiveTrackColor = DarkBorder
+                            )
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val maxDur = if (videoDurationSec > 0f) (videoDurationSec - startSec).coerceIn(1f, 15f) else 15f
+                    val currentDur = durationSec.coerceIn(1f, maxDur)
                     Text(
-                        text = "Max Duration: ${durationSec.toInt()}s",
+                        text = "Max Duration: ${currentDur.toInt()}s",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Slider(
-                        value = durationSec,
+                        value = currentDur,
                         onValueChange = { durationSec = it },
-                        valueRange = 2f..15f,
-                        steps = 12,
+                        valueRange = 1f..maxDur,
+                        steps = if (maxDur > 1f) (maxDur - 1).toInt().coerceAtLeast(0) else 0,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
@@ -151,6 +207,7 @@ fun VideoToGifScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
+                    val effectiveDur = if (videoDurationSec > 0f) durationSec.coerceIn(1f, (videoDurationSec - startSec).coerceAtLeast(1f)) else durationSec
                     ToolJobs.launch(context, JOB_KEY, "Video to GIF") { appContext ->
                         processState = ProcessState.Processing(0f, "Reading video frames...")
                         val result = VideoEngine.videoToGif(
@@ -158,8 +215,8 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                             videoUri = uri,
                             fps = fps.toInt(),
                             width = width.toInt(),
-                            startSec = 0f,
-                            durationSec = durationSec,
+                            startSec = startSec,
+                            durationSec = effectiveDur,
                             onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }
                         )
                         result.fold(
@@ -196,14 +253,15 @@ fun VideoToGifScreen(onBack: () -> Unit) {
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val base = (fileName ?: "animation").substringBeforeLast(".")
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = "image/gif",
                             displayName = "${base}.gif"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "image/gif")

@@ -156,6 +156,45 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 
 ---
 
+### Batch 5: Save Resilience, Share-In Safety, Animated Image Warnings & Video Tooling
+
+#### 1. Save Completion Resilience (`1D.2`)
+- **Root Cause:** In `ResultCard` and the multi-file screens (`PdfSplitScreen`, `PdfToImagesScreen`), file export was tied to the composable's coroutine scope. Navigating away or rotating the screen mid-save cancelled the IO operation, leaving partial/corrupt files or silent failures. Furthermore, displaying Toasts with `LocalContext.current` (Activity) after `NonCancellable` blocks caused crashes or memory leaks when the Activity had already finished.
+- **Solution:**
+  - In `ResultCard` ([`CommonComponents.kt`](./app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt)), wrapped `onSaveToDownloads()` inside `withContext(NonCancellable)`.
+  - In `PdfSplitScreen.kt` and `PdfToImagesScreen.kt` ("Save All"), wrapped the entire file copying loop inside `withContext(NonCancellable)` and reported honest progress ("Saved X of Y files to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}").
+  - In all 13 screens calling `ResultCard`, updated `onSaveToDownloads` to extract `val appContext = context.applicationContext`, passing `appContext` to both `FileUtils.saveToDownloads` and `Toast.makeText`.
+  - Renamed `SaveModeSelector` label from "Modify OG" to "Replace Original" with single-line maxLines and ellipsis.
+
+#### 2. Stale State on Share-In (`1D.2`)
+- **Root Cause:** When sharing a file via Android's share sheet into an active tool screen (`PdfShrink`, `VideoShrink`, `VideoConvert`, `ImageShrink`, `ImageConvert`, `ExifStripper`), `retained(...)` ignored the new `initialUri` while a job was running, or unconditionally overwriting state would clobber in-progress operations. Device rotation also re-passed `initialUri`, clobbering user-picked files.
+- **Solution:**
+  - Added retained states `lastHandledInitialUri` and `pendingShareUri`.
+  - In `LaunchedEffect(initialUri)`: if `initialUri` arrives while a background job is running on another file, it sets `pendingShareUri` and surfaces a prominent card: *"Incoming shared file: [filename]. A job is currently running on another file. Switch to this new file or dismiss it."*
+  - If the tool is idle, it immediately adopts the new file and clears previous processing state.
+  - On device rotation, `initialUri == lastHandledInitialUri` evaluates to true, preventing any state wipe or reversion to previously shared files.
+
+#### 3. Animated Image Detection & Info Notice (`1D.2`)
+- **Root Cause:** `BitmapDecoder` and Android's `ImageDecoder.decodeBitmap` decode only the first frame of animated GIF/WebP files without notifying the user, causing silent conversion to static frames. Calling full `ImageDecoder.decodeDrawable` on every image risked memory spikes (~200MB allocation for 48MP photos).
+- **Solution:**
+  - In `BitmapDecoder.kt`, implemented `isAnimated(context: Context, uri: Uri): Boolean` using zero-allocation fast paths:
+    - MIME / extension check for `.gif` (returns `true`) and `.jpg`/`.bmp`/`.heic` (returns `false`).
+    - WebP 21-byte header parsing (`isAnimatedWebpHeader`): reads 21 bytes, verifies `RIFF...WEBP`, and inspects byte 20 of chunk `VP8X` where bit 1 (`0x02`) indicates animation.
+    - Fallback: minimal 1x1 downscaled decode via `ImageDecoder.decodeDrawable { decoder.setTargetSize(1, 1) }` checking `drawable is AnimatedImageDrawable`.
+  - Added pure unit tests in `BitmapDecoderTest.kt` covering valid animated WebP headers, static WebP headers, and truncated headers.
+  - In `ImageConvertScreen.kt` and `ImageShrinkScreen.kt`, display an info notice card when an animated image is loaded: *"Note: Animated images are processed as a still frame."*
+
+#### 4. Audio Extraction & Video-to-GIF UI/Safety (`1D.3` / `3B`)
+- **Root Cause:**
+  - `AudioExtractScreen.kt` picker was restricted to `video/*` and placeholder read "Select Video to Rip Audio", preventing users from converting audio formats (e.g. AAC to WAV). `VideoEngine.kt` threw "This video has no audio track" even when an audio file was selected.
+  - `VideoToGifScreen.kt` hardcoded `startSec = 0f` and lacked duration bounds, causing `IllegalArgumentException` ("Start time is past the end of the video") on short clips.
+- **Solution:**
+  - In `AudioExtractScreen.kt`: updated picker to `arrayOf("video/*", "audio/*")` and placeholder to "Select Video or Audio to Convert".
+  - In `VideoEngine.kt`: updated error to "Selected file contains no audio track".
+  - In `VideoToGifScreen.kt`: extracted video duration via `MediaMetadataRetriever`, added a Start Offset slider clamped to `(videoDuration - 1s).coerceIn(0s, 60s)`, and clamped the duration slider to prevent overshooting clip length.
+
+---
+
 ## 3. Comprehensive File Audit
 
 | File Path | Changes Made |
@@ -167,42 +206,48 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 | `app/src/main/java/com/omniforge/app/core/jobs/ToolJobService.kt` | Implemented `onTimeout` for Android 15 FGS; switched to `ic_stat_notify`; updated `openToolIntent` flags to `singleTop`. |
 | `app/src/main/java/com/omniforge/app/core/settings/AppSettings.kt` | Added `hasAskedNotificationPermission` SharedPreferences persistence. |
 | `app/src/main/java/com/omniforge/app/core/theme/Theme.kt` | Added `recomposeTrigger: Int = 0` to trigger theme recomposition. |
-| `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check. |
+| `app/src/main/java/com/omniforge/app/core/ui/CommonComponents.kt` | Added `allowOverwrite` and `disallowedReason` to `SaveModeSelector`; persistent notification permission check; `withContext(NonCancellable)` in `ResultCard`; "Replace Original" label. |
 | `app/src/main/java/com/omniforge/app/core/ui/PdfPasswordGate.kt` | Added `pageCount` to `onReady` callback. |
 | `app/src/main/java/com/omniforge/app/core/util/FileUtils.kt` | Added `DOWNLOAD_SUBFOLDER`; `isImageFormatMatching`; `isVideoMp4`; `cleanStaleCacheDir`; `cleanStaleCache`. |
+| `app/src/main/java/com/omniforge/app/engine/image/BitmapDecoder.kt` | Added `isAnimated` and `isAnimatedWebpHeader` zero-allocation animation detection. |
 | `app/src/main/java/com/omniforge/app/engine/image/ImageEngine.kt` | White canvas compositing for JPEG; `targetFormat` in `shrinkImage`; lossless EXIF stripping preserving orientation. |
 | `app/src/main/java/com/omniforge/app/engine/pdf/PdfEngine.kt` | Added `calculateA4Fit`; `computeEveryNChunks`; filtered out-of-bounds ranges in `multiSplitPdf`. |
-| `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM. |
+| `app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt` | Handled `ENCODING_PCM_FLOAT` in `decodeToWav` by downsampling to 16-bit PCM; agnostic audio track missing message. |
 | `app/src/main/java/com/omniforge/app/feature/home/HomeScreen.kt` | Standardized screen titles. |
-| `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`. |
-| `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety. |
-| `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety. |
-| `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`. |
-| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
-| `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; removed invalid SaveModeSelector. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size and non-MP4. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
-| `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`. |
+| `app/src/main/java/com/omniforge/app/feature/image/ExifStripperScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; share-in protection banner; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/image/ImageConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/image/ImageShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; pass `outputFormat`; overwrite safety; share-in protection banner; animated image warning; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/image/DocumentScanScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/ImagesToPdfScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size; share-in protection banner; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfSplitScreen.kt` | Injected `appContext` into `ToolJobs.launch`; strict range validation UI; dynamic chunk count; `NonCancellable` Save All with honest progress count. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfToImagesScreen.kt` | Injected `appContext` into `ToolJobs.launch`; displays `pageCount`; `NonCancellable` Save All with honest progress count. |
+| `app/src/main/java/com/omniforge/app/feature/pdf/PdfUnlockScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/AudioExtractScreen.kt` | Injected `appContext` into `ToolJobs.launch`; audio + video input picker; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoCaptionScreen.kt` | Injected `appContext` into `ToolJobs.launch`; font size label fix; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoConvertScreen.kt` | Injected `appContext` into `ToolJobs.launch`; removed invalid SaveModeSelector; share-in protection banner; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoShrinkScreen.kt` | Injected `appContext` into `ToolJobs.launch`; `AppSettings.defaultSaveMode`; overwrite protection for $\ge$ size and non-MP4; share-in protection banner; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoToGifScreen.kt` | Injected `appContext` into `ToolJobs.launch`; Start Offset slider; clamped duration; appContext Toast/Save. |
+| `app/src/main/java/com/omniforge/app/feature/video/VideoTrimMuteScreen.kt` | Injected `appContext` into `ToolJobs.launch`; appContext Toast/Save. |
 | `app/src/main/res/drawable/ic_stat_notify.xml` | Created 24dp monochrome notification icon. |
+| `app/src/test/java/com/omniforge/app/engine/image/BitmapDecoderTest.kt` | Added unit tests for WebP header animation flag detection. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfA4FitTest.kt` | Added unit tests for A4 image scaling and margins. |
 | `app/src/test/java/com/omniforge/app/engine/pdf/PdfSplitTest.kt` | Added unit tests for PDF chunking and bounds. |
 | `app/src/test/java/com/omniforge/app/core/util/FileUtilsTest.kt` | Added unit tests for MIME format matching and cache cleanup. |
 | `README.md` | Updated for Media3 architecture and current features. |
-| `FIX_PLAN.md` | Checked off all completed items across Batches 1–4. |
+| `FIX_PLAN.md` | Checked off all completed items across Batches 1–5. |
 
 ---
 
 ## 4. Suggested Audit Points for Claude
 
 When reviewing these changes, please inspect:
-1. **Activity Context Leak Elimination:** Verify that no lambda passed to `ToolJobs.launch` references `LocalContext.current` (outer `context`). All 15 screens should only reference `appContext`.
+1. **Activity Context Leak Elimination:** Verify that no lambda passed to `ToolJobs.launch` or `onSaveToDownloads` references `LocalContext.current` (outer `context`). All 15 screens should only reference `appContext`.
 2. **Channel vs. SharedFlow Navigation:** Check [`MainActivity.kt`](./app/src/main/java/com/omniforge/app/MainActivity.kt) to confirm that `navEvents: Channel<String>` correctly guards against duplicate navigations on activity recreation/rotation and handles `onNewIntent`.
 3. **Float to 16-Bit PCM Downsampling:** Check [`VideoEngine.kt:decodeToWav`](./app/src/main/java/com/omniforge/app/engine/video/VideoEngine.kt) to confirm that the sample conversion `(sample.coerceIn(-1.0f, 1.0f) * 32767.0f).roundToInt().toShort()` preserves byte alignment with the 44-byte WAV header.
 4. **Cache Cleanup Race Conditions:** Inspect `FileUtils.cleanStaleCacheDir` to verify that `appStartTime` properly protects freshly created input files from being pruned by the background startup cleanup.
 5. **Lossless EXIF Tag Stripping:** Inspect `ImageEngine.stripExif` to confirm that `TAG_ORIENTATION` is preserved on JPEG while clearing privacy tags (`GPS`, `Make`, `Model`, `DateTime`, etc.).
+6. **NonCancellable Save Scopes:** Check `CommonComponents.kt:ResultCard` and `PdfSplitScreen.kt` / `PdfToImagesScreen.kt` to ensure `NonCancellable` properly finishes writing files to disk even if the user navigates away or rotates during export.
+7. **Share-In State Retain Safety:** Verify that `lastHandledInitialUri` correctly prevents screen rotations from reverting user-picked files back to initial share URIs across the 6 share-in screens.
+8. **WebP Header Bit Parsing:** Inspect `BitmapDecoder.isAnimatedWebpHeader` to confirm RFC 6386 bit compliance (byte 20, bit 1 = 0x02 for animation).
+

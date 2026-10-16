@@ -22,6 +22,7 @@ import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
+import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
 
@@ -35,11 +36,28 @@ fun VideoConvertScreen(
 ) {
     val context = LocalContext.current
 
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
-
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                processState = ProcessState.Idle
+            }
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -48,6 +66,8 @@ fun VideoConvertScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            lastHandledInitialUri = it
+            pendingShareUri = null
             processState = ProcessState.Idle
         }
     }
@@ -68,6 +88,52 @@ fun VideoConvertScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared file: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
 
             FileSelectionCard(
                 fileName = fileName,
@@ -127,14 +193,15 @@ fun VideoConvertScreen(
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val baseName = (fileName ?: "video").substringBeforeLast(".")
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = VideoEngine.MP4_MIME,
                             displayName = "${baseName}_converted.mp4"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)

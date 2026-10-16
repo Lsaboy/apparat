@@ -63,4 +63,70 @@ object BitmapDecoder {
 
     private fun isLowRam(context: Context): Boolean =
         (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.isLowRamDevice == true
+
+    /**
+     * Quickly checks whether the image at [uri] is animated (e.g. GIF, animated WebP, animated HEIF/APNG).
+     * Uses MIME/extension checks and WebP header byte inspection to avoid allocating large bitmaps.
+     */
+    fun isAnimated(context: Context, uri: Uri): Boolean {
+        val mime = context.contentResolver.getType(uri)?.lowercase()
+        val path = uri.path?.lowercase() ?: ""
+        if (mime == "image/gif" || path.endsWith(".gif")) return true
+        if (mime == "image/jpeg" || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
+            mime == "image/bmp" || path.endsWith(".bmp")) {
+            return false
+        }
+
+        // Fast path for WebP: VP8X chunk byte 20 bit 1 is ANIMATION_FLAG
+        if (mime == "image/webp" || path.endsWith(".webp")) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val header = ByteArray(21)
+                    var readTotal = 0
+                    while (readTotal < 21) {
+                        val count = stream.read(header, readTotal, 21 - readTotal)
+                        if (count < 0) break
+                        readTotal += count
+                    }
+                    if (readTotal == 21) {
+                        return isAnimatedWebpHeader(header)
+                    }
+                }
+            } catch (_: Exception) {
+                // fallback below
+            }
+        }
+
+        // Fallback: Safe downscaled decode with ImageDecoder
+        return try {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
+                decoder.setTargetSize(1, 1)
+            }
+            drawable is android.graphics.drawable.AnimatedImageDrawable
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * Inspects the first 21 bytes of a WebP header to determine if the ANIMATION flag is set.
+     */
+    fun isAnimatedWebpHeader(header: ByteArray): Boolean {
+        if (header.size < 21) return false
+        val isRiff = header[0] == 'R'.code.toByte() && header[1] == 'I'.code.toByte() &&
+                     header[2] == 'F'.code.toByte() && header[3] == 'F'.code.toByte()
+        val isWebp = header[8] == 'W'.code.toByte() && header[9] == 'E'.code.toByte() &&
+                     header[10] == 'B'.code.toByte() && header[11] == 'P'.code.toByte()
+        if (isRiff && isWebp) {
+            val isVp8x = header[12] == 'V'.code.toByte() && header[13] == 'P'.code.toByte() &&
+                         header[14] == '8'.code.toByte() && header[15] == 'X'.code.toByte()
+            if (isVp8x) {
+                val flags = header[20].toInt()
+                val animationFlag = 0x02
+                return (flags and animationFlag) != 0
+            }
+        }
+        return false
+    }
 }

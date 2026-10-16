@@ -28,6 +28,9 @@ import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.ImageEngine
 import com.omniforge.app.engine.image.ImageOutputFormat
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.unit.sp
+import com.omniforge.app.engine.image.BitmapDecoder
 import kotlinx.coroutines.launch
 
 /** Nav route; also the key for this tool's background job and retained state. */
@@ -40,6 +43,9 @@ fun ImageShrinkScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
 
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
@@ -54,6 +60,21 @@ fun ImageShrinkScreen(
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                processState = ProcessState.Idle
+            }
+        }
+    }
+
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -61,8 +82,14 @@ fun ImageShrinkScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            lastHandledInitialUri = it
+            pendingShareUri = null
             processState = ProcessState.Idle
         }
+    }
+
+    val isAnimated = remember(selectedUri) {
+        selectedUri?.let { runCatching { BitmapDecoder.isAnimated(context, it) }.getOrDefault(false) } ?: false
     }
 
     val isFormatMismatch = selectedUri != null && !FileUtils.isImageFormatMatching(context, selectedUri!!, outputFormat)
@@ -89,6 +116,52 @@ fun ImageShrinkScreen(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared file: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
@@ -97,6 +170,32 @@ fun ImageShrinkScreen(
                 accentColor = AccentImage,
                 onClick = { picker.launch(arrayOf("image/*")) }
             )
+
+            if (isAnimated) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = AccentImage,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Note: Animated images are processed as a still frame.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary
+                        )
+                    }
+                }
+            }
 
             // Format Selection Row
             FormatSelectorRow(
@@ -275,14 +374,15 @@ fun ImageShrinkScreen(
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val base = (fileName ?: "photo").substringBeforeLast(".")
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = outputFormat.mimeType,
                             displayName = "${base}_shrunk${outputFormat.extension}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, outputFormat.mimeType)

@@ -26,6 +26,7 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.pdf.PdfEngine
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 /** Nav route; also the key for this tool's background job and retained state. */
@@ -39,18 +40,39 @@ fun PdfShrinkScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+
+    // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
+    var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
+    var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
 
     var compressionLevel by retained(JOB_KEY, "compressionLevel") { mutableFloatStateOf(0.6f) }
     var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
     var processState by retained(JOB_KEY, "processState") {
         mutableStateOf<ProcessState>(if (initialUri != null) ProcessState.Processing(0f, "Opening PDF...") else ProcessState.Idle)
     }
-    // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
-    var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
-    var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                pdfPassword = null
+                pageCount = null
+                processState = ProcessState.Processing(0f, "Opening PDF...")
+            }
+        }
+    }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -59,6 +81,8 @@ fun PdfShrinkScreen(
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            lastHandledInitialUri = it
+            pendingShareUri = null
             pdfPassword = null
             pageCount = null
             processState = ProcessState.Processing(0f, "Opening PDF...")
@@ -81,6 +105,54 @@ fun PdfShrinkScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared file: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    pdfPassword = null
+                                    pageCount = null
+                                    processState = ProcessState.Processing(0f, "Opening PDF...")
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
 
             PdfPasswordGate(
                 uri = selectedUri,
@@ -223,13 +295,14 @@ fun PdfShrinkScreen(
                     originalSize = fileSize,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = "application/pdf",
                             displayName = "compressed_${fileName ?: "doc.pdf"}"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")

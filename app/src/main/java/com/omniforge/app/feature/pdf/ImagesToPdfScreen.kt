@@ -142,13 +142,14 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                     outputFile = success.outputFile,
                     message = success.message,
                     onSaveToDownloads = {
+                        val appContext = context.applicationContext
                         val saved = FileUtils.saveToDownloads(
-                            context = context,
+                            context = appContext,
                             file = success.outputFile,
                             mimeType = "application/pdf",
                             displayName = "combined_photos.pdf"
                         )
-                        Toast.makeText(context, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")

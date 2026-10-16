@@ -381,23 +381,27 @@ fun PdfSplitScreen(onBack: () -> Unit) {
                                     if (saveProgress != null) return@Button
                                     val files = generatedFiles.toList()
                                     val base = (fileName ?: "doc").substringBeforeLast(".")
+                                    val appContext = context.applicationContext
+                                    val total = files.size
                                     scope.launch {
-                                        var count = 0
                                         try {
-                                            for ((idx, file) in files.withIndex()) {
-                                                saveProgress = "Saving ${idx + 1} of ${files.size}…"
-                                                val uri = FileUtils.saveToDownloads(
-                                                    context,
-                                                    file,
-                                                    "application/pdf",
-                                                    "${base}_part_${idx + 1}.pdf"
-                                                )
-                                                if (uri != null) count++
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                                                var count = 0
+                                                for ((idx, file) in files.withIndex()) {
+                                                    saveProgress = "Saving ${idx + 1} of $total…"
+                                                    val uri = FileUtils.saveToDownloads(
+                                                        appContext,
+                                                        file,
+                                                        "application/pdf",
+                                                        "${base}_part_${idx + 1}.pdf"
+                                                    )
+                                                    if (uri != null) count++
+                                                }
+                                                Toast.makeText(appContext, "Saved $count of $total PDF files to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
                                             }
                                         } finally {
                                             saveProgress = null
                                         }
-                                        Toast.makeText(context, "Saved $count PDF files to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 enabled = saveProgress == null,

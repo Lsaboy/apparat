@@ -246,7 +246,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   leak during long encodes; Toasts from a dead Activity). Fix: in `ToolJobs.launch`, pass
   `applicationContext` into the block (e.g. `block: suspend CoroutineScope.(Context) -> Unit`)
   and use that in every screen's job body.
-- [ ] **Stale state when a new file is shared into a busy tool.** `retained(...)` keeps the old
+- [x] **Stale state when a new file is shared into a busy tool.** `retained(...)` keeps the old
   `selectedUri` while that tool's job runs, so a new share-in (`initialUri`) is ignored without
   any message. Fix: if `initialUri` differs and a job is running, show "Busy with <file> —
   wait or stop it" banner; if idle, take the new URI.
@@ -256,7 +256,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [x] **Notification permission nags each app run.** `askedForNotifications` is an in-memory
   flag. Persist "asked once" in `AppSettings`; after a denial, don't ask again (offer it in
   Settings instead).
-- [ ] **Saves still tied to the screen.** `ResultCard`'s Save and Split / PDF→Images "Save All" run
+- [x] **Saves still tied to the screen.** `ResultCard`'s Save and Split / PDF→Images "Save All" run
   in the screen's coroutine scope. Leaving mid-save cancels it; the partial entry is deleted,
   but for Save All some files are saved and the rest silently aren't. Fix: run saves through
   `ToolJobs` too (or `NonCancellable` + finish), and report "Saved 7 of 12".
@@ -291,7 +291,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   low-RAM, 16 MP for scanner / Photos→PDF). A 50 MP photo through **Convert** or **EXIF strip**
   comes out at 24 MP without telling the user. Fix: show "Reduced to W×H to fit in memory" in
   the result, and for EXIF strip on JPEG skip decoding entirely (1B.11 lossless path).
-- [ ] **Animated images lose animation.** `ImageDecoder.decodeBitmap` returns only the first
+- [x] **Animated images lose animation.** `ImageDecoder.decodeBitmap` returns only the first
   frame of animated GIF/WEBP; Convert/Shrink silently output a still. Detect (`ImageDecoder`
   returns `AnimatedImageDrawable` via `decodeDrawable`) and warn.
 - [ ] **Wide-gamut / 16-bit images.** `ImageDecoder` may return `RGBA_F16` / Display-P3 bitmaps

@@ -391,7 +391,7 @@ object VideoEngine {
             extractor.setDataSource(context, uri, null)
             val trackIndex = (0 until extractor.trackCount).firstOrNull {
                 extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-            } ?: throw IllegalArgumentException("This video has no audio track")
+            } ?: throw IllegalArgumentException("Selected file contains no audio track")
             extractor.selectTrack(trackIndex)
             val inputFormat = extractor.getTrackFormat(trackIndex)
             val durationUs = if (inputFormat.containsKey(MediaFormat.KEY_DURATION)) inputFormat.getLong(MediaFormat.KEY_DURATION) else 0L

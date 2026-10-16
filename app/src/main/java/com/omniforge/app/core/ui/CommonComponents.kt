@@ -320,7 +320,9 @@ fun ResultCard(
                         isSaving = true
                         scope.launch {
                             try {
-                                onSaveToDownloads()
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                                    onSaveToDownloads()
+                                }
                             } finally {
                                 isSaving = false
                             }
@@ -492,9 +494,11 @@ fun SaveModeSelector(
                         )
                     ) {
                         Text(
-                            text = if (mode == com.omniforge.app.core.settings.SaveMode.NEW_COPY) "New Copy" else "Modify OG",
+                            text = if (mode == com.omniforge.app.core.settings.SaveMode.NEW_COPY) "New Copy" else "Replace Original",
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
