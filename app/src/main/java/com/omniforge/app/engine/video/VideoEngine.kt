@@ -411,6 +411,7 @@ object VideoEngine {
             var channels = inputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
             var isFloatPcm = false
             var dataBytes = 0L
+            var lastProgressAt = 0L
             val info = MediaCodec.BufferInfo()
             var inputDone = false
             var outputDone = false
@@ -474,7 +475,9 @@ object VideoEngine {
                                     raf.write(chunk, 0, info.size)
                                     dataBytes += info.size
                                 }
-                                if (durationUs > 0) {
+                                val now = android.os.SystemClock.uptimeMillis()
+                                if (durationUs > 0 && now - lastProgressAt >= 100L) {
+                                    lastProgressAt = now
                                     val p = (info.presentationTimeUs.toFloat() / durationUs).coerceIn(0f, 1f)
                                     withContext(Dispatchers.Main) { onProgress(p) }
                                 }

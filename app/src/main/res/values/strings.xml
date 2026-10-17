@@ -1,11 +1,3 @@
 <resources>
     <string name="app_name">Apparat</string>
-    <string name="shortcut_pdf_unlock_short">Unlock PDF</string>
-    <string name="shortcut_pdf_unlock_long">Remove PDF Password</string>
-    <string name="shortcut_image_shrink_short">Shrink Photo</string>
-    <string name="shortcut_image_shrink_long">Shrink Photo</string>
-    <string name="shortcut_video_shrink_short">Shrink Video</string>
-    <string name="shortcut_video_shrink_long">Shrink Video</string>
-    <string name="shortcut_video_trim_short">Trim Video</string>
-    <string name="shortcut_video_trim_long">Lossless Trim</string>
 </resources>

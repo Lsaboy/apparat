@@ -388,6 +388,8 @@ fun PdfToImagesScreen(
                             } else {
                                 processState = ProcessState.Error("No pages found in PDF")
                             }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e // stopped by the user: ToolJobs resets the screen
                         } catch (e: Exception) {
                             processState = ProcessState.Error(e.localizedMessage ?: "Failed to render PDF")
                         }
