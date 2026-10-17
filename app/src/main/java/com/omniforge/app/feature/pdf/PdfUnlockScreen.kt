@@ -156,7 +156,7 @@ fun PdfUnlockScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -259,9 +259,9 @@ fun PdfUnlockScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                             enabled = processState !is ProcessState.Processing
                         ) {
-                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = OnBraunOrange)
+                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unlock & Export PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                            Text("Unlock & Export PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -330,9 +330,9 @@ fun PdfUnlockScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                         enabled = password.isNotEmpty() && !isCheckingAccess && processState !is ProcessState.Processing
                     ) {
-                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = OnBraunOrange)
+                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unlock & Export PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                        Text("Unlock & Export PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
                     }
                 }
                 is PdfAccess.Damaged -> {

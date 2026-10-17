@@ -56,39 +56,53 @@ fun Base64StudioScreen(
     var isEncoding by retained(JOB_KEY, "isEncoding") { mutableStateOf(true) }
     var urlSafe by retained(JOB_KEY, "urlSafe") { mutableStateOf(false) }
 
-    var detectedBinaryType by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var decodedBinaryBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var isSavingBinary by remember { mutableStateOf(false) }
+    var detectedBinaryType by retained(JOB_KEY, "detectedBinaryType") { mutableStateOf<Pair<String, String>?>(null) }
+    var decodedBinaryBytes by retained(JOB_KEY, "decodedBinaryBytes") { mutableStateOf<ByteArray?>(null) }
+    var isSavingBinary by retained(JOB_KEY, "isSavingBinary") { mutableStateOf(false) }
 
     LaunchedEffect(initialText) {
         if (!initialText.isNullOrBlank() && initialText != lastHandledInitialText) {
             lastHandledInitialText = initialText
             inputText = initialText
-            if (isEncoding) {
-                outputText = UtilityEngine.encodeBase64(initialText, urlSafe)
-            } else {
-                val clean = UtilityEngine.stripDataUrlPrefix(initialText)
-                val byteResult = UtilityEngine.decodeBase64ToBytes(clean, urlSafe)
-                byteResult.fold(
-                    onSuccess = { bytes ->
-                        val detected = UtilityEngine.detectBinaryType(bytes)
-                        if (detected != null) {
-                            detectedBinaryType = detected
-                            decodedBinaryBytes = bytes
-                            outputText = ""
-                        } else {
-                            val textResult = UtilityEngine.decodeBase64(clean, urlSafe)
-                            outputText = textResult.getOrElse { "Decoding error: ${it.localizedMessage}" }
-                            detectedBinaryType = null
-                            decodedBinaryBytes = null
-                        }
-                    },
-                    onFailure = {
-                        outputText = "Decoding error: ${it.localizedMessage}"
+            withContext(Dispatchers.Default) {
+                if (isEncoding) {
+                    val encoded = UtilityEngine.encodeBase64(initialText, urlSafe)
+                    withContext(Dispatchers.Main) {
+                        outputText = encoded
                         detectedBinaryType = null
                         decodedBinaryBytes = null
                     }
-                )
+                } else {
+                    val clean = UtilityEngine.stripDataUrlPrefix(initialText)
+                    val byteResult = UtilityEngine.decodeBase64ToBytes(clean, urlSafe)
+                    byteResult.fold(
+                        onSuccess = { bytes ->
+                            val detected = UtilityEngine.detectBinaryType(bytes)
+                            if (detected != null) {
+                                val textResult = UtilityEngine.decodeBase64(clean, urlSafe)
+                                withContext(Dispatchers.Main) {
+                                    detectedBinaryType = detected
+                                    decodedBinaryBytes = bytes
+                                    outputText = textResult.getOrDefault("")
+                                }
+                            } else {
+                                val textResult = UtilityEngine.decodeBase64(clean, urlSafe)
+                                withContext(Dispatchers.Main) {
+                                    outputText = textResult.getOrElse { "Decoding error: ${it.localizedMessage}" }
+                                    detectedBinaryType = null
+                                    decodedBinaryBytes = null
+                                }
+                            }
+                        },
+                        onFailure = { err ->
+                            withContext(Dispatchers.Main) {
+                                outputText = "Decoding error: ${err.localizedMessage}"
+                                detectedBinaryType = null
+                                decodedBinaryBytes = null
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -123,7 +137,7 @@ fun Base64StudioScreen(
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = OnBraunOrange
+                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -139,7 +153,7 @@ fun Base64StudioScreen(
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = OnBraunOrange
+                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                     )
                 )
             }
@@ -155,7 +169,7 @@ fun Base64StudioScreen(
                     label = { Text("URL-Safe (- and _)") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = OnBraunOrange
+                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -239,29 +253,42 @@ fun Base64StudioScreen(
 
             Button(
                 onClick = {
-                    if (isEncoding) {
-                        outputText = UtilityEngine.encodeBase64(inputText, urlSafe = urlSafe)
-                        detectedBinaryType = null
-                        decodedBinaryBytes = null
-                    } else {
-                        val bytesResult = UtilityEngine.decodeBase64ToBytes(inputText, urlSafe = urlSafe)
-                        if (bytesResult.isFailure) {
-                            outputText = "Invalid Base64 input"
-                            detectedBinaryType = null
-                            decodedBinaryBytes = null
-                        } else {
-                            val bytes = bytesResult.getOrThrow()
-                            val binaryType = UtilityEngine.detectBinaryType(bytes)
-                            if (binaryType != null) {
-                                detectedBinaryType = binaryType
-                                decodedBinaryBytes = bytes
-                                val textResult = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
-                                outputText = textResult.getOrDefault("")
-                            } else {
+                    val textToProcess = inputText
+                    scope.launch(Dispatchers.Default) {
+                        if (isEncoding) {
+                            val encoded = UtilityEngine.encodeBase64(textToProcess, urlSafe = urlSafe)
+                            withContext(Dispatchers.Main) {
+                                outputText = encoded
                                 detectedBinaryType = null
                                 decodedBinaryBytes = null
-                                val textResult = UtilityEngine.decodeBase64(inputText, urlSafe = urlSafe)
-                                outputText = textResult.getOrElse { it.localizedMessage ?: "Invalid Base64 string" }
+                            }
+                        } else {
+                            val clean = UtilityEngine.stripDataUrlPrefix(textToProcess)
+                            val bytesResult = UtilityEngine.decodeBase64ToBytes(clean, urlSafe = urlSafe)
+                            if (bytesResult.isFailure) {
+                                withContext(Dispatchers.Main) {
+                                    outputText = "Invalid Base64 input"
+                                    detectedBinaryType = null
+                                    decodedBinaryBytes = null
+                                }
+                            } else {
+                                val bytes = bytesResult.getOrThrow()
+                                val binaryType = UtilityEngine.detectBinaryType(bytes)
+                                if (binaryType != null) {
+                                    val textResult = UtilityEngine.decodeBase64(clean, urlSafe = urlSafe)
+                                    withContext(Dispatchers.Main) {
+                                        detectedBinaryType = binaryType
+                                        decodedBinaryBytes = bytes
+                                        outputText = textResult.getOrDefault("")
+                                    }
+                                } else {
+                                    val textResult = UtilityEngine.decodeBase64(clean, urlSafe = urlSafe)
+                                    withContext(Dispatchers.Main) {
+                                        detectedBinaryType = null
+                                        decodedBinaryBytes = null
+                                        outputText = textResult.getOrElse { it.localizedMessage ?: "Invalid Base64 string" }
+                                    }
+                                }
                             }
                         }
                     }
@@ -273,9 +300,9 @@ fun Base64StudioScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
                 enabled = inputText.isNotBlank()
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEncoding) "Encode" else "Decode", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text(if (isEncoding) "Encode" else "Decode", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
             }
 
             // Detected Binary File Card
@@ -351,9 +378,9 @@ fun Base64StudioScreen(
                             shape = RoundedCornerShape(8.dp),
                             enabled = !isSavingBinary
                         ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = OnBraunOrange)
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
                         }
                     }
                 }

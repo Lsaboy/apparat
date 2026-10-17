@@ -146,7 +146,7 @@ fun PaletteExtractorScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New Image", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New Image", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {

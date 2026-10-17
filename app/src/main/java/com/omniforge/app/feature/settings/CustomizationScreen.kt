@@ -40,7 +40,6 @@ fun CustomizationScreen(
     val context = LocalContext.current
     var currentTheme by remember { mutableStateOf(appSettings.themeStyle) }
     var currentAccentIndex by remember { mutableIntStateOf(appSettings.accentIndex) }
-    var isDynamicColor by remember { mutableStateOf(appSettings.isDynamicColorEnabled) }
     var currentSaveMode by remember { mutableStateOf(appSettings.defaultSaveMode) }
     var enabledShortcuts by remember { mutableStateOf(appSettings.enabledShortcuts) }
 
@@ -54,7 +53,7 @@ fun CustomizationScreen(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
-                                .background(BraunOrange)
+                                .background(MaterialTheme.colorScheme.primary)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -136,39 +135,6 @@ fun CustomizationScreen(
                         )
                     )
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Dynamic Color Calibration",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                                Text(
-                                    text = "Harmonize accents with device system palette",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                )
-                            }
-                            Switch(
-                                checked = isDynamicColor,
-                                onCheckedChange = {
-                                    isDynamicColor = it
-                                    appSettings.isDynamicColorEnabled = it
-                                    onSettingsChanged()
-                                }
-                            )
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Accent Colors
@@ -236,7 +202,7 @@ fun CustomizationScreen(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = BraunOrange
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
                     Text(
@@ -274,7 +240,7 @@ fun CustomizationScreen(
                             color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
                             border = BorderStroke(
                                 1.dp,
-                                if (isSelected) BraunOrange.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline
+                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline
                             )
                         ) {
                             Row(
@@ -287,7 +253,10 @@ fun CustomizationScreen(
                                         currentSaveMode = mode
                                         appSettings.defaultSaveMode = mode
                                         onSettingsChanged()
-                                    }
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.primary
+                                    )
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
@@ -319,7 +288,7 @@ fun CustomizationScreen(
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = BraunOrange
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
                     Spacer(modifier = Modifier.height(4.dp))

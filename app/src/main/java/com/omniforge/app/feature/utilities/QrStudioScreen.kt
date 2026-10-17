@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,6 +77,7 @@ fun QrStudioScreen(
     var vcardEmail by retained(JOB_KEY, "vcardEmail") { mutableStateOf("") }
 
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var qrErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialText) {
         if (!initialText.isNullOrBlank()) {
@@ -106,11 +108,19 @@ fun QrStudioScreen(
                     UtilityEngine.generateQrCode(activePayload, 512)
                 }
                 qrBitmap = bmp
-            } catch (_: Exception) {
+                qrErrorMessage = null
+            } catch (e: Exception) {
                 qrBitmap = null
+                val msg = e.message ?: ""
+                qrErrorMessage = if (e is com.google.zxing.WriterException || msg.contains("Data too big", ignoreCase = true) || msg.contains("too large", ignoreCase = true)) {
+                    "Text is too long for a QR code"
+                } else {
+                    "Failed to generate QR code: ${e.localizedMessage ?: "Unknown error"}"
+                }
             }
         } else {
             qrBitmap = null
+            qrErrorMessage = null
         }
     }
 
@@ -144,7 +154,7 @@ fun QrStudioScreen(
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentUtility,
-                            selectedLabelColor = OnBraunOrange
+                            selectedLabelColor = onPrimaryForAccent(AccentUtility)
                         )
                     )
                 }
@@ -222,7 +232,7 @@ fun QrStudioScreen(
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = AccentUtility,
-                                        selectedLabelColor = OnBraunOrange
+                                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                                     )
                                 )
                             }
@@ -271,11 +281,16 @@ fun QrStudioScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val isAmountInvalid = upiAmount.isNotBlank() && !UtilityEngine.isValidUpiAmount(upiAmount)
                             OutlinedTextField(
                                 value = upiAmount,
                                 onValueChange = { upiAmount = it },
                                 modifier = Modifier.weight(1f),
                                 label = { Text("Amount (₹, opt.)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                isError = isAmountInvalid,
+                                supportingText = if (isAmountInvalid) {
+                                    { Text("e.g. 500 or 150.50", color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+                                } else null,
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -283,7 +298,8 @@ fun QrStudioScreen(
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    cursorColor = AccentUtility
+                                    cursorColor = AccentUtility,
+                                    errorBorderColor = MaterialTheme.colorScheme.error
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -402,9 +418,9 @@ fun QrStudioScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = OnBraunOrange)
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save PNG", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                        Text("Save PNG", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
@@ -424,6 +440,31 @@ fun QrStudioScreen(
                         Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Share", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else if (qrErrorMessage != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = qrErrorMessage!!,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
                     }
                 }
             } else if (activePayload.isNotBlank()) {

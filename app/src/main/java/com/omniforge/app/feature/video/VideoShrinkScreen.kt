@@ -155,7 +155,7 @@ fun VideoShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -214,7 +214,7 @@ fun VideoShrinkScreen(
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = if (isSelected) AccentVideo else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (isSelected) OnBraunOrange else MaterialTheme.colorScheme.onSurface
+                                contentColor = if (isSelected) onPrimaryForAccent(AccentVideo) else MaterialTheme.colorScheme.onSurface
                             ),
                             border = BorderStroke(1.dp, if (isSelected) AccentVideo else MaterialTheme.colorScheme.outline)
                         ) {
@@ -286,9 +286,9 @@ fun VideoShrinkScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Video", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Shrink Video", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

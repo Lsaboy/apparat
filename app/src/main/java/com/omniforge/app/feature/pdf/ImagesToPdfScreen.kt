@@ -133,9 +133,9 @@ fun ImagesToPdfScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUris.isNotEmpty() && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Generate PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)

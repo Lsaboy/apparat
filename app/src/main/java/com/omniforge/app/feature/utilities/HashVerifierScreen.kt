@@ -171,7 +171,7 @@ fun HashVerifierScreen(
                     label = { Text("Verify File") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = OnBraunOrange
+                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                     )
                 )
                 FilterChip(
@@ -191,7 +191,7 @@ fun HashVerifierScreen(
                     label = { Text("Hash Text") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = OnBraunOrange
+                        selectedLabelColor = onPrimaryForAccent(AccentUtility)
                     )
                 )
             }
@@ -231,7 +231,7 @@ fun HashVerifierScreen(
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                                 ) {
-                                    Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                    Text("Switch to New File", color = onPrimaryForAccent(AccentUtility), fontSize = 12.sp)
                                 }
                                 OutlinedButton(
                                     onClick = {
@@ -266,9 +266,9 @@ fun HashVerifierScreen(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                     ) {
-                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = OnBraunOrange)
+                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Calculate Checksums", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                        Text("Calculate Checksums", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
                     }
                 }
             } else {

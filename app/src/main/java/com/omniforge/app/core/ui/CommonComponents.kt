@@ -85,7 +85,7 @@ fun <T> BraunSegmentedControl(
                         )
                         .border(
                             1.dp,
-                            if (isSelected) BraunOrange.copy(alpha = 0.5f) else Color.Transparent,
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.Transparent,
                             RoundedCornerShape(4.dp)
                         )
                         .clickable { onOptionSelected(option) }
@@ -112,7 +112,7 @@ fun <T> BraunSegmentedControl(
                             Box(
                                 modifier = Modifier
                                     .size(width = 16.dp, height = 2.dp)
-                                    .background(BraunOrange, shape = RoundedCornerShape(1.dp))
+                                    .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(1.dp))
                             )
                         }
                     }
@@ -200,7 +200,7 @@ fun FirstBootAppearanceDialog(
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(BraunOrange, shape = RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.dp))
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -240,7 +240,7 @@ fun FirstBootAppearanceDialog(
                         color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) BraunOrange else MaterialTheme.colorScheme.outline
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )
                     ) {
                         Row(
@@ -253,7 +253,7 @@ fun FirstBootAppearanceDialog(
                                 selected = isSelected,
                                 onClick = { selectedTheme = style },
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = BraunOrange,
+                                    selectedColor = MaterialTheme.colorScheme.primary,
                                     unselectedColor = MaterialTheme.colorScheme.outline
                                 )
                             )
@@ -639,8 +639,8 @@ fun ResultCard(
                     .fillMaxWidth()
                     .height(48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = BraunOrange,
-                    contentColor = OnBraunOrange
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(6.dp)
             ) {
@@ -648,18 +648,18 @@ fun ResultCard(
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = OnBraunOrange
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving to Downloads…", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                    Text("Saving to Downloads…", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 } else {
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = OnBraunOrange
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save to Downloads", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                    Text("Save to Downloads", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -875,7 +875,7 @@ fun SaveModeSelector(
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (isSelected) accentColor else Color.Transparent,
-                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                            contentColor = if (isSelected) onPrimaryForAccent(accentColor) else MaterialTheme.colorScheme.onSurface,
                             disabledContainerColor = Color.Transparent,
                             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         ),
@@ -940,7 +940,7 @@ fun FormatSelectorRow(
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (isSelected) accentColor else Color.Transparent,
-                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                            contentColor = if (isSelected) onPrimaryForAccent(accentColor) else MaterialTheme.colorScheme.onSurface
                         ),
                         border = BorderStroke(1.dp, if (isSelected) accentColor else MaterialTheme.colorScheme.outline)
                     ) {

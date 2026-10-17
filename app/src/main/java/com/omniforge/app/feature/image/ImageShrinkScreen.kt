@@ -148,7 +148,7 @@ fun ImageShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -235,7 +235,7 @@ fun ImageShrinkScreen(
                             label = { Text(name, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = AccentImage,
-                                selectedLabelColor = OnBraunOrange
+                                selectedLabelColor = onPrimaryForAccent(AccentImage)
                             )
                         )
                     }
@@ -345,7 +345,7 @@ fun ImageShrinkScreen(
                             checked = stripExif,
                             onCheckedChange = { stripExif = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = OnBraunOrange,
+                                checkedThumbColor = onPrimaryForAccent(AccentImage),
                                 checkedTrackColor = AccentImage
                             )
                         )
@@ -412,9 +412,9 @@ fun ImageShrinkScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Photo", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Shrink Photo", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)

@@ -1,6 +1,7 @@
 package com.omniforge.app.engine.common
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.security.MessageDigest
@@ -112,11 +113,27 @@ class UtilityEngineTest {
     fun testUpiQrFormatting() {
         val qr = UtilityEngine.formatUpiQr("merchant@upi", "Ram & Sons", "250.50", "Lunch bill")
         assertTrue(qr.startsWith("upi://pay?"))
-        assertTrue(qr.contains("pa=merchant%40upi"))
+        assertTrue(qr.contains("pa=merchant@upi"))
         assertTrue(qr.contains("pn=Ram%20%26%20Sons"))
         assertTrue(qr.contains("am=250.50"))
         assertTrue(qr.contains("cu=INR"))
         assertTrue(qr.contains("tn=Lunch%20bill"))
+
+        // Amount validation: valid
+        assertTrue(UtilityEngine.isValidUpiAmount("500"))
+        assertTrue(UtilityEngine.isValidUpiAmount("150.50"))
+        assertTrue(UtilityEngine.isValidUpiAmount("10.5"))
+
+        // Amount validation: invalid should be rejected / omitted
+        assertFalse(UtilityEngine.isValidUpiAmount("1,000"))
+        assertFalse(UtilityEngine.isValidUpiAmount("-50"))
+        assertFalse(UtilityEngine.isValidUpiAmount("0"))
+        assertFalse(UtilityEngine.isValidUpiAmount("abc"))
+
+        // When invalid amount is passed to formatUpiQr, &am= is omitted
+        val qrInvalidAmount = UtilityEngine.formatUpiQr("merchant@upi", "Ram & Sons", "1,000", "Lunch bill")
+        assertFalse(qrInvalidAmount.contains("am="))
+        assertTrue(qrInvalidAmount.contains("pa=merchant@upi"))
     }
 
     @Test

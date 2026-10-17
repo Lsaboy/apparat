@@ -129,9 +129,9 @@ fun JsonToolScreen(
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                 ) {
-                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = OnBraunOrange)
+                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Prettify", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                    Text("Prettify", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
                 }
 
                 Button(
