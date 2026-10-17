@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -179,7 +180,7 @@ fun FirstBootAppearanceDialog(
     appSettings: AppSettings,
     onDismiss: () -> Unit
 ) {
-    var selectedTheme by remember { mutableStateOf(appSettings.themeStyle) }
+    var selectedTheme by rememberSaveable { mutableStateOf(appSettings.themeStyle) }
 
     AlertDialog(
         onDismissRequest = {

@@ -157,7 +157,7 @@ val ALL_TOOLS = listOf(
         title = "EXIF Cleaner",
         description = "Strip GPS coordinates, device fingerprints, and timestamps for privacy.",
         category = ToolCategory.IMAGE,
-        route = "exif_stripper",
+        route = "exif_strip",
         keywords = listOf("exif", "metadata", "gps", "location", "privacy", "clean", "remove", "device", "camera", "strip")
     ),
     ToolItem(
@@ -200,7 +200,7 @@ val ALL_TOOLS = listOf(
         title = "JSON Formatter",
         description = "Beautify, validate, and minify messy JSON text with error diagnostics.",
         category = ToolCategory.UTILITIES,
-        route = "json_formatter",
+        route = "json_tool",
         keywords = listOf("json", "format", "beautify", "validate", "minify", "lint", "prettify", "parse")
     ),
     ToolItem(

@@ -149,7 +149,7 @@ object FileUtils {
 
     const val DOWNLOAD_SUBFOLDER = "Apparat"
 
-    /** Copies [file] into Downloads/DigitalPocketKnife on the IO dispatcher. Returns null on failure. */
+    /** Copies [file] into Downloads/Apparat on the IO dispatcher. Returns null on failure. */
     suspend fun saveToDownloads(context: Context, file: File, mimeType: String, displayName: String): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val contentValues = ContentValues().apply {
