@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
@@ -37,6 +39,13 @@ import kotlinx.coroutines.launch
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "image_shrink"
+
+private const val MIN_TARGET_KB = 5
+private const val MAX_TARGET_KB = 20000
+private val TARGET_KB_PRESETS = listOf(20, 50, 100, 200, 500)
+
+/** Largest side kept when decoding for a size target; the search shrinks further only if it must. */
+private const val TARGET_MODE_MAX_DIMENSION = 4096
 
 @Composable
 fun ImageShrinkScreen(
@@ -59,6 +68,11 @@ fun ImageShrinkScreen(
     var quality by retained(JOB_KEY, "quality") { mutableFloatStateOf(75f) }
     var maxDimension by retained(JOB_KEY, "maxDimension") { mutableFloatStateOf(1920f) }
     var stripExif by retained(JOB_KEY, "stripExif") { mutableStateOf(true) }
+
+    // "Target size" mode: shrink to under N KB (portal upload limits) instead of picking sliders.
+    var targetMode by retained(JOB_KEY, "targetMode") { mutableStateOf(false) }
+    var targetKbText by retained(JOB_KEY, "targetKbText") { mutableStateOf("100") }
+    val targetKb = targetKbText.toIntOrNull()?.takeIf { it in MIN_TARGET_KB..MAX_TARGET_KB }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -93,11 +107,14 @@ fun ImageShrinkScreen(
         selectedUri?.let { runCatching { BitmapDecoder.isAnimated(context, it) }.getOrDefault(false) } ?: false
     }
 
-    val isFormatMismatch = selectedUri != null && !FileUtils.isImageFormatMatching(context, selectedUri!!, outputFormat)
+    // Target-size output is always JPEG (the only format whose size the quality slider controls).
+    val effectiveFormat = if (targetMode) ImageOutputFormat.JPEG else outputFormat
+
+    val isFormatMismatch = selectedUri != null && !FileUtils.isImageFormatMatching(context, selectedUri!!, effectiveFormat)
     val allowOverwrite = !isFormatMismatch
     val disallowedReason = if (isFormatMismatch) {
         val inputExt = fileName?.substringAfterLast('.', "")?.uppercase() ?: "original"
-        "Cannot modify original: format differs ($inputExt → ${outputFormat.name})"
+        "Cannot modify original: format differs ($inputExt → ${effectiveFormat.name})"
     } else null
 
     ToolScaffold(
@@ -198,6 +215,29 @@ fun ImageShrinkScreen(
                 }
             }
 
+            // Mode: manual sliders, or "make it under N KB"
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !targetMode,
+                    onClick = { targetMode = false },
+                    label = { Text("Manual", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentImage,
+                        selectedLabelColor = OnBraunOrange
+                    )
+                )
+                FilterChip(
+                    selected = targetMode,
+                    onClick = { targetMode = true },
+                    label = { Text("Target size (KB)", fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentImage,
+                        selectedLabelColor = OnBraunOrange
+                    )
+                )
+            }
+
+            if (!targetMode) {
             // Quick Presets
             val presets = remember {
                 listOf(
@@ -257,6 +297,8 @@ fun ImageShrinkScreen(
                 accentColor = AccentImage
             )
 
+            }
+
             // Save Mode Preference
             SaveModeSelector(
                 saveMode = saveMode,
@@ -273,6 +315,52 @@ fun ImageShrinkScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    if (targetMode) {
+                        Text(
+                            text = "Shrink to under",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TARGET_KB_PRESETS.forEach { kb ->
+                                FilterChip(
+                                    selected = targetKb == kb,
+                                    onClick = { targetKbText = kb.toString() },
+                                    label = { Text("$kb KB", fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AccentImage,
+                                        selectedLabelColor = OnBraunOrange
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = targetKbText,
+                            onValueChange = { targetKbText = it.filter(Char::isDigit).take(5) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Custom size (KB)") },
+                            singleLine = true,
+                            isError = targetKb == null,
+                            supportingText = {
+                                Text(
+                                    if (targetKb == null) "Enter a size from $MIN_TARGET_KB to $MAX_TARGET_KB KB"
+                                    else "Keeps full resolution when it can and only reduces dimensions if quality alone can't reach the size. Saved as JPEG.",
+                                    color = if (targetKb == null) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    } else {
                     val isLosslessPng = outputFormat == ImageOutputFormat.PNG
                     val isLosslessWebp = outputFormat == ImageOutputFormat.WEBP && quality >= 100f
                     val qualityLabel = when {
@@ -321,6 +409,8 @@ fun ImageShrinkScreen(
                         )
                     )
 
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
@@ -358,14 +448,25 @@ fun ImageShrinkScreen(
                     val uri = selectedUri ?: return@Button
                     ToolJobs.launch(context, JOB_KEY, "Shrink Image") { appContext ->
                         processState = ProcessState.Processing(0.5f, "Optimizing photo...")
-                        val result = ImageEngine.shrinkImage(
-                            context = appContext,
-                            inputUri = uri,
-                            quality = quality.toInt(),
-                            maxDimension = maxDimension.toInt(),
-                            stripExif = stripExif,
-                            targetFormat = outputFormat
-                        )
+                        val limitKb = if (targetMode) targetKb else null
+                        val result = if (limitKb != null) {
+                            ImageEngine.shrinkToTargetKb(
+                                context = appContext,
+                                inputUri = uri,
+                                targetKb = limitKb,
+                                maxDimension = TARGET_MODE_MAX_DIMENSION,
+                                stripExif = stripExif
+                            )
+                        } else {
+                            ImageEngine.shrinkImage(
+                                context = appContext,
+                                inputUri = uri,
+                                quality = quality.toInt(),
+                                maxDimension = maxDimension.toInt(),
+                                stripExif = stripExif,
+                                targetFormat = outputFormat
+                            )
+                        }
                         result.fold(
                             onSuccess = { outputFile ->
                                 val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
@@ -373,10 +474,19 @@ fun ImageShrinkScreen(
                                 }
                                 val newBytes = outputFile.length()
 
-                                if (origBytes > 0L && newBytes >= origBytes) {
+                                if (limitKb != null && newBytes > limitKb * 1000L) {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "Image is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                        message = "Could not reach $limitKb KB: the smallest this photo gets is ${FileUtils.formatFileSize(newBytes)}. Try a bigger target."
+                                    )
+                                } else if (origBytes > 0L && newBytes >= origBytes) {
+                                    processState = ProcessState.Success(
+                                        outputFile = outputFile,
+                                        message = if (limitKb != null) {
+                                            "Already under $limitKb KB (${FileUtils.formatFileSize(origBytes)}): no shrinking needed."
+                                        } else {
+                                            "Image is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                        }
                                     )
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
@@ -395,7 +505,11 @@ fun ImageShrinkScreen(
                                 } else {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "Photo shrunk successfully!"
+                                        message = if (limitKb != null) {
+                                            "Shrunk to ${FileUtils.formatFileSize(newBytes)} (limit $limitKb KB)."
+                                        } else {
+                                            "Photo shrunk successfully!"
+                                        }
                                     )
                                 }
                             },
@@ -410,7 +524,7 @@ fun ImageShrinkScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
-                enabled = selectedUri != null && processState !is ProcessState.Processing
+                enabled = selectedUri != null && processState !is ProcessState.Processing && (!targetMode || targetKb != null)
             ) {
                 Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -421,6 +535,8 @@ fun ImageShrinkScreen(
 
             if (processState is ProcessState.Success) {
                 val success = processState as ProcessState.Success
+                // Describe the file that was actually produced, not the current mode selection.
+                val resultFormat = ImageOutputFormat.entries.firstOrNull { success.outputFile.name.endsWith(it.extension) } ?: effectiveFormat
                 ResultCard(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
@@ -431,13 +547,13 @@ fun ImageShrinkScreen(
                         val saved = FileUtils.saveToDownloads(
                             context = appContext,
                             file = success.outputFile,
-                            mimeType = outputFormat.mimeType,
-                            displayName = "${base}_shrunk${outputFormat.extension}"
+                            mimeType = resultFormat.mimeType,
+                            displayName = "${base}_shrunk${resultFormat.extension}"
                         )
                         Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, outputFormat.mimeType)
+                        FileUtils.shareFile(context, success.outputFile, resultFormat.mimeType)
                     }
                 )
             }

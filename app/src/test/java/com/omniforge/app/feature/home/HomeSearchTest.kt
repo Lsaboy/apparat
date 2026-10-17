@@ -18,7 +18,7 @@ class HomeSearchTest {
 
     @Test
     fun testAllToolsCount() {
-        assertEquals(20, ALL_TOOLS.size)
+        assertEquals(21, ALL_TOOLS.size)
     }
 
     @Test
@@ -48,7 +48,7 @@ class HomeSearchTest {
 
     @Test
     fun testEmptySearchMatchesAll() {
-        assertEquals(20, searchTools("").size)
-        assertEquals(20, searchTools("   ").size)
+        assertEquals(21, searchTools("").size)
+        assertEquals(21, searchTools("   ").size)
     }
 }

@@ -30,6 +30,9 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
+/** One PDF to merge: [password] is "" for unprotected files. */
+data class PdfMergeInput(val uri: Uri, val password: String = "")
+
 /** Thrown when a PDF needs a password, or the one given is wrong. */
 class PdfPasswordException(val wrongPassword: Boolean) : Exception(
     if (wrongPassword) "Wrong password for this PDF" else "This PDF is password-protected"
@@ -164,7 +167,7 @@ object PdfEngine {
 
     /** Writes a password-free copy of [file] for PdfRenderer, which can't take a password. */
     private fun decryptToTemp(context: Context, file: File, password: String): File {
-        val out = File(context.cacheDir, "decrypted_${System.currentTimeMillis()}.pdf")
+        val out = File(context.cacheDir, "decrypted_${System.currentTimeMillis()}_${System.nanoTime()}.pdf")
         openDocument(context, file, password).use { doc ->
             doc.isAllSecurityToBeRemoved = true
             doc.save(out)
@@ -307,32 +310,43 @@ object PdfEngine {
     }
 
     /**
-     * Merges multiple PDF files into a single PDF.
+     * Merges PDF files, in the given order, into a single PDF. Password-protected inputs are
+     * opened with their own password and come out unprotected in the merged file.
      */
     suspend fun mergePdfs(
         context: Context,
-        pdfUris: List<Uri>
+        inputs: List<PdfMergeInput>
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
+            require(inputs.size >= 2) { "Pick at least two PDFs to merge" }
             val outputFile = FileUtils.createTempOutputFile(context, "merged", ".pdf")
             val merger = PDFMergerUtility().apply {
                 destinationFileName = outputFile.absolutePath
             }
 
-            val cachedFiles = mutableListOf<File>()
+            val tempFiles = mutableListOf<File>()
             try {
-                for (uri in pdfUris) {
-                    val file = FileUtils.copyUriToCache(context, uri)
-                    cachedFiles.add(file)
-                    merger.addSource(file)
+                for (input in inputs) {
+                    val copied = FileUtils.copyUriToCache(context, input.uri)
+                    tempFiles.add(copied)
+                    val source = if (input.password.isNotEmpty()) {
+                        decryptToTemp(context, copied, input.password).also { tempFiles.add(it) }
+                    } else copied
+                    merger.addSource(source)
                 }
-                merger.mergeDocuments(tempFileMemory(context))
+                try {
+                    merger.mergeDocuments(tempFileMemory(context))
+                } catch (e: InvalidPasswordException) {
+                    throw IllegalArgumentException(
+                        "One of the PDFs is password-protected. Remove it from the list and add it again to enter its password.", e
+                    )
+                }
                 outputFile
             } catch (t: Throwable) {
                 outputFile.delete()
                 throw t
             } finally {
-                cachedFiles.forEach { it.delete() }
+                tempFiles.forEach { it.delete() }
             }
         }
     }

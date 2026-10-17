@@ -114,6 +114,9 @@ object ImageEngine {
     /**
      * Compresses an image to strictly <= targetKb (JPEG), searching quality first and then downscaling dimensions.
      * Essential for government portals (UPSC, SSC, PAN, Aadhaar) with strict size ceilings.
+     *
+     * Portals disagree on whether 1 KB is 1000 or 1024 bytes, so the file is kept under
+     * targetKb * 1000 bytes, which satisfies both readings.
      */
     suspend fun shrinkToTargetKb(
         context: Context,
@@ -137,8 +140,11 @@ object ImageEngine {
                 originalBitmap
             }
 
+            val limitBytes = targetKb * 1000L
+            // The search counts 1 KB as 1024 bytes; shave it so the result fits under limitBytes.
+            val searchKb = (limitBytes / 1024L).toInt().coerceAtLeast(1)
             val searchConfig = TargetKbSearchEngine.SearchConfig(
-                targetKb = targetKb,
+                targetKb = searchKb,
                 initialWidth = currentBitmap.width,
                 initialHeight = currentBitmap.height
             )
@@ -192,6 +198,14 @@ object ImageEngine {
                         val srcExif = ExifInterface(originalStream)
                         val dstExif = ExifInterface(outputFile.absolutePath)
                         copyExifTags(srcExif, dstExif)
+                        dstExif.saveAttributes()
+                    }
+                }
+                // Keeping camera details must never push the file over the portal's limit.
+                if (outputFile.length() > limitBytes) {
+                    runCatching {
+                        val dstExif = ExifInterface(outputFile.absolutePath)
+                        for (tag in EXIF_TAGS_COPIED) dstExif.setAttribute(tag, null)
                         dstExif.saveAttributes()
                     }
                 }
@@ -376,17 +390,18 @@ object ImageEngine {
         } ?: ExifInfo()
     }
 
+    private val EXIF_TAGS_COPIED = arrayOf(
+        ExifInterface.TAG_DATETIME,
+        ExifInterface.TAG_MAKE,
+        ExifInterface.TAG_MODEL,
+        // TAG_ORIENTATION is deliberately not copied: BitmapDecoder already rotated the pixels.
+        ExifInterface.TAG_WHITE_BALANCE,
+        ExifInterface.TAG_FOCAL_LENGTH,
+        ExifInterface.TAG_FLASH
+    )
+
     private fun copyExifTags(src: ExifInterface, dst: ExifInterface) {
-        val tags = arrayOf(
-            ExifInterface.TAG_DATETIME,
-            ExifInterface.TAG_MAKE,
-            ExifInterface.TAG_MODEL,
-            // TAG_ORIENTATION is deliberately not copied: BitmapDecoder already rotated the pixels.
-            ExifInterface.TAG_WHITE_BALANCE,
-            ExifInterface.TAG_FOCAL_LENGTH,
-            ExifInterface.TAG_FLASH
-        )
-        for (tag in tags) {
+        for (tag in EXIF_TAGS_COPIED) {
             src.getAttribute(tag)?.let { dst.setAttribute(tag, it) }
         }
     }
