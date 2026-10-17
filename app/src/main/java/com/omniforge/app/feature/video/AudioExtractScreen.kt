@@ -27,7 +27,10 @@ import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.AudioOutputFormat
 import com.omniforge.app.engine.video.VideoEngine
+import androidx.compose.material.icons.filled.Fingerprint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "audio_extract"
@@ -35,6 +38,7 @@ private const val JOB_KEY = "audio_extract"
 @Composable
 fun AudioExtractScreen(
     initialUri: Uri? = null,
+    onNavigateToTool: ((String, Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -43,12 +47,47 @@ fun AudioExtractScreen(
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(null) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(null) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(null) }
+    var mediaDetails by retained(JOB_KEY, "mediaDetails") { mutableStateOf<String?>(null) }
 
     var targetFormat by retained(JOB_KEY, "targetFormat") { mutableStateOf(AudioOutputFormat.M4A) }
     var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
     var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(selectedUri) {
+        val uri = selectedUri
+        if (uri == null) {
+            mediaDetails = null
+        } else {
+            val videoMeta = VideoEngine.getVideoMetadata(context, uri)
+            if (videoMeta != null) {
+                mediaDetails = if (videoMeta.durationMs > 0) "${videoMeta.resolutionFormatted} • ${videoMeta.durationFormatted}" else videoMeta.resolutionFormatted
+            } else {
+                mediaDetails = withContext(Dispatchers.IO) {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    try {
+                        try {
+                            retriever.setDataSource(context, uri)
+                        } catch (_: Exception) {
+                            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                                retriever.setDataSource(pfd.fileDescriptor)
+                            }
+                        }
+                        val durMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                        if (durMs > 0) {
+                            val totalSec = durMs / 1000
+                            "%d:%02d".format(totalSec / 60, totalSec % 60)
+                        } else null
+                    } catch (_: Exception) {
+                        null
+                    } finally {
+                        try { retriever.release() } catch (_: Exception) {}
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(initialUri) {
         if (initialUri == null) return@LaunchedEffect
@@ -76,6 +115,16 @@ fun AudioExtractScreen(
             pendingShareUri = null
             processState = ProcessState.Idle
         }
+    }
+
+    val currentFileSize = fileSize
+    val fileDetails = remember(currentFileSize, mediaDetails) {
+        buildList {
+            mediaDetails?.let { add(it) }
+            if (currentFileSize != null && currentFileSize > 0) {
+                add(FileUtils.formatFileSize(currentFileSize))
+            }
+        }.joinToString(" • ").takeIf { it.isNotEmpty() }
     }
 
     ToolScaffold(
@@ -144,6 +193,7 @@ fun AudioExtractScreen(
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = fileDetails,
                 placeholderText = "Select Video or Audio to Convert",
                 icon = Icons.Default.Audiotrack,
                 accentColor = AccentVideo,
@@ -189,9 +239,9 @@ fun AudioExtractScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = if (targetFormat == AudioOutputFormat.M4A)
-                            "Small file. AAC audio is copied without quality loss when possible."
+                            "Small file. AAC audio stream is copied losslessly without re-encoding when possible."
                         else
-                            "Uncompressed. Large file, but opens in any audio editor.",
+                            "Uncompressed PCM WAV. Studio quality, opens in any audio editor.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -254,7 +304,19 @@ fun AudioExtractScreen(
                     },
                     onShare = {
                         FileUtils.shareFile(context.applicationContext, success.outputFile, targetFormat.mimeType)
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Calculate Hash",
+                                icon = Icons.Default.Fingerprint,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("hash_verifier", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

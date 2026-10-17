@@ -4,20 +4,27 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.jobs.retained
 import com.omniforge.app.core.model.ProcessState
@@ -31,7 +38,11 @@ import kotlinx.coroutines.launch
 private const val JOB_KEY = "document_scan"
 
 @Composable
-fun DocumentScanScreen(onBack: () -> Unit) {
+fun DocumentScanScreen(
+    initialUri: Uri? = null,
+    onNavigateToTool: ((String, Uri) -> Unit)? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -41,7 +52,25 @@ fun DocumentScanScreen(onBack: () -> Unit) {
 
     var contrast by retained(JOB_KEY, "contrast") { mutableFloatStateOf(1.8f) }
     var isMonochrome by retained(JOB_KEY, "isMonochrome") { mutableStateOf(true) }
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
+    var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(initialUri) {
+        if (initialUri == null) return@LaunchedEffect
+        if (initialUri != lastHandledInitialUri) {
+            if (ToolJobs.isRunning(JOB_KEY)) {
+                pendingShareUri = initialUri
+            } else {
+                lastHandledInitialUri = initialUri
+                pendingShareUri = null
+                selectedUri = initialUri
+                fileName = FileUtils.getFileName(context, initialUri)
+                fileSize = FileUtils.getFileSize(context, initialUri)
+                processState = ProcessState.Idle
+            }
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -50,6 +79,7 @@ fun DocumentScanScreen(onBack: () -> Unit) {
             selectedUri = it
             fileName = FileUtils.getFileName(context, it)
             fileSize = FileUtils.getFileSize(context, it)
+            pendingShareUri = null
             processState = ProcessState.Idle
         }
     }
@@ -71,6 +101,52 @@ fun DocumentScanScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
+            pendingShareUri?.let { pendingUri ->
+                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Incoming shared photo: $pendingName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Enhancement is currently running on another photo. Switch to this new file or dismiss it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    ToolJobs.cancel(JOB_KEY)
+                                    selectedUri = pendingUri
+                                    fileName = pendingName
+                                    fileSize = FileUtils.getFileSize(context, pendingUri)
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                    processState = ProcessState.Idle
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                            ) {
+                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    lastHandledInitialUri = pendingUri
+                                    pendingShareUri = null
+                                }
+                            ) {
+                                Text("Dismiss", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
@@ -79,6 +155,28 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                 accentColor = AccentImage,
                 onClick = { picker.launch(arrayOf("image/*")) }
             )
+
+            selectedUri?.let { uri ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(DarkSurfaceElevated),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(uri)
+                            .crossfade(true)
+                            .size(coil.size.Size(512, 512))
+                            .build(),
+                        contentDescription = "Document Preview",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
 
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -187,7 +285,19 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "image/jpeg")
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Shrink Photo",
+                                icon = Icons.Default.Compress,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("image_shrink", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

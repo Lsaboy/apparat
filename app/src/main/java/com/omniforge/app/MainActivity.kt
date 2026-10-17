@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
                         "pdf_shrink" -> "application/pdf"
                         "image_shrink" -> "image/jpeg"
                         "video_to_gif" -> "video/mp4"
+                        "hash_verifier" -> "*/*"
                         else -> null
                     }
                     currentSharedPayload = SharedPayload(uri = uri, mimeType = mime)
@@ -187,6 +188,7 @@ class MainActivity : ComponentActivity() {
                     composable("video_to_gif") {
                         VideoToGifScreen(
                             initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -199,6 +201,7 @@ class MainActivity : ComponentActivity() {
                     composable("audio_extract") {
                         AudioExtractScreen(
                             initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true || incomingMimeType?.startsWith("audio/") == true },
+                            onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -211,7 +214,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("document_scan") {
-                        DocumentScanScreen(onBack = { navController.popBackStack() })
+                        DocumentScanScreen(
+                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            onNavigateToTool = navigateToToolWithFile,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("palette_extractor") {
                         PaletteExtractorScreen(
@@ -277,7 +284,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> {
                 val uri = intent.data
                 val mime = intent.type ?: uri?.let { contentResolver.getType(it) }
-                if (uri != null) {
+                if (uri != null && uri.scheme != "dpk") {
                     currentSharedPayload = SharedPayload(uri = uri, mimeType = mime)
                     navEvents.trySend("home")
                 }

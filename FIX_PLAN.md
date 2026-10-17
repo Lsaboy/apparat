@@ -173,8 +173,8 @@ easy to bisect.
   - Fix: expose settings as Compose state / `StateFlow` (DataStore), read in `setContent`.
   - File: `MainActivity.kt:68,106`, `core/settings/AppSettings.kt`.
 - [x] **1C.2 "Default Save Mode" setting is never read.** Every tool hard-codes `NEW_COPY`.
-- [ ] **1C.3 "Share Sheet Shortcuts" setting is never read.** Launcher shortcuts are static
-  in `res/xml/shortcuts.xml`. Either wire to `ShortcutManagerCompat` dynamic shortcuts or remove.
+- [x] **1C.3 "Share Sheet Shortcuts" setting is never read.** Wired to `ShortcutManagerCompat.setDynamicShortcuts`
+  (removing static manifest metadata) and synced with dynamic Home quick actions pin bar.
 - [x] **1C.4 Toasts lie about save folder.** 11 places say "Downloads/OmniForge"; files go to
   `Downloads/DigitalPocketKnife`. Centralise the folder name in one constant.
 - [x] **1C.5 Temp files never deleted.** `cache/outputs/` grows forever (PDF→Images PNGs are
@@ -500,9 +500,8 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [x] **Share-in to every tool:** wired to all 15 single-file tools (PDF, Video, Image, Utilities) with onNewIntent reactive navigation and quick-action AssistChips on Home.
 - [x] **Search keywords:** "resize", "merge", "jpg", "combine", "reduce size", "kb", etc.
   Tokenized multi-word search across title, description, and keywords implemented for all 20 tools.
-- [ ] **Home:** quick actions are hard-coded (Unlock, Trim, Shrink Photo, Shrink Video) —
-  let user pin tools; add Recent files / recent tools.
-- [ ] **Copy cleanup:** "Modify OG" → "Replace original"; shorten long tool titles.
+- [x] **Home:** quick actions dynamically derived from `appSettings.enabledShortcuts` (customizable via Settings) and synced with dynamic Android launcher shortcuts.
+- [x] **Copy cleanup:** "Modify OG" → "Replace original"; standardized screen titles.
 - [x] **Naming — DECIDED: "Digital Pocket Knife".** Replace user-visible "OmniForge" everywhere:
   toasts/messages (most handled by 1C.4), unlock-screen text, README, `rootProject.name = "DigitalPocketKnife"`,
   proguard comment, and output APK naming `base.archivesName = "DigitalPocketKnife"`. Save folder stays
@@ -519,9 +518,8 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Trim:** video preview with scrubber + start/end handles instead of typing seconds;
   keep input container (or re-mux correctly) instead of always `.mp4`; explain keyframe snapping
   or offer "precise (re-encode)" option.
-- [ ] **Video→GIF:** start time is hard-coded `0` (`VideoToGifScreen.kt:155`) — add start selection
-  with preview; show estimated size.
-- [ ] **Audio Extract:** picker only allows `video/*` though home routes audio shares to it.
+- [x] **Video→GIF:** Start Offset slider with duration bounds; total frame count and estimated output file size.
+- [x] **Audio Extract:** picker allows `video/*` and `audio/*`; shows input resolution, duration, and size formatted in `fileDetails` with audio duration query fallback; M4A lossless stream copy notice.
 - [x] ~~**Burn Subtitles:** FFmpeg path escaping / `.vtt` as `.srt` / libass~~ — obsolete, FFmpeg
   removed in 1A.1 (own SRT/VTT parser). Still to do: preview of first subtitle line.
 - [x] **Video Convert:** became "Convert to MP4" (1A.1); MOV input accepted.

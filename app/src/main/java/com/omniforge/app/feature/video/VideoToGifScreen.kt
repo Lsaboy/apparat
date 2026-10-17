@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.*
@@ -39,6 +40,7 @@ private const val JOB_KEY = "video_to_gif"
 @Composable
 fun VideoToGifScreen(
     initialUri: Uri? = null,
+    onNavigateToTool: ((String, Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -280,6 +282,16 @@ fun VideoToGifScreen(
                             inactiveTrackColor = DarkBorder
                         )
                     )
+
+                    val effectiveDur = if (videoDurationSec > 0f) durationSec.coerceIn(1f, (videoDurationSec - startSec).coerceAtLeast(1f)) else durationSec
+                    val totalFrames = (effectiveDur * fps).toInt()
+                    val estBytes = (totalFrames * (width / 480f) * 35_000L).toLong()
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Estimated output: $totalFrames frames (~${FileUtils.formatFileSize(estBytes)})",
+                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    )
                 }
             }
 
@@ -344,7 +356,19 @@ fun VideoToGifScreen(
                     },
                     onShare = {
                         FileUtils.shareFile(context.applicationContext, success.outputFile, "image/gif")
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Calculate Hash",
+                                icon = Icons.Default.Fingerprint,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("hash_verifier", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

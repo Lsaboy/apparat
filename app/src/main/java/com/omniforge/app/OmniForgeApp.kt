@@ -18,5 +18,8 @@ class OmniForgeApp : Application() {
         CoroutineScope(Dispatchers.IO).launch {
             FileUtils.cleanStaleCache(applicationContext, appStartTime = appStartTime)
         }
+
+        // Initialize dynamic launcher shortcuts based on user preferences
+        com.omniforge.app.core.settings.AppSettings(applicationContext).updateLauncherShortcuts(applicationContext)
     }
 }

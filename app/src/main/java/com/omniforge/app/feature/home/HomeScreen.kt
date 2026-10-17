@@ -32,186 +32,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.model.ToolCategory
+import com.omniforge.app.core.model.ALL_TOOLS
 import com.omniforge.app.core.model.ToolItem
 import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.util.FileUtils
-
-val ALL_TOOLS = listOf(
-    // PDF Tools
-    ToolItem(
-        id = "pdf_unlock",
-        title = "Remove PDF Password",
-        description = "Enter password once to decrypt and save an unlocked, unrestricted PDF.",
-        category = ToolCategory.PDF,
-        route = "pdf_unlock",
-        keywords = listOf("password", "decrypt", "unlock", "security", "protect", "restriction", "pin", "credentials", "unprotect")
-    ),
-    ToolItem(
-        id = "pdf_shrink",
-        title = "Compress PDF",
-        description = "Downsample embedded images and clean redundant streams to reduce size.",
-        category = ToolCategory.PDF,
-        route = "pdf_shrink",
-        keywords = listOf("compress", "shrink", "reduce", "size", "downsample", "dpi", "optimize", "kb", "mb", "small")
-    ),
-    ToolItem(
-        id = "pdf_split",
-        title = "Split PDF",
-        description = "Split into multiple PDFs by custom ranges (e.g. 1-3, 4-6) or page intervals.",
-        category = ToolCategory.PDF,
-        route = "pdf_split",
-        badge = "Multi-Split",
-        keywords = listOf("split", "separate", "cut", "extract", "range", "interval", "divide", "pages", "break")
-    ),
-    ToolItem(
-        id = "pdf_to_images",
-        title = "PDF to Images",
-        description = "Render every page of a PDF into high-res PNG images.",
-        category = ToolCategory.PDF,
-        route = "pdf_to_images",
-        keywords = listOf("convert", "export", "render", "extract", "png", "jpg", "jpeg", "pages", "photo", "picture")
-    ),
-    ToolItem(
-        id = "images_to_pdf",
-        title = "Photos to PDF",
-        description = "Combine multiple pictures into a clean multi-page PDF document.",
-        category = ToolCategory.PDF,
-        route = "images_to_pdf",
-        keywords = listOf("combine", "merge", "join", "photos", "pictures", "images", "scan", "jpg", "png", "convert")
-    ),
-
-    // Video Tools
-    ToolItem(
-        id = "video_shrink",
-        title = "Video Shrinker",
-        description = "Compress videos for Discord, WhatsApp, Email, or custom resolutions.",
-        category = ToolCategory.VIDEO,
-        route = "video_shrink",
-        keywords = listOf("compress", "shrink", "reduce size", "resize", "scale", "mb", "gb", "whatsapp", "discord", "email", "bitrate", "resolution", "720p", "1080p")
-    ),
-    ToolItem(
-        id = "video_trim",
-        title = "Trim & Mute",
-        description = "Cut a clip or remove sound. Near-lossless fast trimming without quality loss.",
-        category = ToolCategory.VIDEO,
-        route = "video_trim",
-        badge = "Fast",
-        keywords = listOf("cut", "trim", "crop", "clip", "snip", "mute", "silence", "remove audio", "shorten", "fast")
-    ),
-    ToolItem(
-        id = "video_caption",
-        title = "Burn Subtitles & Captions",
-        description = "Burn .srt or .vtt subtitles into a video, with adjustable text size.",
-        category = ToolCategory.VIDEO,
-        route = "video_caption",
-        keywords = listOf("subtitles", "captions", "srt", "vtt", "burn", "hardcode", "transcript", "text", "timing")
-    ),
-    ToolItem(
-        id = "video_to_gif",
-        title = "Video to GIF",
-        description = "Turn a short video clip into an animated GIF.",
-        category = ToolCategory.VIDEO,
-        route = "video_to_gif",
-        keywords = listOf("gif", "animation", "loop", "meme", "sticker", "convert", "clip")
-    ),
-    ToolItem(
-        id = "video_convert",
-        title = "Convert to MP4",
-        description = "Turn MKV, WEBM, MOV or 3GP videos into an MP4 that plays everywhere.",
-        category = ToolCategory.VIDEO,
-        route = "video_convert",
-        keywords = listOf("convert", "mp4", "mkv", "webm", "mov", "3gp", "transcode", "remux", "format")
-    ),
-    ToolItem(
-        id = "audio_extract",
-        title = "Extract Audio from Video",
-        description = "Save the sound from a video as M4A (small) or WAV (uncompressed).",
-        category = ToolCategory.VIDEO,
-        route = "audio_extract",
-        keywords = listOf("extract", "audio", "sound", "music", "m4a", "wav", "mp3", "voice", "strip video", "soundtrack")
-    ),
-
-    // Image Tools
-    ToolItem(
-        id = "image_shrink",
-        title = "Shrink Image",
-        description = "Compress photo file size with quality slider, resolution downscaling, and EXIF strip.",
-        category = ToolCategory.IMAGE,
-        route = "image_shrink",
-        keywords = listOf("compress", "shrink", "reduce size", "resize", "scale", "kb", "mb", "jpg", "jpeg", "png", "webp", "photo", "picture", "quality", "downscale", "dimen")
-    ),
-    ToolItem(
-        id = "document_scan",
-        title = "Document & Receipt Enhancer",
-        description = "Turn photos of documents into crisp, high-contrast black & white scans.",
-        category = ToolCategory.IMAGE,
-        route = "document_scan",
-        badge = "Scan",
-        keywords = listOf("scan", "scanner", "receipt", "document", "b&w", "black and white", "contrast", "threshold", "invoice", "paper", "clean")
-    ),
-    ToolItem(
-        id = "palette_extractor",
-        title = "Palette & Color Extractor",
-        description = "Extract dominant colors and HEX codes directly from photos.",
-        category = ToolCategory.IMAGE,
-        route = "palette_extractor",
-        badge = "Palette",
-        keywords = listOf("palette", "color", "hex", "swatch", "dominant", "picker", "theme", "extract")
-    ),
-    ToolItem(
-        id = "image_convert",
-        title = "Convert Image",
-        description = "Convert between JPEG, PNG, and WEBP formats seamlessly.",
-        category = ToolCategory.IMAGE,
-        route = "image_convert",
-        keywords = listOf("convert", "format", "jpg", "jpeg", "png", "webp", "extension", "transcode")
-    ),
-    ToolItem(
-        id = "exif_strip",
-        title = "EXIF Metadata Stripper",
-        description = "Inspect hidden camera/GPS info and strip all location & metadata before sharing.",
-        category = ToolCategory.IMAGE,
-        route = "exif_strip",
-        badge = "Privacy",
-        keywords = listOf("exif", "metadata", "privacy", "gps", "location", "camera", "strip", "remove", "clean", "sanitize")
-    ),
-
-    // Utility Tools
-    ToolItem(
-        id = "qr_studio",
-        title = "QR Code Studio",
-        description = "Generate high-res QR codes for Wi-Fi, URLs, and text offline.",
-        category = ToolCategory.UTILITIES,
-        route = "qr_studio",
-        keywords = listOf("qr", "barcode", "matrix", "wifi", "url", "link", "generator", "create", "code")
-    ),
-    ToolItem(
-        id = "hash_verifier",
-        title = "Checksum & Hash Verifier",
-        description = "Compute and verify MD5, SHA-1, SHA-256 hashes against clipboard.",
-        category = ToolCategory.UTILITIES,
-        route = "hash_verifier",
-        badge = "SHA-256",
-        keywords = listOf("checksum", "hash", "md5", "sha1", "sha256", "sha512", "integrity", "verify", "digest", "compare")
-    ),
-    ToolItem(
-        id = "json_tool",
-        title = "JSON Formatter & Validator",
-        description = "Prettify, format, validate, or minify JSON data.",
-        category = ToolCategory.UTILITIES,
-        route = "json_tool",
-        keywords = listOf("json", "format", "prettify", "minify", "validate", "parse", "syntax", "indent", "beautify")
-    ),
-    ToolItem(
-        id = "base64_studio",
-        title = "Base64 Studio",
-        description = "Fast Base64 encoder and decoder for strings and text.",
-        category = ToolCategory.UTILITIES,
-        route = "base64_studio",
-        keywords = listOf("base64", "encode", "decode", "b64", "text", "binary", "ascii", "string")
-    )
-)
 
 data class QuickActionItem(
     val title: String,
@@ -219,13 +44,6 @@ data class QuickActionItem(
     val icon: ImageVector,
     val color: Color,
     val route: String
-)
-
-val QUICK_ACTIONS = listOf(
-    QuickActionItem("Unlock PDF", "Decrypt", Icons.Default.LockOpen, AccentPdf, "pdf_unlock"),
-    QuickActionItem("Lossless Cut", "<1s Trim", Icons.Default.ContentCut, AccentVideo, "video_trim"),
-    QuickActionItem("Shrink Photo", "Optimize", Icons.Default.Compress, AccentImage, "image_shrink"),
-    QuickActionItem("Shrink Video", "Compress", Icons.Default.VideoFile, AccentVideo, "video_shrink")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -241,6 +59,25 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ToolCategory?>(null) }
     var isGridView by remember { mutableStateOf(appSettings.isGridView) }
+
+    val enabledShortcuts = appSettings.enabledShortcuts
+    val quickActions = remember(enabledShortcuts) {
+        val selectedTools = ALL_TOOLS.filter { it.id in enabledShortcuts }
+        val effectiveTools = if (selectedTools.isNotEmpty()) {
+            selectedTools.take(4)
+        } else {
+            ALL_TOOLS.filter { it.id in setOf("pdf_unlock", "video_trim", "image_shrink", "video_shrink") }
+        }
+        effectiveTools.map { tool ->
+            QuickActionItem(
+                title = tool.title,
+                subtitle = tool.badge ?: tool.category.displayName.substringBefore(" "),
+                icon = getCategoryIcon(tool.id, tool.category),
+                color = tool.category.color,
+                route = tool.route
+            )
+        }
+    }
 
     // When an incoming file is shared, filter down to tools matching that MIME type
     val compatibleCategory: ToolCategory? = remember(sharedMimeType) {
@@ -569,7 +406,7 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = 6.dp)
                         ) {
-                            items(QUICK_ACTIONS) { action ->
+                            items(quickActions) { action ->
                                 QuickActionCard(action = action, onClick = { onNavigateToTool(action.route) })
                             }
                         }

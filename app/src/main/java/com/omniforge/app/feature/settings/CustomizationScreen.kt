@@ -24,9 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omniforge.app.core.model.ALL_TOOLS
 import com.omniforge.app.core.settings.*
 import com.omniforge.app.core.theme.*
-import com.omniforge.app.feature.home.ALL_TOOLS
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -273,11 +273,11 @@ fun CustomizationScreen(
                 }
             }
 
-            // 3. SYSTEM SHARE SHEET & SHORTCUTS
+            // 3. QUICK ACTIONS & LAUNCHER SHORTCUTS
             item {
-                SettingsGroupCard(title = "Share Sheet Shortcuts") {
+                SettingsGroupCard(title = "Quick Actions & Launcher Shortcuts") {
                     Text(
-                        text = "Choose which tools appear as system shortcuts when sharing files from other apps:",
+                        text = "Choose which tools appear as pinned Quick Actions on the Home screen and in your Android app launcher long-press menu (up to 4 dynamic shortcuts):",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -295,6 +295,8 @@ fun CustomizationScreen(
                                     }
                                     enabledShortcuts = updated
                                     appSettings.enabledShortcuts = updated
+                                    appSettings.updateLauncherShortcuts(context)
+                                    onSettingsChanged()
                                 }
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -309,6 +311,8 @@ fun CustomizationScreen(
                                     }
                                     enabledShortcuts = updated
                                     appSettings.enabledShortcuts = updated
+                                    appSettings.updateLauncherShortcuts(context)
+                                    onSettingsChanged()
                                 }
                             )
                             Spacer(modifier = Modifier.width(8.dp))

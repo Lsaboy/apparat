@@ -71,5 +71,31 @@ class AppSettings(context: Context) {
 
     val currentAccentColor: Color
         get() = AppAccentSwatches[accentIndex].color
+
+    fun updateLauncherShortcuts(context: Context) {
+        runCatching {
+            val targetIds = enabledShortcuts
+            val selectedTools = com.omniforge.app.core.model.ALL_TOOLS.filter { it.id in targetIds }.take(4)
+            val effectiveTools = if (selectedTools.isNotEmpty()) {
+                selectedTools
+            } else {
+                com.omniforge.app.core.model.ALL_TOOLS.filter { it.id in setOf("pdf_unlock", "image_shrink", "video_shrink", "video_trim") }.take(4)
+            }
+
+            val shortcuts = effectiveTools.map { tool ->
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("dpk://${tool.id}")).apply {
+                    setClass(context, com.omniforge.app.MainActivity::class.java)
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                androidx.core.content.pm.ShortcutInfoCompat.Builder(context, "shortcut_${tool.id}")
+                    .setShortLabel(tool.title)
+                    .setLongLabel("${tool.title} - ${tool.description}")
+                    .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, com.omniforge.app.R.mipmap.ic_launcher))
+                    .setIntent(intent)
+                    .build()
+            }
+            androidx.core.content.pm.ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts)
+        }
+    }
 }
 

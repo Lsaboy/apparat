@@ -49,7 +49,7 @@ fun HashVerifierScreen(
 ) {
     val context = LocalContext.current
 
-    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
     var lastHandledInitialText by retained(JOB_KEY, "lastHandledInitialText") { mutableStateOf<String?>(initialText) }
     var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
 
