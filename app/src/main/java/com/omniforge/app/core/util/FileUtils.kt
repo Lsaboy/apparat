@@ -190,17 +190,54 @@ object FileUtils {
         }
     }
 
+    /**
+     * Replaces the content behind [originalUri] with [newFile]. Returns true only when the new
+     * content was written and checked. A false return means the original is unchanged, or was put
+     * back from a backup if the write failed halfway.
+     *
+     * Opening a content URI for writing truncates it immediately, and there is no atomic replace for
+     * picker/MediaStore URIs, so the original is first backed up to cache and restored on failure.
+     */
     suspend fun overwriteOriginal(context: Context, originalUri: Uri, newFile: File): Boolean = withContext(Dispatchers.IO) {
+        if (!newFile.exists() || newFile.length() == 0L) return@withContext false
+        val resolver = context.contentResolver
+
+        // 1. Can we write at all? "rw" doesn't truncate, so a refusal costs nothing.
+        val writable = runCatching { resolver.openFileDescriptor(originalUri, "rw")?.use { true } ?: false }.getOrDefault(false)
+        if (!writable) return@withContext false
+
+        // 2. Back up the original (needs the space; without a backup we won't risk it).
+        val backup = File(context.cacheDir, "backup_${System.currentTimeMillis()}_${System.nanoTime()}")
         try {
-            val out = context.contentResolver.openOutputStream(originalUri, "wt") ?: return@withContext false
-            out.use { output ->
-                FileInputStream(newFile).use { input ->
-                    input.copyTo(output)
+            val originalSize = runCatching { resolver.openFileDescriptor(originalUri, "r")?.use { it.statSize } }.getOrNull() ?: -1L
+            if (originalSize > 0 && context.cacheDir.usableSpace < originalSize + originalSize / 5) return@withContext false
+            val copied = runCatching {
+                resolver.openInputStream(originalUri)?.use { input ->
+                    FileOutputStream(backup).use { output -> input.copyTo(output) }
+                } != null
+            }.getOrDefault(false)
+            if (!copied) return@withContext false
+
+            // 3. Write, then check the size that actually landed.
+            val written = try {
+                resolver.openOutputStream(originalUri, "wt")?.use { output ->
+                    FileInputStream(newFile).use { input -> input.copyTo(output) }
+                } != null
+            } catch (e: Exception) {
+                false
+            }
+            val landedSize = runCatching { resolver.openFileDescriptor(originalUri, "r")?.use { it.statSize } }.getOrNull() ?: -1L
+            if (written && (landedSize < 0 || landedSize == newFile.length())) return@withContext true
+
+            // 4. Something went wrong after truncation: put the original back.
+            runCatching {
+                resolver.openOutputStream(originalUri, "wt")?.use { output ->
+                    FileInputStream(backup).use { input -> input.copyTo(output) }
                 }
             }
-            true
-        } catch (_: Exception) {
             false
+        } finally {
+            backup.delete()
         }
     }
 
@@ -246,7 +283,7 @@ object FileUtils {
         runCatching {
             cacheDir.listFiles()?.forEach { file ->
                 val name = file.name
-                if ((name.startsWith("input_") || name.startsWith("decrypted_")) && file.lastModified() < appStartTime) {
+                if ((name.startsWith("input_") || name.startsWith("decrypted_") || name.startsWith("backup_")) && file.lastModified() < appStartTime) {
                     file.delete()
                 }
             }

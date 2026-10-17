@@ -52,6 +52,9 @@ class FileUtilsTest {
             val oldDecrypted = java.io.File(tempDir, "decrypted_old.pdf").apply { writeText("old"); setLastModified(appStartTime - 5000) }
             val newDecrypted = java.io.File(tempDir, "decrypted_new.pdf").apply { writeText("new"); setLastModified(appStartTime + 5000) }
 
+            val oldBackup = java.io.File(tempDir, "backup_old").apply { writeText("old"); setLastModified(appStartTime - 5000) }
+            val newBackup = java.io.File(tempDir, "backup_new").apply { writeText("new"); setLastModified(appStartTime + 5000) }
+
             val outputsDir = java.io.File(tempDir, "outputs").apply { mkdirs() }
             val maxAge = 86400000L // 24 hours
             val now = System.currentTimeMillis()
@@ -64,11 +67,13 @@ class FileUtilsTest {
             assertFalse(oldPdfbox.exists())
             assertFalse(oldInput.exists())
             assertFalse(oldDecrypted.exists())
+            assertFalse(oldBackup.exists())
 
             // Scratch / inputs created during / after app start must NOT be deleted
             assertTrue(newPdfbox.exists())
             assertTrue(newInput.exists())
             assertTrue(newDecrypted.exists())
+            assertTrue(newBackup.exists())
 
             // Output older than 24h must be deleted; fresh output kept
             assertFalse(oldOutput.exists())
