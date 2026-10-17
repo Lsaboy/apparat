@@ -139,7 +139,7 @@ fun PdfShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -284,9 +284,9 @@ fun PdfShrinkScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Compress PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Compress PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)

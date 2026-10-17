@@ -268,11 +268,11 @@ fun PdfMergeScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = entries.size >= 2 && !busy
             ) {
-                Icon(imageVector = Icons.Default.MergeType, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.MergeType, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (entries.size >= 2) "Merge ${entries.size} PDFs" else "Merge PDFs",
-                    color = OnBraunOrange,
+                    color = onPrimaryForAccent(AccentPdf),
                     fontWeight = FontWeight.Bold
                 )
             }

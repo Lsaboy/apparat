@@ -140,7 +140,7 @@ fun VideoConvertScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -200,9 +200,9 @@ fun VideoConvertScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to MP4", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Convert to MP4", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

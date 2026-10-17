@@ -18,3 +18,6 @@ play-service-account*.json
 play-api-key*.json
 service-account*.json
 
+
+# Local test media (see test pdf/README.txt)
+test pdf/

@@ -148,7 +148,7 @@ fun ExifStripperScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -298,9 +298,9 @@ fun ExifStripperScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Strip EXIF & Clean Photo", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Strip EXIF & Clean Photo", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -329,7 +329,13 @@ fun ExifStripperScreen(
                         Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
                     },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "image/jpeg")
+                        val ext = success.outputFile.extension.lowercase()
+                        val mime = when (ext) {
+                            "png" -> "image/png"
+                            "webp" -> "image/webp"
+                            else -> "image/jpeg"
+                        }
+                        FileUtils.shareFile(context, success.outputFile, mime)
                     }
                 )
             }

@@ -257,8 +257,20 @@ object UtilityEngine {
         return "WIFI:T:$secType;S:${escapeWifiField(ssid)};$pPart$hPart;"
     }
 
+    private val UPI_AMOUNT_REGEX = Regex("""^\d+(\.\d{1,2})?$""")
+
+    /**
+     * Returns true if [amount] is a valid positive decimal currency amount (e.g. "500", "250.50").
+     */
+    fun isValidUpiAmount(amount: String): Boolean {
+        val trimmed = amount.trim()
+        return trimmed.matches(UPI_AMOUNT_REGEX) && (trimmed.toDoubleOrNull() ?: 0.0) > 0.0
+    }
+
     /**
      * Formats NPCI-compliant UPI Payment QR payload.
+     * Leaves '@' in the VPA unencoded (some UPI apps reject '%40') and strictly validates
+     * that amount conforms to ^\d+(\.\d{1,2})?$.
      */
     fun formatUpiQr(vpa: String, name: String, amount: String = "", note: String = ""): String {
         if (vpa.isBlank()) return ""
@@ -269,14 +281,16 @@ object UtilityEngine {
                 param
             }
         }
+        val encodedVpa = encode(vpa.trim()).replace("%40", "@")
         return buildString {
             append("upi://pay?")
-            append("pa=").append(encode(vpa.trim()))
+            append("pa=").append(encodedVpa)
             if (name.isNotBlank()) {
                 append("&pn=").append(encode(name.trim()))
             }
-            if (amount.isNotBlank()) {
-                append("&am=").append(encode(amount.trim()))
+            val trimmedAmount = amount.trim()
+            if (trimmedAmount.isNotBlank() && trimmedAmount.matches(UPI_AMOUNT_REGEX) && (trimmedAmount.toDoubleOrNull() ?: 0.0) > 0.0) {
+                append("&am=").append(trimmedAmount)
             }
             append("&cu=INR")
             if (note.isNotBlank()) {

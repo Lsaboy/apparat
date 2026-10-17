@@ -171,7 +171,7 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .size(9.dp)
-                                    .background(BraunOrange, shape = RoundedCornerShape(4.5.dp))
+                                    .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.5.dp))
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -229,7 +229,7 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.Tune,
                                 contentDescription = "Customization & Settings",
-                                tint = BraunOrange,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -281,7 +281,7 @@ fun HomeScreen(
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                cursorBrush = SolidColor(BraunOrange),
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -334,7 +334,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, BraunOrange.copy(alpha = 0.6f))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -342,13 +342,13 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(BraunOrange.copy(alpha = 0.15f)),
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
                                         contentDescription = null,
-                                        tint = BraunOrange,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }

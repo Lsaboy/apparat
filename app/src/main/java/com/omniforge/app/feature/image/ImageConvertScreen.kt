@@ -144,7 +144,7 @@ fun ImageConvertScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -294,9 +294,9 @@ fun ImageConvertScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to ${targetFormat.name}", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Convert to ${targetFormat.name}", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)

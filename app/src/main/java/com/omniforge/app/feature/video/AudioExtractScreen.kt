@@ -175,7 +175,7 @@ fun AudioExtractScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -226,7 +226,7 @@ fun AudioExtractScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = if (isSelected) AccentVideo else MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (isSelected) OnBraunOrange else MaterialTheme.colorScheme.onSurface
+                                    contentColor = if (isSelected) onPrimaryForAccent(AccentVideo) else MaterialTheme.colorScheme.onSurface
                                 ),
                                 border = BorderStroke(1.dp, if (isSelected) AccentVideo else MaterialTheme.colorScheme.outline)
                             ) {
@@ -279,9 +279,9 @@ fun AudioExtractScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Extract ${targetFormat.name}", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Extract ${targetFormat.name}", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

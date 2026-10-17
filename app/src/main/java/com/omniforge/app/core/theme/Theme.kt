@@ -11,11 +11,14 @@ import androidx.core.view.WindowCompat
 import com.omniforge.app.core.settings.ThemeStyle
 
 fun onPrimaryForAccent(accent: Color): Color {
-    return if (accent == BraunOrange || accent == TechnicalIndicatorYellow || accent == BraunSignalOrange || accent == BraunSignalOrangeDark) {
-        OnBraunOrange
-    } else {
-        val lum = 0.2126f * accent.red + 0.7152f * accent.green + 0.0722f * accent.blue
-        if (lum > 0.4f) OnBraunOrange else Color.White
+    return when (accent) {
+        BraunOrange, TechnicalIndicatorYellow, BraunSignalOrange, BraunSignalOrangeDark, AccentUtility, AccentUtilityDark -> OnBraunOrange
+        AccentPdf, AccentPdfDark, AccentVideo, AccentVideoDark, AccentImage, AccentImageDark,
+        SuccessGreen, TechnicalIndicatorRed, TechnicalIndicatorBlue, TechnicalIndicatorGreen -> Color.White
+        else -> {
+            val lum = 0.2126f * accent.red + 0.7152f * accent.green + 0.0722f * accent.blue
+            if (lum > 0.55f) OnBraunOrange else Color.White
+        }
     }
 }
 
@@ -81,6 +84,8 @@ fun ApparatTheme(
     recomposeTrigger: Int = 0,
     content: @Composable () -> Unit
 ) {
+    @Suppress("UNUSED_VARIABLE")
+    val _trigger = recomposeTrigger
     val isSystemDark = isSystemInDarkTheme()
     val isDark = when (themeStyle) {
         ThemeStyle.SYSTEM -> isSystemDark

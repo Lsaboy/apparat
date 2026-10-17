@@ -704,5 +704,22 @@ When reviewing these changes, please inspect:
 11. **Issue B14 (Lossless JSON Formatter):** Implemented pure Kotlin `JsonFormatter` that preserves numbers verbatim as raw string tokens (no scientific notation on 20+ digit ints/decimals), keeps `/` unescaped, formats with 4 spaces or 0 spaces, and reports 1-based Line and Column on syntax errors. Added 8 unit tests in `JsonFormatterTest.kt`.
 12. **Issue B6 ("Shrink photo to under X KB" Search):** Implemented pure Kotlin `TargetKbSearchEngine` and `ImageEngine.shrinkToTargetKb` using a quality-first strategy (searches quality in [30..92], only downscaling dimensions if quality 30 exceeds budget, with area-based scaling). Added 5 unit tests in `TargetKbSearchEngineTest.kt`.
 13. **Issue B5 (Real PDF Image Compression):** Implemented image XObject re-encoding in `PdfEngine.compressPdf`. Iterates over all page resources, downscales oversized images exceeding ~150 DPI, composits transparent bitmaps onto white to prevent black backgrounds, re-encodes to JPEG using `JPEGFactory.createFromImage(document, bitmap, quality)`, and replaces the resource via `resources.put(cosName, newImageXObject)`. Recycles all extracted bitmaps immediately to avoid native memory exhaustion on 50+ page PDFs.
+14. **Batch S1–S6, TR1, B11, B13, and T5/T6 (Screen Audit, WCAG AA Contrast, and Native Engine):**
+   - **S1 (EXIF Stripper Share MIME):** Dynamically resolved share MIME from output file extension (`"image/png"`, `"image/webp"`, or `"image/jpeg"`) instead of hardcoded `"image/jpeg"`.
+   - **S2 (Video to GIF Slider Retain):** Retained `lastLoadedUri` to guard slider reset, preserving user-adjusted `startSec` and `durationSec` across screen rotations.
+   - **S3 & S4 (Video Trim Bounds Validation & Mute Output Naming):** Added strict upper-bound validation for start and duration sliders against `videoTotalSec`, clamping trim duration and disabling the action button if bounds are exceeded. Output named `Muted_${timestamp}.mp4` when audio is stripped, and `Trimmed_${timestamp}.mp4` when trimmed.
+   - **S5 (Base64 Studio Retained State & Background Threading):** Retained `detectedBinaryType`, `decodedBinaryBytes`, and `isSavingBinary` across device rotation. Offloaded encoding and decoding to `Dispatchers.Default` to prevent UI frame drops on large files.
+   - **S6 (QR Studio Overflow Resilience):** Added `runCatching` around `UtilityEngine.generateQrCode`, gracefully catching `WriterException` and rendering an error card (`"Text is too long for a QR code"`).
+   - **TR1 (WCAG AA Contrast & Theming):** Replaced hardcoded `OnBraunOrange` (`#161618`) on category-accented buttons with `onPrimaryForAccent(accentColor)` and `MaterialTheme.colorScheme.onPrimary` across all 14+ screens and `CommonComponents.kt`. Buttons on red, blue, purple, and green now render white text/icons exceeding 4.5:1 contrast, satisfying WCAG AA standards.
+   - **B11 (UPI QR Format & Amount Validation):** Unencoded `@` in `pa` (`.replace("%40", "@")`) to adhere to NPCI UPI specifications. Added `isValidUpiAmount` validation (`^\d+(\.\d{1,2})?$`), omitting invalid amounts, displaying inline UI error indicators, and adding unit tests in `UtilityEngineTest.kt`.
+   - **B13 (PDF to Images Native Rendering Engine):** Implemented native page extraction directly in `PdfToImagesScreen.kt` using `android.graphics.pdf.PdfRenderer`:
+     - Added format selector (JPEG default at quality 85 vs PNG at quality 100).
+     - Added DPI selector (150 DPI compact vs 300 DPI high-res).
+     - Added Page Range selector ("All Pages" vs "Custom Range" using `validateCustomRanges`).
+     - Bounded memory to 16 MP cap per page and recycled `ARGB_8888` bitmaps in `finally` blocks.
+     - Implemented automatic owner-password decryption fallback via `PdfEngine.removePassword`.
+     - Preserved concurrency isolation: left `engine/pdf/PdfEngine.kt` untouched for Claude's concurrent B5 work.
+   - **T5 & T6 (Appearance Customization Cleanup):** Removed dead `isDynamicColor` toggle from `CustomizationScreen.kt`. Replaced hardcoded `BraunOrange` borders, indicators, and radio buttons with `MaterialTheme.colorScheme.primary`. Added `val _trigger = recomposeTrigger` in `ApparatTheme` for immediate live recomposition on preference changes.
+
 
 

@@ -160,7 +160,7 @@ fun PdfSplitScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -239,7 +239,7 @@ fun PdfSplitScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = if (isSelected) AccentPdf else MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (isSelected) OnBraunOrange else MaterialTheme.colorScheme.onSurface
+                                    contentColor = if (isSelected) onPrimaryForAccent(AccentPdf) else MaterialTheme.colorScheme.onSurface
                                 ),
                                 border = BorderStroke(1.dp, if (isSelected) AccentPdf else MaterialTheme.colorScheme.outline)
                             ) {
@@ -433,9 +433,9 @@ fun PdfSplitScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUri != null && pdfPassword != null && pageCount != null && currentValidation is RangeValidation.Valid && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Split Document", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Split Document", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
@@ -492,7 +492,7 @@ fun PdfSplitScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text(saveProgress ?: "Save All Files", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                                Text(saveProgress ?: "Save All Files", color = onPrimaryForAccent(SuccessGreen), fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedButton(

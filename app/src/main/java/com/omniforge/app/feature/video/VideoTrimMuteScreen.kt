@@ -36,6 +36,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.math.max
+import kotlin.math.min
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "video_trim"
@@ -124,6 +126,26 @@ fun VideoTrimMuteScreen(
         }
     }
 
+    val startVal = startSecText.toFloatOrNull()
+    val durVal = durationSecText.toFloatOrNull()
+    val isTrimValid = if (isMuteOnly) {
+        true
+    } else {
+        startVal != null && durVal != null && startVal >= 0f && durVal > 0f &&
+            (videoTotalSec <= 0f || (startVal < videoTotalSec && startVal + durVal <= videoTotalSec + 0.05f))
+    }
+    val trimErrorMessage: String? = if (!isMuteOnly && selectedUri != null) {
+        when {
+            startVal == null -> "Please enter a valid start time"
+            startVal < 0f -> "Start time cannot be negative"
+            videoTotalSec > 0f && startVal >= videoTotalSec -> "Start time exceeds video duration (%.1fs)".format(Locale.US, videoTotalSec)
+            durVal == null -> "Please enter a valid duration"
+            durVal <= 0f -> "Duration must be greater than 0s"
+            videoTotalSec > 0f && (startVal + durVal > videoTotalSec + 0.05f) -> "Trim end (%.1fs) exceeds video duration (%.1fs)".format(Locale.US, startVal + durVal, videoTotalSec)
+            else -> null
+        }
+    } else null
+
     ToolScaffold(
         title = "Trim & Mute",
         categoryName = "Video & Audio",
@@ -172,7 +194,7 @@ fun VideoTrimMuteScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -226,7 +248,7 @@ fun VideoTrimMuteScreen(
                             checked = isMuteOnly,
                             onCheckedChange = { isMuteOnly = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = OnBraunOrange,
+                                checkedThumbColor = onPrimaryForAccent(AccentVideo),
                                 checkedTrackColor = AccentVideo
                             )
                         )
@@ -263,13 +285,15 @@ fun VideoTrimMuteScreen(
                                 onValueChange = { startSecText = it },
                                 modifier = Modifier.weight(1f),
                                 label = { Text("Start Time (s)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                isError = trimErrorMessage != null && startVal == null,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentVideo,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    errorBorderColor = ErrorRed
                                 )
                             )
 
@@ -278,14 +302,24 @@ fun VideoTrimMuteScreen(
                                 onValueChange = { durationSecText = it },
                                 modifier = Modifier.weight(1f),
                                 label = { Text("Duration (s)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                isError = trimErrorMessage != null && (durVal == null || durVal <= 0f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentVideo,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    errorBorderColor = ErrorRed
                                 )
+                            )
+                        }
+
+                        if (trimErrorMessage != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = trimErrorMessage,
+                                style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
                             )
                         }
                     }
@@ -300,8 +334,8 @@ fun VideoTrimMuteScreen(
                         val result = if (isMuteOnly) {
                             VideoEngine.stripAudio(appContext, uri) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         } else {
-                            val start = startSecText.toFloatOrNull() ?: 0f
-                            val duration = durationSecText.toFloatOrNull() ?: 10f
+                            val start = startVal ?: 0f
+                            val duration = if (videoTotalSec > 0f) min(durVal ?: 10f, max(0.1f, videoTotalSec - start)) else (durVal ?: 10f)
                             VideoEngine.losslessTrim(appContext, uri, start, duration) { p, msg -> processState = ProcessState.Processing(p, msg) }
                         }
 
@@ -318,7 +352,7 @@ fun VideoTrimMuteScreen(
                         )
                     }
                 },
-                enabled = selectedUri != null && !ToolJobs.isRunning(JOB_KEY),
+                enabled = selectedUri != null && !ToolJobs.isRunning(JOB_KEY) && isTrimValid,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -328,12 +362,12 @@ fun VideoTrimMuteScreen(
                 Icon(
                     imageVector = if (isMuteOnly) Icons.Default.VolumeOff else Icons.Default.ContentCut,
                     contentDescription = null,
-                    tint = OnBraunOrange
+                    tint = onPrimaryForAccent(AccentVideo)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isMuteOnly) "Mute Video" else "Trim Video Losslessly",
-                    color = OnBraunOrange,
+                    color = onPrimaryForAccent(AccentVideo),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -351,7 +385,7 @@ fun VideoTrimMuteScreen(
                             context = context.applicationContext,
                             file = success.outputFile,
                             mimeType = "video/mp4",
-                            displayName = "Trimmed_${System.currentTimeMillis()}.mp4"
+                            displayName = if (isMuteOnly) "Muted_${System.currentTimeMillis()}.mp4" else "Trimmed_${System.currentTimeMillis()}.mp4"
                         )
                         if (uri != null) {
                             Toast.makeText(context.applicationContext, "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()

@@ -170,9 +170,9 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = videoUri != null && subtitleUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Burn Subtitles & Export", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Burn Subtitles & Export", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

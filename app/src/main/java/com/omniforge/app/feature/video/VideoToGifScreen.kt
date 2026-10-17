@@ -58,6 +58,7 @@ fun VideoToGifScreen(
     var videoDurationSec by retained(JOB_KEY, "videoDurationSec") { mutableFloatStateOf(0f) }
 
     var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(null) }
+    var lastLoadedUri by retained(JOB_KEY, "lastLoadedUri") { mutableStateOf<Uri?>(null) }
     var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
 
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
@@ -65,6 +66,7 @@ fun VideoToGifScreen(
     LaunchedEffect(selectedUri) {
         val uri = selectedUri
         if (uri != null) {
+            val isNewUri = uri != lastLoadedUri
             withContext(Dispatchers.IO) {
                 val retriever = MediaMetadataRetriever()
                 try {
@@ -76,10 +78,14 @@ fun VideoToGifScreen(
                         }
                     }
                     val durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-                    videoDurationSec = durMs / 1000f
-                    startSec = 0f
-                    if (videoDurationSec > 0f) {
-                        durationSec = min(5f, videoDurationSec)
+                    val total = durMs / 1000f
+                    videoDurationSec = total
+                    if (isNewUri) {
+                        startSec = 0f
+                        if (total > 0f) {
+                            durationSec = min(5f, total)
+                        }
+                        lastLoadedUri = uri
                     }
                 } catch (_: Exception) {
                     videoDurationSec = 0f
@@ -90,6 +96,7 @@ fun VideoToGifScreen(
         } else {
             videoDurationSec = 0f
             startSec = 0f
+            lastLoadedUri = null
         }
     }
 
@@ -169,7 +176,7 @@ fun VideoToGifScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
+                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -332,9 +339,9 @@ fun VideoToGifScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = OnBraunOrange)
+                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate Smooth GIF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
+                Text("Generate Smooth GIF", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
