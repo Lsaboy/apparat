@@ -20,7 +20,7 @@ KEYSTORE_FILE="release.keystore"
 KEY_ALIAS="pocketknife_release_key"
 
 echo "====================================================="
-echo " Digital Pocket Knife - Release Keystore Generator   "
+echo " Apparat - Release Keystore Generator              "
 echo "====================================================="
 echo "This script will generate a production upload keystore"
 echo "for Google Play Store and configure keystore.properties."
@@ -51,8 +51,8 @@ if [ -z "$PASSWORD" ]; then
     exit 1
 fi
 
-read -rp "Enter Developer / Organization Name [OmniForge]: " DNAME_CN
-DNAME_CN="${DNAME_CN:-OmniForge}"
+read -rp "Enter Developer / Organization Name [Vedant]: " DNAME_CN
+DNAME_CN="${DNAME_CN:-Vedant}"
 
 echo ""
 echo "Generating keystore with keytool..."

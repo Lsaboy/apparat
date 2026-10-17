@@ -1,2 +1,2 @@
 json_key_file(ENV["PLAY_STORE_JSON_KEY_FILE"] || "service-account.json")
-package_name("com.omniforge.app")
+package_name("com.vedant.apparat")

@@ -19,5 +19,6 @@ play-api-key*.json
 service-account*.json
 
 
-# Local test media (see test pdf/README.txt)
-test pdf/
+# Local test media (see test-media/README.txt) and built APKs
+test-media/
+dist/

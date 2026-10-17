@@ -19,11 +19,11 @@ base {
 }
 
 android {
-    namespace = "com.omniforge.app"
+    namespace = "com.vedant.apparat"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.omniforge.app"
+        applicationId = "com.vedant.apparat"
         minSdk = 29
         targetSdk = 36
         versionCode = 3

@@ -11,7 +11,7 @@
          and output goes to Downloads through MediaStore, which needs none on API 29+. -->
 
     <application
-        android:name=".OmniForgeApp"
+        android:name=".ApparatApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -34,7 +34,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="dpk" />
+                <data android:scheme="apparat" />
             </intent-filter>
 
             <!-- Incoming Share Sheet for Images -->

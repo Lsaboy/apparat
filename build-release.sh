@@ -9,7 +9,7 @@ export JAVA_HOME="${JAVA_HOME:-$HOME/tools/jdk17}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
-echo "=== Digital Pocket Knife: Building Release AAB Bundle ==="
+echo "=== Apparat: Building Release AAB Bundle ==="
 echo "Java: $($JAVA_HOME/bin/java -version 2>&1 | head -1)"
 
 if [ ! -f "keystore.properties" ]; then
@@ -24,7 +24,7 @@ fi
 echo "Running ./gradlew clean :app:bundleRelease..."
 ./gradlew clean :app:bundleRelease
 
-BUNDLE_PATH="app/build/outputs/bundle/release/DigitalPocketKnife-release.aab"
+BUNDLE_PATH="app/build/outputs/bundle/release/Apparat-release.aab"
 if [ ! -f "$BUNDLE_PATH" ]; then
     # Fallback search if archive name differed
     BUNDLE_PATH="$(find app/build/outputs/bundle/release -name "*.aab" | head -1)"

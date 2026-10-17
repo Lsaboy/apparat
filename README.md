@@ -7,6 +7,8 @@ An open-source, local-first Android media and document toolkit engineered with t
 
 Designed for absolute utility, zero distractions, high contrast, and tactile mechanical clarity.
 
+**Developer docs:** [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) (structure, rules, roadmap) · [`docs/PLAY_STORE_GUIDE.md`](docs/PLAY_STORE_GUIDE.md) · [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) · past plans and audits in [`docs/archive/`](docs/archive/)
+
 ---
 
 ## 🛠️ Instrument Inventory (21 Instruments)
@@ -115,4 +117,4 @@ safe (losing them means you can't update the app), then:
 ```bash
 ./build-release.sh        # -> app/build/outputs/bundle/release/Apparat-release.aab
 ```
-See `PLAY_STORE_GUIDE.md` for the Play Console steps and the GitHub Actions workflow.
+See `docs/PLAY_STORE_GUIDE.md` for the Play Console steps and the GitHub Actions workflow.
