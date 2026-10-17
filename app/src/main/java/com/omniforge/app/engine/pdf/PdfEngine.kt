@@ -20,15 +20,12 @@ import com.tom_roush.pdfbox.pdmodel.PDResources
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.graphics.form.PDFormXObject
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
-import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sqrt
 
 /** One PDF to merge: [password] is "" for unprotected files. */
 data class PdfMergeInput(val uri: Uri, val password: String = "")
@@ -456,79 +453,6 @@ object PdfEngine {
             } finally {
                 cachedInput.delete()
             }
-        }
-    }
-
-    /**
-     * Renders each page of a PDF into high-res PNG images using Android's native hardware PdfRenderer.
-     */
-    suspend fun pdfToImages(
-        context: Context,
-        inputUri: Uri,
-        password: String = ""
-    ): Result<List<File>> = withContext(Dispatchers.IO) {
-        runCatching {
-            var cachedInput = FileUtils.copyUriToCache(context, inputUri)
-            val renderedFiles = mutableListOf<File>()
-
-            fun decrypted(): File {
-                try {
-                    return decryptToTemp(context, cachedInput, password)
-                } finally {
-                    cachedInput.delete()
-                }
-            }
-            if (password.isNotEmpty()) cachedInput = decrypted()
-
-            var pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
-            val renderer = try {
-                android.graphics.pdf.PdfRenderer(pfd)
-            } catch (e: SecurityException) {
-                // Encrypted (e.g. owner-password only): decrypt with PDFBox, then render.
-                pfd.close()
-                cachedInput = decrypted()
-                pfd = android.os.ParcelFileDescriptor.open(cachedInput, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
-                android.graphics.pdf.PdfRenderer(pfd)
-            }
-
-            try {
-                for (i in 0 until renderer.pageCount) {
-                    val page = renderer.openPage(i)
-                    var bitmap: Bitmap? = null
-                    val pageFile = FileUtils.createTempOutputFile(context, "page_${i + 1}", ".png")
-                    try {
-                        // Render at 2x (144 DPI) for crisp quality, capped at 16 MP so huge pages can't OOM.
-                        val scale = min(2.0, sqrt(16_000_000.0 / (page.width.toDouble() * page.height)))
-                        bitmap = Bitmap.createBitmap(
-                            max(1, (page.width * scale).toInt()), max(1, (page.height * scale).toInt()), Bitmap.Config.ARGB_8888
-                        )
-                        val canvas = android.graphics.Canvas(bitmap)
-                        canvas.drawColor(android.graphics.Color.WHITE) // White background for transparent pages
-                        page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-
-                        FileOutputStream(pageFile).use { out ->
-                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                        }
-                        renderedFiles.add(pageFile)
-                    } catch (e: Throwable) {
-                        pageFile.delete()
-                        throw e
-                    } finally {
-                        bitmap?.recycle()
-                        page.close()
-                    }
-                }
-                renderedFiles
-            } catch (t: Throwable) {
-                renderedFiles.forEach { it.delete() }
-                throw t
-            } finally {
-                renderer.close()
-                pfd.close()
-                cachedInput.delete()
-            }
-
-            renderedFiles
         }
     }
 

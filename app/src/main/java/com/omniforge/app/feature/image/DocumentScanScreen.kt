@@ -186,7 +186,7 @@ fun DocumentScanScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Contrast Boost: ${String.format("%.1f", contrast)}x",
+                        text = "Contrast Boost: ${String.format(java.util.Locale.US, "%.1f", contrast)}x",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold

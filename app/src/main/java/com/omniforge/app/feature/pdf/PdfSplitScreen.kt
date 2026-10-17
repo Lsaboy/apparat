@@ -266,7 +266,7 @@ fun PdfSplitScreen(
                                 isError = currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentPdf,
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -303,7 +303,7 @@ fun PdfSplitScreen(
                                 isError = currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentPdf,
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -343,7 +343,7 @@ fun PdfSplitScreen(
                                     isError = currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AccentPdf,
+                                        focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
                                         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -360,7 +360,7 @@ fun PdfSplitScreen(
                                     isError = currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AccentPdf,
+                                        focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
                                         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,

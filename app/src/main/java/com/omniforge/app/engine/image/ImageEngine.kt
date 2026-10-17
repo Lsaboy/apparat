@@ -421,6 +421,7 @@ object ImageEngine {
 
             val outputBitmap = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(outputBitmap)
+            canvas.drawColor(Color.WHITE) // transparent areas would turn black in the JPEG
             val paint = Paint()
 
             val cm = ColorMatrix()
@@ -469,6 +470,7 @@ object ImageEngine {
             for (x in 0 until scaled.width step 2) {
                 for (y in 0 until scaled.height step 2) {
                     val pixel = scaled.getPixel(x, y)
+                    if ((pixel ushr 24) < 128) continue // mostly transparent: not a visible colour
                     // Quantize to reduce subtle variations
                     val r = (pixel shr 16 and 0xFF) / 16 * 16
                     val g = (pixel shr 8 and 0xFF) / 16 * 16

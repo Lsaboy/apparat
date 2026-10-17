@@ -126,7 +126,7 @@ object FileUtils {
             val contentUri = FileProvider.getUriForFile(context, authority, file)
             val extension = file.extension.lowercase()
             val resolvedMime = mimeType?.takeIf { it.isNotBlank() }
-                ?: if (extension.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) else null
+                ?: (if (extension.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) else null)
                 ?: when (extension) {
                     "jpg", "jpeg" -> "image/jpeg"
                     "png" -> "image/png"

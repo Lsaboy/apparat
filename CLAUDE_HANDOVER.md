@@ -1,3 +1,8 @@
+> **Status update (2026-10-17, read first):** this handover is historical. The app is now named
+> **Apparat** (package still `com.omniforge.app`), compile/target SDK 36, version 1.1.0 (code 3),
+> R8 enabled for release. Nearly every issue in section 3 below has been fixed since; the
+> current list of done/open work is the "Current status" section of `AUDIT_2026-10-17.md`.
+
 # Handover Guide & Code Audit for Claude — Digital Pocket Knife
 
 **Date:** 2026-10-17  
