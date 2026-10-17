@@ -621,6 +621,8 @@ Decided by user on 2026-10-16:
   - **B10:** Cache file names use `input_<ts><ext>` to avoid `ENAMETOOLONG`, and delete partial files on failure.
   - **B15:** Partial output files deleted on failure in `PdfEngine` (compress, imagesToPdf, merge, pdfToImages), with `try-finally` for pages/bitmaps.
   - **B16:** Reject `file://` schemes and internal FileProvider authorities in incoming intents.
+  - **B14:** Pure Kotlin `JsonFormatter` preserving numbers verbatim without double/scientific notation, slashes unescaped, with 8 unit tests in `JsonFormatterTest.kt`.
+  - **B6:** Pure Kotlin `TargetKbSearchEngine` and `ImageEngine.shrinkToTargetKb` with quality-first binary search and area dimension downscaling, with 5 unit tests in `TargetKbSearchEngineTest.kt`.
 - **Theme branch (`c0eed39` in `apparat-braun`):**
   - **T1:** Restored `dpk_settings` SharedPreferences name in `AppSettings.kt` to preserve user preferences on app upgrade.
   - **T4:** Mapped `onPrimary` to `OnBraunOrange` (`#161618`) for Braun Orange and Amber Indicator accents in `Theme.kt`, ensuring WCAG AA contrast compliance (~5.7:1 vs 3.2:1).

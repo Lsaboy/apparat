@@ -301,41 +301,11 @@ object UtilityEngine {
     }
 
     /**
-     * Prettifies or minifies JSON strings with line and column reporting on syntax errors.
+     * Prettifies or minifies JSON strings with exact token preservation and syntax error reporting.
+     * Resolves B14: does not convert large numbers to scientific notation, preserves slashes unescaped.
      */
-    fun formatJson(jsonString: String, pretty: Boolean = true): Result<String> = runCatching {
-        val trimmed = jsonString.trim()
-        if (trimmed.isEmpty()) {
-            throw IllegalArgumentException("JSON input is empty")
-        }
-        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-            throw IllegalArgumentException("JSON must start with '{' or '[' (root must be an object or array)")
-        }
-
-        try {
-            val indent = if (pretty) 4 else 0
-            if (trimmed.startsWith("{")) {
-                org.json.JSONObject(trimmed).toString(indent)
-            } else {
-                org.json.JSONArray(trimmed).toString(indent)
-            }
-        } catch (e: org.json.JSONException) {
-            val message = e.message ?: "Invalid JSON syntax"
-            val match = Regex("""at character\s+(\d+)""").find(message)
-            if (match != null) {
-                val charIndex = match.groupValues[1].toIntOrNull() ?: 0
-                val safeIndex = charIndex.coerceIn(0, trimmed.length)
-                val prefix = trimmed.take(safeIndex)
-                val lines = prefix.split('\n')
-                val line = lines.size
-                val column = lines.last().length + 1
-                val cleanDesc = message.substringBefore(" at character")
-                throw IllegalArgumentException("Line $line, Col $column: $cleanDesc")
-            } else {
-                throw IllegalArgumentException(message)
-            }
-        }
-    }
+    fun formatJson(jsonString: String, pretty: Boolean = true): Result<String> =
+        JsonFormatter.format(jsonString, pretty)
 
     /**
      * Converts text casing.

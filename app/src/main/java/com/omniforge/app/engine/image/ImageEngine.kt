@@ -8,6 +8,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.omniforge.app.core.util.FileUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
@@ -96,6 +97,96 @@ object ImageEngine {
 
             if (!stripExif && targetFormat == ImageOutputFormat.JPEG) {
                 // Copy EXIF attributes (JPEG only; guarded against write errors)
+                runCatching {
+                    context.contentResolver.openInputStream(inputUri)?.use { originalStream ->
+                        val srcExif = ExifInterface(originalStream)
+                        val dstExif = ExifInterface(outputFile.absolutePath)
+                        copyExifTags(srcExif, dstExif)
+                        dstExif.saveAttributes()
+                    }
+                }
+            }
+
+            outputFile
+        }
+    }
+
+    /**
+     * Compresses an image to strictly <= targetKb (JPEG), searching quality first and then downscaling dimensions.
+     * Essential for government portals (UPSC, SSC, PAN, Aadhaar) with strict size ceilings.
+     */
+    suspend fun shrinkToTargetKb(
+        context: Context,
+        inputUri: Uri,
+        targetKb: Int,
+        maxDimension: Int = 1920,
+        stripExif: Boolean = true
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(targetKb > 0) { "Target size must be greater than 0 KB" }
+
+            val originalBitmap = BitmapDecoder.decode(context, inputUri, maxDimension = maxDimension)
+            val currentBitmap = if (originalBitmap.hasAlpha()) {
+                val composited = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(composited)
+                canvas.drawColor(Color.WHITE)
+                canvas.drawBitmap(originalBitmap, 0f, 0f, null)
+                originalBitmap.recycle()
+                composited
+            } else {
+                originalBitmap
+            }
+
+            val searchConfig = TargetKbSearchEngine.SearchConfig(
+                targetKb = targetKb,
+                initialWidth = currentBitmap.width,
+                initialHeight = currentBitmap.height
+            )
+
+            var activeScaledBitmap: Bitmap = currentBitmap
+
+            val searchResult = try {
+                TargetKbSearchEngine.findOptimalParameters(searchConfig) { width, height, quality ->
+                    if (activeScaledBitmap.width != width || activeScaledBitmap.height != height) {
+                        if (activeScaledBitmap != currentBitmap) {
+                            activeScaledBitmap.recycle()
+                        }
+                        activeScaledBitmap = Bitmap.createScaledBitmap(currentBitmap, width, height, true)
+                    }
+
+                    val byteStream = ByteArrayOutputStream()
+                    activeScaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteStream)
+                    byteStream.size().toLong()
+                }
+            } finally {
+                // Handled below
+            }
+
+            val outputFile = FileUtils.createTempOutputFile(context, "target_${targetKb}kb", ".jpg")
+            try {
+                val finalBitmap = if (currentBitmap.width == searchResult.width && currentBitmap.height == searchResult.height) {
+                    currentBitmap
+                } else {
+                    Bitmap.createScaledBitmap(currentBitmap, searchResult.width, searchResult.height, true)
+                }
+
+                FileOutputStream(outputFile).use { out ->
+                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, searchResult.quality, out)
+                }
+
+                if (finalBitmap != currentBitmap) {
+                    finalBitmap.recycle()
+                }
+            } finally {
+                if (activeScaledBitmap != currentBitmap) {
+                    activeScaledBitmap.recycle()
+                }
+                if (!currentBitmap.isRecycled) {
+                    currentBitmap.recycle()
+                }
+            }
+
+            if (!stripExif) {
                 runCatching {
                     context.contentResolver.openInputStream(inputUri)?.use { originalStream ->
                         val srcExif = ExifInterface(originalStream)

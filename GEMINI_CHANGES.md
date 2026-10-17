@@ -701,3 +701,6 @@ When reviewing these changes, please inspect:
 8. **Issue B15:** Added deletion of partial outputs in `PdfEngine` (`compressPdf`, `imagesToPdf`, `mergePdfs`, `pdfToImages`) and wrapped page rendering in `try-finally`.
 9. **Issue B16:** Rejected `file://` scheme and internal FileProvider authorities in `MainActivity.handleIncomingIntent` to prevent local file disclosure.
 10. **Themes Issue 1 & 4 (in `apparat-braun`):** Restored `dpk_settings` SharedPreferences name to prevent user preference loss on upgrade. Updated `onPrimary` to use `OnBraunOrange` (`#161618`) for Braun Orange and Amber accents, ensuring WCAG AA contrast compliance.
+11. **Issue B14 (Lossless JSON Formatter):** Implemented pure Kotlin `JsonFormatter` that preserves numbers verbatim as raw string tokens (no scientific notation on 20+ digit ints/decimals), keeps `/` unescaped, formats with 4 spaces or 0 spaces, and reports 1-based Line and Column on syntax errors. Added 8 unit tests in `JsonFormatterTest.kt`.
+12. **Issue B6 ("Shrink photo to under X KB" Search):** Implemented pure Kotlin `TargetKbSearchEngine` and `ImageEngine.shrinkToTargetKb` using a quality-first strategy (searches quality in [30..92], only downscaling dimensions if quality 30 exceeds budget, with area-based scaling). Added 5 unit tests in `TargetKbSearchEngineTest.kt`.
+
