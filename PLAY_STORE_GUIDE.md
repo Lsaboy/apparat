@@ -1,7 +1,7 @@
 # Google Play Store Publishing & Automation Playbook
 **Apps Covered:**
 1. **Lumen Android** (`com.vedant.lumen`) — Media Player
-2. **Digital Pocket Knife** (`com.omniforge.app`) — Offline Swiss-Army Utility Toolkit
+2. **Apparat** (`com.omniforge.app`) — Offline Swiss-Army Utility Toolkit
 
 ---
 
@@ -65,7 +65,7 @@ For each app:
      - Type: App | Free
      - Package Name: will automatically bind to `com.vedant.lumen` upon first upload.
    - **App 2**:
-     - App name: `Digital Pocket Knife`
+     - App name: `Apparat`
      - Default language: English (United States)
      - Type: App | Free
      - Package Name: will automatically bind to `com.omniforge.app` upon first upload.
@@ -107,7 +107,7 @@ When you are ready to produce official releases, run the generator script in eac
 cd ../Lumen-Android
 ./scripts/generate-keystore.sh
 
-# For Digital Pocket Knife:
+# For Apparat:
 cd ~/Documents/antigravity/mysterious-hopper
 ./scripts/generate-keystore.sh
 ```
@@ -156,7 +156,7 @@ Before Google approves your app for public production, you must complete the **S
    - You can host a free static policy page on GitHub Pages.
 2. **Data Safety Questionnaire**:
    - Lumen: Media player. State whether user telemetry or crash data is collected (if none, select *No data collected*).
-   - Digital Pocket Knife: Fully offline utility tool. Select *No data collected*.
+   - Apparat: Fully offline utility tool. Select *No data collected*.
 3. **App Content Declarations**:
    - Target Age (e.g. 13+ or 18+).
    - Ads: Select *No, my app does not contain ads*.
