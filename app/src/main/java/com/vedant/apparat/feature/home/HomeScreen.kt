@@ -37,6 +37,7 @@ import com.vedant.apparat.core.model.ToolCategory
 import com.vedant.apparat.core.model.ToolItem
 import com.vedant.apparat.core.settings.AppSettings
 import com.vedant.apparat.core.theme.*
+import com.vedant.apparat.core.ui.ApparatBentoMark
 import com.vedant.apparat.core.ui.BraunSegmentedControl
 import com.vedant.apparat.core.ui.FirstBootAppearanceDialog
 import com.vedant.apparat.core.util.FileUtils
@@ -168,12 +169,11 @@ fun HomeScreen(
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(9.dp)
-                                    .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.5.dp))
+                            ApparatBentoMark(
+                                size = 20.dp,
+                                accentColor = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "APPARAT",
                                 style = MaterialTheme.typography.titleLarge.copy(

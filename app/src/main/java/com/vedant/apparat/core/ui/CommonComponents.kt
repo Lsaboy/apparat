@@ -47,11 +47,140 @@ import com.vedant.apparat.core.settings.ThemeStyle
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.util.FileUtils
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import java.io.File
 
 // ==========================================
 // Braun / Dieter Rams Industrial Components
 // ==========================================
+
+/**
+ * Bento Caliper Matrix Brand Mark - The official Apparat geometric brand mark.
+ * Proportioned with 4 interlocked golden-ratio bento compartments:
+ * - Documents (Wide Top-Left)
+ * - Video (Tall Top-Right)
+ * - Graphics (Square Bottom-Left)
+ * - Utility Engine Block (Solid Braun Orange Bottom-Right)
+ */
+@Composable
+fun ApparatBentoMark(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 22.dp,
+    isDark: Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    val tileFill = if (isDark) Color(0xFF202024) else Color(0xFFE8E4DA)
+    val tileBorder = if (isDark) Color(0xFF333338) else Color(0xFFD0CBC0)
+    val glyphColor = if (isDark) Color(0xFFF0F0F0) else Color(0xFF191919)
+    val subGlyphColor = if (isDark) Color(0xFF8E8E93) else Color(0xFF6A6A6A)
+    val utilityFill = accentColor
+    val utilitySlot = OnBraunOrange
+
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val scale = w / 56f
+        val r = 5f * scale
+
+        // 1. Documents (Top-Left: 34w x 26h, corner radius 5*scale)
+        drawRoundRect(
+            color = tileFill,
+            topLeft = Offset(0f, 0f),
+            size = Size(34f * scale, 26f * scale),
+            cornerRadius = CornerRadius(r, r)
+        )
+        drawRoundRect(
+            color = tileBorder,
+            topLeft = Offset(0f, 0f),
+            size = Size(34f * scale, 26f * scale),
+            cornerRadius = CornerRadius(r, r),
+            style = Stroke(width = 1f * scale)
+        )
+        drawLine(
+            color = glyphColor,
+            start = Offset(6f * scale, 8f * scale),
+            end = Offset(22f * scale, 8f * scale),
+            strokeWidth = 2f * scale,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = subGlyphColor,
+            start = Offset(6f * scale, 14f * scale),
+            end = Offset(18f * scale, 14f * scale),
+            strokeWidth = 1.4f * scale,
+            cap = StrokeCap.Round
+        )
+
+        // 2. Video (Top-Right: 18w x 34h at x=38, y=0)
+        drawRoundRect(
+            color = tileFill,
+            topLeft = Offset(38f * scale, 0f),
+            size = Size(18f * scale, 34f * scale),
+            cornerRadius = CornerRadius(r, r)
+        )
+        drawRoundRect(
+            color = tileBorder,
+            topLeft = Offset(38f * scale, 0f),
+            size = Size(18f * scale, 34f * scale),
+            cornerRadius = CornerRadius(r, r),
+            style = Stroke(width = 1f * scale)
+        )
+        val playPath = Path().apply {
+            moveTo(44f * scale, 13.5f * scale)
+            lineTo(51.5f * scale, 17f * scale)
+            lineTo(44f * scale, 20.5f * scale)
+            close()
+        }
+        drawPath(playPath, color = glyphColor)
+
+        // 3. Graphics (Bottom-Left: 22w x 26h at x=0, y=30)
+        drawRoundRect(
+            color = tileFill,
+            topLeft = Offset(0f, 30f * scale),
+            size = Size(22f * scale, 26f * scale),
+            cornerRadius = CornerRadius(r, r)
+        )
+        drawRoundRect(
+            color = tileBorder,
+            topLeft = Offset(0f, 30f * scale),
+            size = Size(22f * scale, 26f * scale),
+            cornerRadius = CornerRadius(r, r),
+            style = Stroke(width = 1f * scale)
+        )
+        drawCircle(
+            color = glyphColor,
+            radius = 4.5f * scale,
+            center = Offset(11f * scale, 43f * scale),
+            style = Stroke(width = 1.5f * scale)
+        )
+        drawCircle(
+            color = glyphColor,
+            radius = 2f * scale,
+            center = Offset(11f * scale, 43f * scale)
+        )
+
+        // 4. Utility Engine Block (Bottom-Right: 30w x 18h at x=26, y=38)
+        drawRoundRect(
+            color = utilityFill,
+            topLeft = Offset(26f * scale, 38f * scale),
+            size = Size(30f * scale, 18f * scale),
+            cornerRadius = CornerRadius(r, r)
+        )
+        drawLine(
+            color = utilitySlot,
+            start = Offset(33f * scale, 47f * scale),
+            end = Offset(49f * scale, 47f * scale),
+            strokeWidth = 2.2f * scale,
+            cap = StrokeCap.Round
+        )
+    }
+}
 
 @Composable
 fun <T> BraunSegmentedControl(

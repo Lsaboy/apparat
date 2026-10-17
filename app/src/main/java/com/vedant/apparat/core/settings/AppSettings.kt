@@ -90,6 +90,41 @@ class AppSettings(context: Context) {
     val currentAccentColor: Color
         get() = AppAccentSwatches[accentIndex].color
 
+    enum class AppIconVariant(val displayName: String, val aliasName: String) {
+        IVORY("Classic Ivory", "LauncherIvory"),
+        CHARCOAL("Atelier Charcoal", "LauncherCharcoal")
+    }
+
+    var appIconVariant: AppIconVariant
+        get() {
+            val name = prefs.getString("app_icon_variant", AppIconVariant.IVORY.name) ?: AppIconVariant.IVORY.name
+            return runCatching { AppIconVariant.valueOf(name) }.getOrDefault(AppIconVariant.IVORY)
+        }
+        set(value) = prefs.edit().putString("app_icon_variant", value.name).apply()
+
+    fun applyIconVariant(context: Context, variant: AppIconVariant) {
+        appIconVariant = variant
+        runCatching {
+            val pm = context.packageManager
+            val ivoryComponent = android.content.ComponentName(context, "${context.packageName}.LauncherIvory")
+            val charcoalComponent = android.content.ComponentName(context, "${context.packageName}.LauncherCharcoal")
+
+            val enableIvory = (variant == AppIconVariant.IVORY)
+            pm.setComponentEnabledSetting(
+                ivoryComponent,
+                if (enableIvory) android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                else android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                android.content.pm.PackageManager.DONT_KILL_APP
+            )
+            pm.setComponentEnabledSetting(
+                charcoalComponent,
+                if (!enableIvory) android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                else android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                android.content.pm.PackageManager.DONT_KILL_APP
+            )
+        }
+    }
+
     fun updateLauncherShortcuts(context: Context) {
         runCatching {
             val targetIds = enabledShortcuts
@@ -100,6 +135,7 @@ class AppSettings(context: Context) {
                 com.vedant.apparat.core.model.ALL_TOOLS.filter { it.id in setOf("pdf_unlock", "image_shrink", "video_shrink", "video_trim") }.take(4)
             }
 
+            val iconRes = if (appIconVariant == AppIconVariant.CHARCOAL) com.vedant.apparat.R.mipmap.ic_launcher_charcoal else com.vedant.apparat.R.mipmap.ic_launcher
             val shortcuts = effectiveTools.map { tool ->
                 val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("apparat://${tool.id}")).apply {
                     setClass(context, com.vedant.apparat.MainActivity::class.java)
@@ -108,7 +144,7 @@ class AppSettings(context: Context) {
                 androidx.core.content.pm.ShortcutInfoCompat.Builder(context, "shortcut_${tool.id}")
                     .setShortLabel(tool.shortTitle)
                     .setLongLabel(tool.title)
-                    .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, com.vedant.apparat.R.mipmap.ic_launcher))
+                    .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, iconRes))
                     .setIntent(intent)
                     .build()
             }

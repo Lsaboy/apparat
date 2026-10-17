@@ -1,12 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Bento Caliper Matrix: Quadrant 1 - Documents (Wide Top-Left) -->
     <path
-        android:fillColor="#00E5FF"
-        android:pathData="M34,34 L74,34 L74,74 L34,74 Z"/>
+        android:fillColor="#E8E4DA"
+        android:strokeColor="#D0CBC0"
+        android:strokeWidth="1.2"
+        android:pathData="M 31,26 L 55,26 A 5,5 0 0 1 60,31 L 60,47 A 5,5 0 0 1 55,52 L 31,52 A 5,5 0 0 1 26,47 L 26,31 A 5,5 0 0 1 31,26 Z" />
     <path
-        android:fillColor="#7C4DFF"
-        android:pathData="M44,44 L64,44 L64,64 L44,64 Z"/>
+        android:strokeColor="#191919"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 32,34 L 48,34" />
+    <path
+        android:strokeColor="#6A6A6A"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:pathData="M 32,40 L 44,40" />
+
+    <!-- Bento Caliper Matrix: Quadrant 2 - Video (Tall Top-Right) -->
+    <path
+        android:fillColor="#E8E4DA"
+        android:strokeColor="#D0CBC0"
+        android:strokeWidth="1.2"
+        android:pathData="M 69,26 L 77,26 A 5,5 0 0 1 82,31 L 82,55 A 5,5 0 0 1 77,60 L 69,60 A 5,5 0 0 1 64,55 L 64,31 A 5,5 0 0 1 69,26 Z" />
+    <path
+        android:fillColor="#191919"
+        android:pathData="M 70,39.5 L 77.5,43 L 70,46.5 Z" />
+
+    <!-- Bento Caliper Matrix: Quadrant 3 - Graphics (Square Bottom-Left) -->
+    <path
+        android:fillColor="#E8E4DA"
+        android:strokeColor="#D0CBC0"
+        android:strokeWidth="1.2"
+        android:pathData="M 31,56 L 43,56 A 5,5 0 0 1 48,61 L 48,77 A 5,5 0 0 1 43,82 L 31,82 A 5,5 0 0 1 26,77 L 26,61 A 5,5 0 0 1 31,56 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#191919"
+        android:strokeWidth="1.5"
+        android:pathData="M 37,64.5 A 4.5,4.5 0 1 1 36.99,64.5 Z" />
+    <path
+        android:fillColor="#191919"
+        android:pathData="M 37,67 A 2,2 0 1 1 36.99,67 Z" />
+
+    <!-- Bento Caliper Matrix: Quadrant 4 - Utility Engine Block (Solid Braun Orange) -->
+    <path
+        android:fillColor="#FF5500"
+        android:pathData="M 57,64 L 77,64 A 5,5 0 0 1 82,69 L 82,77 A 5,5 0 0 1 77,82 L 57,82 A 5,5 0 0 1 52,77 L 52,69 A 5,5 0 0 1 57,64 Z" />
+    <path
+        android:strokeColor="#161618"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:pathData="M 59,73 L 75,73" />
+
 </vector>

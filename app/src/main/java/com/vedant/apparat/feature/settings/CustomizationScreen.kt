@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import com.vedant.apparat.core.model.ALL_TOOLS
 import com.vedant.apparat.core.settings.*
 import com.vedant.apparat.core.theme.*
+import com.vedant.apparat.core.ui.ApparatBentoMark
 import com.vedant.apparat.core.ui.BraunSegmentedControl
 import com.vedant.apparat.core.util.FileUtils
 import com.vedant.apparat.core.util.OutputSaver
@@ -245,6 +246,86 @@ fun CustomizationScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "${AppAccentSwatches[currentAccentIndex].name}: used for Home, Settings, the Save buttons and dialogs. Each tool keeps its category colour (red PDF, blue video, green photo, amber utilities) so you can tell them apart.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // App Launcher Icon (Bento Caliper Matrix)
+                    Text(
+                        text = "LAUNCHER ICON // BENTO CALIPER",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    var currentIconVariant by remember { mutableStateOf(appSettings.appIconVariant) }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AppSettings.AppIconVariant.values().forEach { variant ->
+                            val isSelected = currentIconVariant == variant
+                            val isDarkVariant = (variant == AppSettings.AppIconVariant.CHARCOAL)
+                            val chassisBg = if (isDarkVariant) Color(0xFF161618) else Color(0xFFF5F3EC)
+                            val chassisBorder = if (isDarkVariant) Color(0xFF2E2E34) else Color(0xFFD6D1C4)
+
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        currentIconVariant = variant
+                                        appSettings.applyIconVariant(context, variant)
+                                        Toast.makeText(context, "Launcher icon set to ${variant.displayName}", Toast.LENGTH_SHORT).show()
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(54.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(chassisBg)
+                                            .border(1.dp, chassisBorder, RoundedCornerShape(12.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        ApparatBentoMark(
+                                            size = 34.dp,
+                                            isDark = isDarkVariant,
+                                            accentColor = BraunOrange
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = variant.displayName,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "The Bento Caliper Matrix encodes Apparat's 4 instrument pillars (Docs, Video, Graphics, Utility). Supports Android 13+ dynamic themed icons.",
                         style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
