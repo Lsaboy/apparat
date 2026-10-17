@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="100%" height="100%">
+  <style>
+    .mono { font-family: "SF Mono", Monaco, "JetBrains Mono", Consolas, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  </style>
+
+  <!-- Background Canvas -->
+  <rect width="900" height="520" rx="12" fill="#EAE7DE" stroke="#C9C3B5" stroke-width="1.5"/>
+
+  <!-- Header Banner -->
+  <rect x="0" y="0" width="900" height="50" rx="12" fill="#DFDAD0"/>
+  <rect x="0" y="40" width="900" height="10" fill="#DFDAD0"/>
+  <line x1="0" y1="50" x2="900" y2="50" stroke="#C9C3B5" stroke-width="1.2"/>
+
+  <circle cx="28" cy="25" r="5" fill="#FF5500"/>
+  <text x="42" y="30" class="mono" font-size="13" font-weight="900" fill="#191919" letter-spacing="1.5">APPARAT // COMPONENT SPECIFICATION: LIGHT VS DARK CHASSIS</text>
+  <text x="860" y="29" class="mono" font-size="10" font-weight="700" fill="#6A6A6A" text-anchor="end">TACTILE ROCKERS · ACTION BUTTONS · CARDS</text>
+
+  <!-- LEFT COLUMN: CLASSIC IVORY (LIGHT) -->
+  <g transform="translate(30, 75)">
+    <!-- Column Card Frame -->
+    <rect width="405" height="420" rx="10" fill="#F5F3EC" stroke="#C9C3B5" stroke-width="1.2"/>
+    <text x="24" y="36" class="mono" font-size="12" font-weight="900" fill="#191919">01 // CLASSIC IVORY CHASSIS</text>
+    <line x1="24" y1="46" x2="381" y2="46" stroke="#DCD8CD" stroke-width="1"/>
+
+    <!-- Component 1: Segmented Rocker Control -->
+    <text x="24" y="72" class="mono" font-size="10" font-weight="700" fill="#6A6A6A">BRAUN MECHANICAL ROCKER SWITCH</text>
+    <rect x="24" y="82" width="357" height="38" rx="6" fill="#EBE7DD" stroke="#C9C3B5" stroke-width="1"/>
+    <!-- Active Tab (SYSTEM) -->
+    <rect x="27" y="85" width="116" height="32" rx="4" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <text x="85" y="105" class="mono" font-size="11" font-weight="800" fill="#FF5500" text-anchor="middle">SYSTEM</text>
+    <text x="202" y="105" class="mono" font-size="11" font-weight="700" fill="#6A6A6A" text-anchor="middle">LIGHT</text>
+    <text x="320" y="105" class="mono" font-size="11" font-weight="700" fill="#6A6A6A" text-anchor="middle">DARK</text>
+
+    <!-- Component 2: Primary Action Button -->
+    <text x="24" y="145" class="mono" font-size="10" font-weight="700" fill="#6A6A6A">BRAUN ACTION BUTTON (SIGNAL ORANGE)</text>
+    <rect x="24" y="155" width="357" height="42" rx="6" fill="#FF5500"/>
+    <text x="202" y="181" class="mono" font-size="12" font-weight="900" fill="#161618" letter-spacing="1" text-anchor="middle">COMPRESS PDF // 8.5:1 AAA</text>
+
+    <!-- Component 3: Machined Tool Card -->
+    <text x="24" y="222" class="mono" font-size="10" font-weight="700" fill="#6A6A6A">MACHINED INSTRUMENT CARD</text>
+    <rect x="24" y="232" width="357" height="74" rx="8" fill="#EBE7DD" stroke="#C9C3B5" stroke-width="1"/>
+    <circle cx="52" cy="269" r="14" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <rect x="44" y="261" width="16" height="16" rx="2" fill="#C62828"/>
+    <text x="78" y="262" class="sans" font-size="13" font-weight="700" fill="#191919">PDF Shrink Instrument</text>
+    <text x="78" y="280" class="sans" font-size="11" fill="#6A6A6A">Compress without quality loss · Offline</text>
+
+    <!-- Component 4: Metric Stat Badge -->
+    <text x="24" y="332" class="mono" font-size="10" font-weight="700" fill="#6A6A6A">METRIC RESULT BADGE</text>
+    <rect x="24" y="342" width="357" height="48" rx="6" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <text x="40" y="371" class="mono" font-size="11" font-weight="800" fill="#191919">ORIGINAL: 14.8 MB</text>
+    <text x="365" y="371" class="mono" font-size="12" font-weight="900" fill="#2E7D32" text-anchor="end">− 78% (3.2 MB)</text>
+  </g>
+
+  <!-- RIGHT COLUMN: ATELIER CHARCOAL (DARK) -->
+  <g transform="translate(465, 75)">
+    <!-- Column Card Frame -->
+    <rect width="405" height="420" rx="10" fill="#161618" stroke="#3C3C43" stroke-width="1.2"/>
+    <text x="24" y="36" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">02 // ATELIER CHARCOAL CHASSIS</text>
+    <line x1="24" y1="46" x2="381" y2="46" stroke="#2E2E34" stroke-width="1"/>
+
+    <!-- Component 1: Segmented Rocker Control -->
+    <text x="24" y="72" class="mono" font-size="10" font-weight="700" fill="#8E8E93">BRAUN MECHANICAL ROCKER SWITCH</text>
+    <rect x="24" y="82" width="357" height="38" rx="6" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <!-- Active Tab (SYSTEM) -->
+    <rect x="27" y="85" width="116" height="32" rx="4" fill="#26262B" stroke="#3C3C43" stroke-width="1"/>
+    <text x="85" y="105" class="mono" font-size="11" font-weight="800" fill="#FF5500" text-anchor="middle">SYSTEM</text>
+    <text x="202" y="105" class="mono" font-size="11" font-weight="700" fill="#8E8E93" text-anchor="middle">LIGHT</text>
+    <text x="320" y="105" class="mono" font-size="11" font-weight="700" fill="#8E8E93" text-anchor="middle">DARK</text>
+
+    <!-- Component 2: Primary Action Button -->
+    <text x="24" y="145" class="mono" font-size="10" font-weight="700" fill="#8E8E93">BRAUN ACTION BUTTON (SIGNAL ORANGE)</text>
+    <rect x="24" y="155" width="357" height="42" rx="6" fill="#FF5500"/>
+    <text x="202" y="181" class="mono" font-size="12" font-weight="900" fill="#161618" letter-spacing="1" text-anchor="middle">COMPRESS PDF // 8.5:1 AAA</text>
+
+    <!-- Component 3: Machined Tool Card -->
+    <text x="24" y="222" class="mono" font-size="10" font-weight="700" fill="#8E8E93">MACHINED INSTRUMENT CARD</text>
+    <rect x="24" y="232" width="357" height="74" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <circle cx="52" cy="269" r="14" fill="#26262B" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="44" y="261" width="16" height="16" rx="2" fill="#C62828"/>
+    <text x="78" y="262" class="sans" font-size="13" font-weight="700" fill="#F0F0F0">PDF Shrink Instrument</text>
+    <text x="78" y="280" class="sans" font-size="11" fill="#8E8E93">Compress without quality loss · Offline</text>
+
+    <!-- Component 4: Metric Stat Badge -->
+    <text x="24" y="332" class="mono" font-size="10" font-weight="700" fill="#8E8E93">METRIC RESULT BADGE</text>
+    <rect x="24" y="342" width="357" height="48" rx="6" fill="#26262B" stroke="#3C3C43" stroke-width="1"/>
+    <text x="40" y="371" class="mono" font-size="11" font-weight="800" fill="#F0F0F0">ORIGINAL: 14.8 MB</text>
+    <text x="365" y="371" class="mono" font-size="12" font-weight="900" fill="#2E7D32" text-anchor="end">− 78% (3.2 MB)</text>
+  </g>
+</svg>

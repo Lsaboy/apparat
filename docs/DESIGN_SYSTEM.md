@@ -45,6 +45,8 @@ The palette is anchored by two physical chassis finishes—**Classic Ivory** (ma
 
 Designed for maximum daytime clarity, mimicking the matte off-white ABS plastic casing of the Braun SK4 and ET66 calculator.
 
+![Classic Ivory Palette](assets/palette_ivory.svg)
+
 | Token Name | HEX | RGB | Description |
 | :--- | :--- | :--- | :--- |
 | `ivory-bg` | `#F5F3EC` | `245, 243, 236` | Primary app canvas & background |
@@ -63,6 +65,8 @@ Designed for maximum daytime clarity, mimicking the matte off-white ABS plastic 
 
 Designed for low-glare studio environments, inspired by Braun Atelier series Hi-Fi components and laboratory oscilloscopes.
 
+![Atelier Charcoal Palette](assets/palette_charcoal.svg)
+
 | Token Name | HEX | RGB | Description |
 | :--- | :--- | :--- | :--- |
 | `charcoal-bg` | `#161618` | `22, 22, 24` | Primary app canvas & background |
@@ -80,6 +84,8 @@ Designed for low-glare studio environments, inspired by Braun Atelier series Hi-
 ### 2.4 Four Functional Domain Indicator Accents
 
 Each instrument domain carries an industrial LED indicator color for instant spatial and visual orientation across tools, badges, and progress indicators:
+
+![Domain Accents Palette](assets/palette_domains.svg)
 
 | Domain | Indicator Color | Dark Variant | Usage |
 | :--- | :--- | :--- | :--- |
@@ -140,11 +146,15 @@ Braun industrial functionalism rejects arbitrary drop shadows. Physical depth is
   - Light mode: `border: 1px solid var(--ivory-border)`
   - Dark mode: `border: 1px solid var(--charcoal-border)`
 
+![Components Preview](assets/components_preview.svg)
+
 ---
 
 ## 5. The Bento Caliper Matrix Icon System
 
 The official brand icon for Apparat is **The Bento Caliper Matrix**. It encodes Apparat's 4 instrument domains into an asymmetric pinwheel layout proportioned using the Golden Ratio.
+
+![Bento Caliper Anatomy](assets/bento_caliper_anatomy.svg)
 
 ```
 ┌─────────────────────────── BENTO CALIPER GEOMETRY ───────────────────────────┐

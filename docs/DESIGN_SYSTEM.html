@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APPARAT // Design System & Visual Specification</title>
+<style>
+  :root {
+    --bg-app: #F5F3EC;
+    --surface-app: #EBE7DD;
+    --surface-elevated: #FFFFFF;
+    --border-hairline: #C9C3B5;
+    --text-primary: #191919;
+    --text-secondary: #6A6A6A;
+    --text-tertiary: #9E9E9E;
+    --orange: #FF5500;
+    --on-orange: #161618;
+    --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  body.dark-mode {
+    --bg-app: #161618;
+    --surface-app: #1E1E22;
+    --surface-elevated: #26262B;
+    --border-hairline: #3C3C43;
+    --text-primary: #F0F0F0;
+    --text-secondary: #8E8E93;
+    --text-tertiary: #5E5E64;
+    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 24px;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--text-primary);
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+  }
+
+  .brand-title {
+    font-family: "SF Mono", Monaco, "JetBrains Mono", monospace;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dot-indicator {
+    width: 14px;
+    height: 14px;
+    background-color: var(--orange);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    font-family: "SF Mono", monospace;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+
+  .mode-toggle {
+    display: flex;
+    border: 1px solid var(--text-primary);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .mode-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: "SF Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: inherit;
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active {
+    background: var(--orange);
+    color: var(--on-orange);
+  }
+
+  .section {
+    margin-bottom: 54px;
+  }
+
+  .section-tag {
+    font-family: "SF Mono", monospace;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--orange);
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 16px 0;
+  }
+
+  .section-desc {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 800px;
+    margin-bottom: 24px;
+  }
+
+  .card-container {
+    background: var(--surface-app);
+    border: 1px solid var(--border-hairline);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 24px;
+  }
+
+  .image-wrapper {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    margin-bottom: 16px;
+    background: var(--surface-elevated);
+  }
+
+  .image-wrapper img, .image-wrapper svg {
+    width: 100%;
+    display: block;
+  }
+
+  /* Live Interactive Swatch Grid */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .swatch-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-hairline);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+
+  .swatch-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--orange);
+  }
+
+  .swatch-preview {
+    height: 54px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "SF Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .swatch-name {
+    font-family: "SF Mono", monospace;
+    font-size: 11px;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .swatch-hex {
+    font-family: "SF Mono", monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--orange);
+    margin-bottom: 4px;
+  }
+
+  .swatch-desc {
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+
+  /* Toast Notification */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--orange);
+    color: var(--on-orange);
+    font-family: "SF Mono", monospace;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 10px 18px;
+    border-radius: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  #toast.show {
+    opacity: 1;
+  }
+
+  /* Live Interactive Rocker Switch Demo */
+  .demo-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .demo-item {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .interactive-rocker {
+    display: flex;
+    background: var(--surface-app);
+    border: 1px solid var(--border-hairline);
+    border-radius: 6px;
+    padding: 3px;
+  }
+
+  .interactive-rocker-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: "SF Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .interactive-rocker-btn.active {
+    background: var(--surface-elevated);
+    color: var(--orange);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .interactive-action-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--orange);
+    color: var(--on-orange);
+    font-family: "SF Mono", monospace;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .interactive-action-btn:hover {
+    background: #E04B00;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="brand-title">
+        <span class="dot-indicator"></span>
+        APPARAT // DESIGN SYSTEM
+      </div>
+      <div class="subtitle">VISUAL STYLE GUIDE &amp; COLOR SPECIFICATION (DIETER RAMS FUNCTIONALISM)</div>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-ivory" onclick="setTheme('light')">IVORY LIGHT</button>
+      <button class="mode-btn" id="btn-charcoal" onclick="setTheme('dark')">CHARCOAL DARK</button>
+    </div>
+  </div>
+
+  <!-- SECTION 1: VISUAL COLOR PALETTES -->
+  <div class="section">
+    <div class="section-tag">01 // VISUAL COLOR SPECIFICATION</div>
+    <h2 class="section-title">Classic Ivory &amp; Atelier Charcoal Swatch Boards</h2>
+    <p class="section-desc">
+      Engineered for extreme contrast and physical clarity. Click any swatch below to copy its HEX value to your clipboard.
+    </p>
+
+    <!-- Visual SVG Diagram: Ivory Palette -->
+    <div class="card-container">
+      <div class="image-wrapper">
+        <object type="image/svg+xml" data="assets/palette_ivory.svg" style="width:100%; height:auto;"></object>
+      </div>
+      <div class="image-wrapper">
+        <object type="image/svg+xml" data="assets/palette_charcoal.svg" style="width:100%; height:auto;"></object>
+      </div>
+      <div class="image-wrapper">
+        <object type="image/svg+xml" data="assets/palette_domains.svg" style="width:100%; height:auto;"></object>
+      </div>
+    </div>
+
+    <!-- Quick Clickable Swatches -->
+    <h3 style="font-size: 16px; margin-bottom: 12px;">Quick Tokens (Click to Copy)</h3>
+    <div class="swatch-grid">
+      <div class="swatch-card" onclick="copyHex('#FF5500', 'Braun Signal Orange')">
+        <div class="swatch-preview" style="background:#FF5500; color:#161618;">8.5:1 AAA</div>
+        <div class="swatch-name">SIGNAL ORANGE</div>
+        <div class="swatch-hex">#FF5500</div>
+        <div class="swatch-desc">Primary Action Accent</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#161618', 'OnBraunOrange Text')">
+        <div class="swatch-preview" style="background:#161618; color:#FF5500;">TEXT ON ORG</div>
+        <div class="swatch-name">ON-ORANGE</div>
+        <div class="swatch-hex">#161618</div>
+        <div class="swatch-desc">High Contrast Dark Text</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#F5F3EC', 'Ivory Background')">
+        <div class="swatch-preview" style="background:#F5F3EC; color:#191919; border:1px solid #C9C3B5;">CANVAS</div>
+        <div class="swatch-name">IVORY CANVAS</div>
+        <div class="swatch-hex">#F5F3EC</div>
+        <div class="swatch-desc">Light Mode Base</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#EBE7DD', 'Ivory Surface')">
+        <div class="swatch-preview" style="background:#EBE7DD; color:#191919; border:1px solid #C9C3B5;">SURFACE</div>
+        <div class="swatch-name">IVORY SURFACE</div>
+        <div class="swatch-hex">#EBE7DD</div>
+        <div class="swatch-desc">Cards &amp; Dialogs</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#C9C3B5', 'Ivory Border')">
+        <div class="swatch-preview" style="background:#C9C3B5; color:#191919;">1px HAIRLINE</div>
+        <div class="swatch-name">IVORY BORDER</div>
+        <div class="swatch-hex">#C9C3B5</div>
+        <div class="swatch-desc">Milled Structural Outline</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#161618', 'Charcoal Canvas')">
+        <div class="swatch-preview" style="background:#161618; color:#F0F0F0; border:1px solid #3C3C43;">CANVAS</div>
+        <div class="swatch-name">CHARCOAL BASE</div>
+        <div class="swatch-hex">#161618</div>
+        <div class="swatch-desc">Dark Mode Canvas</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#1E1E22', 'Charcoal Surface')">
+        <div class="swatch-preview" style="background:#1E1E22; color:#F0F0F0; border:1px solid #3C3C43;">SURFACE</div>
+        <div class="swatch-name">CHARCOAL SURFACE</div>
+        <div class="swatch-hex">#1E1E22</div>
+        <div class="swatch-desc">Dark Mode Cards</div>
+      </div>
+
+      <div class="swatch-card" onclick="copyHex('#3C3C43', 'Charcoal Border')">
+        <div class="swatch-preview" style="background:#3C3C43; color:#F0F0F0;">1px HAIRLINE</div>
+        <div class="swatch-name">CHARCOAL BORDER</div>
+        <div class="swatch-hex">#3C3C43</div>
+        <div class="swatch-desc">Dark Milled Outline</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: BENTO CALIPER GEOMETRIC ANATOMY -->
+  <div class="section">
+    <div class="section-tag">02 // BRAND ICON ANATOMY</div>
+    <h2 class="section-title">The Bento Caliper Matrix</h2>
+    <p class="section-desc">
+      A mathematically calibrated pinwheel quadrant system encoding Apparat's 4 instrument pillars (Docs, Video, Graphics, Utility). All caliper channels measure exactly 4.0dp.
+    </p>
+
+    <div class="card-container">
+      <div class="image-wrapper">
+        <object type="image/svg+xml" data="assets/bento_caliper_anatomy.svg" style="width:100%; height:auto;"></object>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: COMPONENT BLUEPRINTS -->
+  <div class="section">
+    <div class="section-tag">03 // INDUSTRIAL COMPONENTS</div>
+    <h2 class="section-title">Tactile Rocker Switches &amp; Action Buttons</h2>
+    <p class="section-desc">
+      Mechanical rocker switches, 1px structural hairlines, and solid Signal Orange actions tested side-by-side in both chassis finishes.
+    </p>
+
+    <div class="card-container">
+      <div class="image-wrapper">
+        <object type="image/svg+xml" data="assets/components_preview.svg" style="width:100%; height:auto;"></object>
+      </div>
+
+      <!-- Live Interactive Controls Demo -->
+      <h3 style="font-size: 16px; margin: 20px 0 12px 0;">Interactive Component Test Bench</h3>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div style="font-family:'SF Mono',monospace; font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:8px;">
+            BRAUN SEGMENTED CONTROL (3-WAY ROCKER)
+          </div>
+          <div class="interactive-rocker">
+            <button class="interactive-rocker-btn active" onclick="selectRocker(this)">SYSTEM</button>
+            <button class="interactive-rocker-btn" onclick="selectRocker(this)">LIGHT</button>
+            <button class="interactive-rocker-btn" onclick="selectRocker(this)">DARK</button>
+          </div>
+        </div>
+
+        <div class="demo-item">
+          <div style="font-family:'SF Mono',monospace; font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:8px;">
+            BRAUN ACTION BUTTON (SIGNAL ORANGE)
+          </div>
+          <button class="interactive-action-btn" onclick="triggerAction()">COMPRESS PDF // 8.5:1 AAA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Copy Toast Notification -->
+<div id="toast">HEX COPIED TO CLIPBOARD</div>
+
+<script>
+  function setTheme(mode) {
+    const body = document.body;
+    const btnIvory = document.getElementById('btn-ivory');
+    const btnCharcoal = document.getElementById('btn-charcoal');
+    if (mode === 'dark') {
+      body.classList.add('dark-mode');
+      btnCharcoal.classList.add('active');
+      btnIvory.classList.remove('active');
+    } else {
+      body.classList.remove('dark-mode');
+      btnIvory.classList.add('active');
+      btnCharcoal.classList.remove('active');
+    }
+  }
+
+  function copyHex(hex, name) {
+    navigator.clipboard.writeText(hex).then(() => {
+      const toast = document.getElementById('toast');
+      toast.innerText = `${name} (${hex}) COPIED`;
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); }, 2000);
+    });
+  }
+
+  function selectRocker(el) {
+    const parent = el.parentElement;
+    parent.querySelectorAll('.interactive-rocker-btn').forEach(btn => btn.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function triggerAction() {
+    const toast = document.getElementById('toast');
+    toast.innerText = "TACTILE BUTTON CLICKED";
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 1500);
+  }
+</script>
+
+</body>
+</html>

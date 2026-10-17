@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" width="100%" height="100%">
+  <style>
+    .mono { font-family: "SF Mono", Monaco, "JetBrains Mono", Consolas, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .hex { font-size: 13px; font-weight: 800; }
+    .sub { font-size: 10px; font-weight: 500; fill: #8E8E93; }
+    .contrast { font-size: 10px; font-weight: 700; }
+  </style>
+
+  <!-- Background Chassis -->
+  <rect width="900" height="440" rx="12" fill="#161618" stroke="#3C3C43" stroke-width="1.5"/>
+
+  <!-- Header Banner -->
+  <rect x="0" y="0" width="900" height="54" rx="12" fill="#1E1E22"/>
+  <rect x="0" y="44" width="900" height="10" fill="#1E1E22"/>
+  <line x1="0" y1="54" x2="900" y2="54" stroke="#3C3C43" stroke-width="1.2"/>
+
+  <!-- Header Text -->
+  <circle cx="28" cy="27" r="5" fill="#FF5500"/>
+  <text x="42" y="32" class="mono" font-size="14" font-weight="900" fill="#F0F0F0" letter-spacing="1.5">APPARAT // PALETTE 02: ATELIER CHARCOAL (DARK MODE)</text>
+  <text x="860" y="31" class="mono" font-size="10" font-weight="700" fill="#8E8E93" text-anchor="end">LOW-GLARE STUDIO · ANODIZED ALLOY</text>
+
+  <!-- ROW 1: PRIMARY BRAND & SURFACES -->
+  <!-- Chip 1: Signal Orange -->
+  <g transform="translate(30, 80)">
+    <rect width="195" height="145" rx="8" fill="#FF5500" stroke="#CC4400" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#161618"/>
+    <text x="97" y="38" class="mono" font-size="11" font-weight="900" fill="#FF5500" text-anchor="middle">ON-ORANGE TEXT</text>
+    <text x="97" y="55" class="mono contrast" fill="#FFFFFF" text-anchor="middle">8.5:1 WCAG AAA</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#161618">BRAUN ORANGE</text>
+    <text x="14" y="115" class="mono hex" fill="#161618">#FF5500</text>
+    <text x="14" y="132" class="mono" font-size="10" fill="#3A1800">Primary Tactile Action</text>
+  </g>
+
+  <!-- Chip 2: Charcoal Background -->
+  <g transform="translate(245, 80)">
+    <rect width="195" height="145" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#161618" stroke="#2E2E34" stroke-width="1"/>
+    <text x="97" y="46" class="mono" font-size="10" font-weight="700" fill="#F0F0F0" text-anchor="middle">CANVAS BASE</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">CHARCOAL BASE</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#161618</text>
+    <text x="14" y="132" class="mono sub">rgb(22, 22, 24)</text>
+  </g>
+
+  <!-- Chip 3: Charcoal Surface -->
+  <g transform="translate(460, 80)">
+    <rect width="195" height="145" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <text x="97" y="46" class="mono" font-size="10" font-weight="700" fill="#F0F0F0" text-anchor="middle">CARD / TILE FILL</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">CHARCOAL SURFACE</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#1E1E22</text>
+    <text x="14" y="132" class="mono sub">rgb(30, 30, 34)</text>
+  </g>
+
+  <!-- Chip 4: Charcoal Surface Elevated -->
+  <g transform="translate(675, 80)">
+    <rect width="195" height="145" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#26262B" stroke="#3C3C43" stroke-width="1"/>
+    <text x="97" y="46" class="mono" font-size="10" font-weight="700" fill="#F0F0F0" text-anchor="middle">INPUTS &amp; CAPS</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">ELEVATED CHASSIS</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#26262B</text>
+    <text x="14" y="132" class="mono sub">rgb(38, 38, 43)</text>
+  </g>
+
+  <!-- ROW 2: BORDERS & TYPOGRAPHY -->
+  <!-- Chip 5: Hairline Border -->
+  <g transform="translate(30, 250)">
+    <rect width="195" height="150" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#3C3C43"/>
+    <rect x="24" y="24" width="147" height="36" rx="2" fill="#161618"/>
+    <text x="97" y="46" class="mono" font-size="10" font-weight="700" fill="#F0F0F0" text-anchor="middle">1px STRUCTURE</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">MILLED BORDER</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#3C3C43</text>
+    <text x="14" y="132" class="mono sub">Zero-shadow hairline</text>
+  </g>
+
+  <!-- Chip 6: Text Primary -->
+  <g transform="translate(245, 250)">
+    <rect width="195" height="150" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#161618" stroke="#2E2E34" stroke-width="1"/>
+    <text x="97" y="40" class="sans" font-size="15" font-weight="800" fill="#F0F0F0" text-anchor="middle">Aa Bb Gg 69</text>
+    <text x="97" y="58" class="mono contrast" fill="#FF5500" text-anchor="middle">13.8:1 AAA RATIO</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">TEXT PRIMARY</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#F0F0F0</text>
+    <text x="14" y="132" class="mono sub">Headlines &amp; Data</text>
+  </g>
+
+  <!-- Chip 7: Text Secondary -->
+  <g transform="translate(460, 250)">
+    <rect width="195" height="150" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#161618" stroke="#2E2E34" stroke-width="1"/>
+    <text x="97" y="40" class="sans" font-size="14" font-weight="600" fill="#8E8E93" text-anchor="middle">Aa Bb Gg 69</text>
+    <text x="97" y="58" class="mono contrast" fill="#8E8E93" text-anchor="middle">5.2:1 AA RATIO</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">TEXT SECONDARY</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#8E8E93</text>
+    <text x="14" y="132" class="mono sub">Labels &amp; Units</text>
+  </g>
+
+  <!-- Chip 8: Text Tertiary -->
+  <g transform="translate(675, 250)">
+    <rect width="195" height="150" rx="8" fill="#1E1E22" stroke="#3C3C43" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="60" rx="4" fill="#161618" stroke="#2E2E34" stroke-width="1"/>
+    <text x="97" y="46" class="mono" font-size="11" font-weight="700" fill="#5E5E64" text-anchor="middle">MODEL 69 // STAT</text>
+    <text x="14" y="98" class="mono" font-size="12" font-weight="900" fill="#F0F0F0">TEXT TERTIARY</text>
+    <text x="14" y="115" class="mono hex" fill="#F0F0F0">#5E5E64</text>
+    <text x="14" y="132" class="mono sub">Counters &amp; Timestamps</text>
+  </g>
+</svg>

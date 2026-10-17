@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 280" width="100%" height="100%">
+  <style>
+    .mono { font-family: "SF Mono", Monaco, "JetBrains Mono", Consolas, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  </style>
+
+  <!-- Background Chassis -->
+  <rect width="900" height="280" rx="12" fill="#F5F3EC" stroke="#C9C3B5" stroke-width="1.5"/>
+
+  <!-- Header Banner -->
+  <rect x="0" y="0" width="900" height="50" rx="12" fill="#EBE7DD"/>
+  <rect x="0" y="40" width="900" height="10" fill="#EBE7DD"/>
+  <line x1="0" y1="50" x2="900" y2="50" stroke="#C9C3B5" stroke-width="1.2"/>
+
+  <!-- Header Text -->
+  <circle cx="28" cy="25" r="5" fill="#FF5500"/>
+  <text x="42" y="30" class="mono" font-size="13" font-weight="900" fill="#191919" letter-spacing="1.5">APPARAT // FOUR FUNCTIONAL DOMAIN ACCENTS</text>
+  <text x="860" y="29" class="mono" font-size="10" font-weight="700" fill="#6A6A6A" text-anchor="end">INDUSTRIAL LED INDICATORS</text>
+
+  <!-- DOMAIN 1: DOCUMENTS (PDF) -->
+  <g transform="translate(30, 75)">
+    <rect width="195" height="175" rx="8" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="50" rx="4" fill="#C62828"/>
+    <text x="97" y="43" class="mono" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">DOCUMENTS</text>
+    <text x="14" y="85" class="mono" font-size="11" font-weight="900" fill="#C62828">PDF CRIMSON</text>
+    <text x="14" y="102" class="mono" font-size="13" font-weight="800" fill="#191919">#C62828</text>
+    <text x="14" y="120" class="mono" font-size="10" fill="#6A6A6A">Dark: #8E0000</text>
+    <line x1="14" y1="128" x2="181" y2="128" stroke="#EBE7DD" stroke-width="1"/>
+    <text x="14" y="145" class="sans" font-size="10" font-weight="500" fill="#191919">Unlock · Shrink · Split</text>
+    <text x="14" y="160" class="sans" font-size="10" font-weight="500" fill="#6A6A6A">Merge · PDF to Images</text>
+  </g>
+
+  <!-- DOMAIN 2: VIDEO & AUDIO -->
+  <g transform="translate(245, 75)">
+    <rect width="195" height="175" rx="8" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="50" rx="4" fill="#007ACC"/>
+    <text x="97" y="43" class="mono" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">VIDEO &amp; AUDIO</text>
+    <text x="14" y="85" class="mono" font-size="11" font-weight="900" fill="#007ACC">COBALT BLUE</text>
+    <text x="14" y="102" class="mono" font-size="13" font-weight="800" fill="#191919">#007ACC</text>
+    <text x="14" y="120" class="mono" font-size="10" fill="#6A6A6A">Dark: #004D80</text>
+    <line x1="14" y1="128" x2="181" y2="128" stroke="#EBE7DD" stroke-width="1"/>
+    <text x="14" y="145" class="sans" font-size="10" font-weight="500" fill="#191919">Trim &amp; Mute · Compress</text>
+    <text x="14" y="160" class="sans" font-size="10" font-weight="500" fill="#6A6A6A">Video to GIF · Audio Extract</text>
+  </g>
+
+  <!-- DOMAIN 3: GRAPHICS -->
+  <g transform="translate(460, 75)">
+    <rect width="195" height="175" rx="8" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="50" rx="4" fill="#2E7D32"/>
+    <text x="97" y="43" class="mono" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">GRAPHICS</text>
+    <text x="14" y="85" class="mono" font-size="11" font-weight="900" fill="#2E7D32">INSTRUMENT GREEN</text>
+    <text x="14" y="102" class="mono" font-size="13" font-weight="800" fill="#191919">#2E7D32</text>
+    <text x="14" y="120" class="mono" font-size="10" fill="#6A6A6A">Dark: #1B5E20</text>
+    <line x1="14" y1="128" x2="181" y2="128" stroke="#EBE7DD" stroke-width="1"/>
+    <text x="14" y="145" class="sans" font-size="10" font-weight="500" fill="#191919">Doc Scan · Image Shrink</text>
+    <text x="14" y="160" class="sans" font-size="10" font-weight="500" fill="#6A6A6A">EXIF Scrubber · Palette</text>
+  </g>
+
+  <!-- DOMAIN 4: UTILITIES -->
+  <g transform="translate(675, 75)">
+    <rect width="195" height="175" rx="8" fill="#FFFFFF" stroke="#C9C3B5" stroke-width="1"/>
+    <rect x="12" y="12" width="171" height="50" rx="4" fill="#FF5500"/>
+    <text x="97" y="43" class="mono" font-size="13" font-weight="900" fill="#161618" text-anchor="middle">UTILITIES</text>
+    <text x="14" y="85" class="mono" font-size="11" font-weight="900" fill="#E04B00">BRAUN SIGNAL</text>
+    <text x="14" y="102" class="mono" font-size="13" font-weight="800" fill="#191919">#FF5500</text>
+    <text x="14" y="120" class="mono" font-size="10" fill="#6A6A6A">Amber alt: #F57C00</text>
+    <line x1="14" y1="128" x2="181" y2="128" stroke="#EBE7DD" stroke-width="1"/>
+    <text x="14" y="145" class="sans" font-size="10" font-weight="500" fill="#191919">QR Studio · Hash Verify</text>
+    <text x="14" y="160" class="sans" font-size="10" font-weight="500" fill="#6A6A6A">JSON Tool · Base64 Studio</text>
+  </g>
+</svg>
