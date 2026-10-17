@@ -63,10 +63,10 @@ Apparat replaces decorative ornamentation with tactile, functionalist precision:
 - **8dp Chassis Geometry**: Uniform 8dp chassis cards with 1dp machined hairline borders (`MaterialTheme.colorScheme.outline`).
 
 ### Customization & Workflow
-- **Storage Subfolder**: All exports and results are cleanly saved to `Downloads/Apparat/`.
+- **Where files go**: one tap saves to `Downloads/Apparat` by default. In Settings you can rename that folder or pick any folder (including an SD card); "Save as…" on any result picks a place just once.
 - **Default Save Behavior**: Choose between "Create New Copy" (with unique filename) or "Modify Original" (in-place overwrite when the format matches; the original is backed up first and restored if the write fails).
 - **View Mode Switcher**: Instant toggle between a **2-column Grid** (compact instrument tiles) and a **1-column List**.
-- **System Share Sheet Integration**: Sharing files from other Android apps immediately launches Apparat and filters the dashboard to compatible instruments.
+- **System Share Sheet Integration**: Share a file from any app to open the right tools; share several photos to make a PDF, or several PDFs to merge them.
 - **Foreground Background Processing**: Long-running jobs run reliably in an Android Foreground Service (`ToolJobService`), allowing full background multitasking with progress notifications.
 
 ---

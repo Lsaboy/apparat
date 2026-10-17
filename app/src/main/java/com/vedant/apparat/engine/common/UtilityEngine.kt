@@ -100,6 +100,19 @@ object UtilityEngine {
     }
 
     /**
+     * Pulls a hex digest out of whatever was pasted: "sha256sum" output ("<hash>  file.zip"),
+     * colon/space-separated bytes ("AB:CD:EF…"), or a "SHA256:" prefix. Returns lowercase hex, or the
+     * trimmed input when no 32/40/64/128-digit hex digest is found.
+     */
+    fun normalizeExpectedHash(input: String): String {
+        val trimmed = input.trim()
+        val joined = trimmed.replace(Regex("""(?<=[0-9A-Fa-f])[:\s-](?=[0-9A-Fa-f])"""), "")
+        val digest = Regex("""[0-9A-Fa-f]+""").findAll(joined).map { it.value }
+            .firstOrNull { it.length in setOf(32, 40, 64, 128) }
+        return digest?.lowercase() ?: trimmed
+    }
+
+    /**
      * Calculates MD5, SHA-1, SHA-256, and SHA-512 checksums directly from a string (UTF-8).
      */
     fun calculateTextChecksums(
@@ -250,6 +263,9 @@ object UtilityEngine {
     /**
      * Returns true if [amount] is a valid positive decimal currency amount (e.g. "500", "250.50").
      */
+    /** "name@bank" (letters, digits, dot, hyphen, underscore before the @; letters after). */
+    fun isValidUpiId(vpa: String): Boolean = Regex("""^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$""").matches(vpa.trim())
+
     fun isValidUpiAmount(amount: String): Boolean {
         val trimmed = amount.trim()
         return trimmed.matches(UPI_AMOUNT_REGEX) && (trimmed.toDoubleOrNull() ?: 0.0) > 0.0
@@ -260,8 +276,14 @@ object UtilityEngine {
      * Leaves '@' in the VPA unencoded (some UPI apps reject '%40') and strictly validates
      * that amount conforms to ^\d+(\.\d{1,2})?$.
      */
+    /**
+     * UPI payment link for a QR code. Returns "" (no QR) when the UPI ID is malformed or an amount was
+     * typed but isn't valid: silently dropping a mistyped amount would produce a QR that lets the
+     * payer enter any amount, which is worse than no QR.
+     */
     fun formatUpiQr(vpa: String, name: String, amount: String = "", note: String = ""): String {
-        if (vpa.isBlank()) return ""
+        if (!isValidUpiId(vpa)) return ""
+        if (amount.isNotBlank() && !isValidUpiAmount(amount)) return ""
         val encode = { param: String ->
             try {
                 java.net.URLEncoder.encode(param, "UTF-8").replace("+", "%20")

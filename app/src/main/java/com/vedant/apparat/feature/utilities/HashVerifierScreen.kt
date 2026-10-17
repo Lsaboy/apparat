@@ -229,9 +229,9 @@ fun HashVerifierScreen(
                                         calculatedHashes = emptyMap()
                                         startCalculation(pendingUri)
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility, contentColor = onPrimaryForAccent(AccentUtility))
                                 ) {
-                                    Text("Switch to New File", color = onPrimaryForAccent(AccentUtility), fontSize = 12.sp)
+                                    Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                                 }
                                 OutlinedButton(
                                     onClick = {
@@ -264,11 +264,11 @@ fun HashVerifierScreen(
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentUtility, contentColor = onPrimaryForAccent(AccentUtility))
                     ) {
-                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
+                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = LocalContentColor.current)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Calculate Checksums", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
+                        Text("Calculate Checksums", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -344,7 +344,7 @@ fun HashVerifierScreen(
                 }
 
                 // Comparison Box
-                val cleanCompare = compareHash.trim()
+                val cleanCompare = UtilityEngine.normalizeExpectedHash(compareHash)
                 val matchedAlgo = if (cleanCompare.isNotEmpty()) {
                     calculatedHashes.entries.firstOrNull { (_, hash) ->
                         cleanCompare.equals(hash, ignoreCase = true)

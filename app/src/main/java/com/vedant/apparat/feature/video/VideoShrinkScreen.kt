@@ -153,9 +153,9 @@ fun VideoShrinkScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -255,7 +255,6 @@ fun VideoShrinkScreen(
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
-                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original video overwritten in-place!"
@@ -283,12 +282,12 @@ fun VideoShrinkScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Video", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
+                Text("Shrink Video", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
@@ -299,19 +298,10 @@ fun VideoShrinkScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val baseName = (fileName ?: "video").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = VideoEngine.MP4_MIME,
-                            displayName = "${baseName}_shrunk.mp4"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "video", "_shrunk", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, VideoEngine.MP4_MIME)
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

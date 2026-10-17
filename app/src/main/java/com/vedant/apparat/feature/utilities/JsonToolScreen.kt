@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -34,6 +35,7 @@ fun JsonToolScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val jsonScope = rememberCoroutineScope()
 
     var jsonInput by retained(JOB_KEY, "jsonInput") {
         mutableStateOf(initialText ?: "{\n  \"app\": \"Apparat\",\n  \"version\": \"2.0.0\",\n  \"pages\": 12,\n  \"features\": [\"video\", \"photo\", \"pdf\", \"utilities\"]\n}")
@@ -114,38 +116,52 @@ fun JsonToolScreen(
             ) {
                 Button(
                     onClick = {
-                        val result = UtilityEngine.formatJson(jsonInput, pretty = true)
-                        result.fold(
-                            onSuccess = {
-                                jsonOutput = it
-                                errorMessage = null
-                            },
-                            onFailure = {
-                                errorMessage = it.localizedMessage ?: "Invalid JSON syntax"
+                        val input = jsonInput
+                        jsonScope.launch {
+                            // Off the main thread: a pasted multi-MB JSON shouldn't freeze the screen.
+                            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                UtilityEngine.formatJson(input, pretty = true)
                             }
-                        )
+                            result.fold(
+                                onSuccess = {
+                                    jsonOutput = it
+                                    errorMessage = null
+                                },
+                                onFailure = {
+                                    jsonOutput = "" // don't leave an older result next to the error
+                                    errorMessage = it.localizedMessage ?: "Invalid JSON syntax"
+                                }
+                            )
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility, contentColor = onPrimaryForAccent(AccentUtility))
                 ) {
-                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
+                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = LocalContentColor.current)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Prettify", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
+                    Text("Prettify", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
                     onClick = {
-                        val result = UtilityEngine.formatJson(jsonInput, pretty = false)
-                        result.fold(
-                            onSuccess = {
-                                jsonOutput = it
-                                errorMessage = null
-                            },
-                            onFailure = {
-                                errorMessage = it.localizedMessage ?: "Invalid JSON syntax"
+                        val input = jsonInput
+                        jsonScope.launch {
+                            // Off the main thread: a pasted multi-MB JSON shouldn't freeze the screen.
+                            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                UtilityEngine.formatJson(input, pretty = false)
                             }
-                        )
+                            result.fold(
+                                onSuccess = {
+                                    jsonOutput = it
+                                    errorMessage = null
+                                },
+                                onFailure = {
+                                    jsonOutput = "" // don't leave an older result next to the error
+                                    errorMessage = it.localizedMessage ?: "Invalid JSON syntax"
+                                }
+                            )
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),

@@ -55,6 +55,8 @@ class MainActivity : ComponentActivity() {
 
     data class SharedPayload(
         val uri: Uri? = null,
+        /** Several files shared at once (photos for Photos to PDF, PDFs for Merge). */
+        val uris: List<Uri> = emptyList(),
         val mimeType: String? = null,
         val text: String? = null,
         val token: Long = System.currentTimeMillis()
@@ -177,9 +179,12 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("pdf_merge") {
                         val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
-                        ConsumeSharedPayloadEffect(targetUri)
+                        val sharedPdfs = payload?.uris?.takeIf { incomingMimeType == "application/pdf" }.orEmpty()
+                        ConsumeSharedPayloadEffect(targetUri ?: sharedPdfs.firstOrNull())
                         PdfMergeScreen(
                             initialUri = targetUri,
+                            initialUris = sharedPdfs,
+                            shareToken = payload?.token ?: 0L,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
@@ -201,7 +206,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("images_to_pdf") {
+                        val sharedPhotos = payload?.uris?.takeIf { incomingMimeType == "image/*" }.orEmpty()
+                        ConsumeSharedPayloadEffect(sharedPhotos.firstOrNull())
                         ImagesToPdfScreen(
+                            initialUris = sharedPhotos,
+                            shareToken = payload?.token ?: 0L,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
@@ -383,6 +392,31 @@ class MainActivity : ComponentActivity() {
                         navEvents.trySend("json_tool")
                     } else {
                         navEvents.trySend("qr_studio")
+                    }
+                }
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                val streams: List<Uri> = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+                } ?: intent.clipData?.let { clip -> (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri } }
+                    ?: emptyList()).filterNot { isUnsafeUri(it) }.distinct()
+                if (streams.isNotEmpty()) {
+                    val types = streams.map { contentResolver.getType(it) ?: intent.type ?: "" }
+                    when {
+                        types.all { it.startsWith("image/") } -> {
+                            currentSharedPayload = SharedPayload(uris = streams, mimeType = "image/*")
+                            navEvents.trySend("images_to_pdf")
+                        }
+                        types.all { it == "application/pdf" } -> {
+                            currentSharedPayload = SharedPayload(uris = streams, mimeType = "application/pdf")
+                            navEvents.trySend("pdf_merge")
+                        }
+                        else -> android.widget.Toast.makeText(
+                            this, "Share several photos (to make a PDF) or several PDFs (to merge them).", android.widget.Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             }

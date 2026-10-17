@@ -40,6 +40,8 @@ private const val JOB_KEY = "images_to_pdf"
 
 @Composable
 fun ImagesToPdfScreen(
+    initialUris: List<Uri> = emptyList(),
+    shareToken: Long = 0L,
     onNavigateToTool: ((route: String, uri: Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
@@ -48,6 +50,16 @@ fun ImagesToPdfScreen(
 
     var selectedUris by retained(JOB_KEY, "selectedUris") { mutableStateOf<List<Uri>>(emptyList()) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    var lastShareToken by retained(JOB_KEY, "lastShareToken") { mutableStateOf(0L) }
+
+    // Photos shared from the gallery are added to the list (once per share).
+    LaunchedEffect(shareToken) {
+        if (initialUris.isNotEmpty() && shareToken != lastShareToken) {
+            lastShareToken = shareToken
+            selectedUris = (selectedUris + initialUris).distinct()
+            processState = ProcessState.Idle
+        }
+    }
 
     val multiPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -161,12 +173,12 @@ fun ImagesToPdfScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = selectedUris.isNotEmpty() && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                Text("Generate PDF", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
@@ -176,19 +188,10 @@ fun ImagesToPdfScreen(
                 ResultCard(
                     outputFile = success.outputFile,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val timeStamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "application/pdf",
-                            displayName = "Photos_$timeStamp.pdf"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { "Photos_${java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())}.pdf" },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "application/pdf")
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(

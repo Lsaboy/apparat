@@ -144,9 +144,9 @@ fun PaletteExtractorScreen(
                                     pendingShareUri = null
                                     triggerExtraction(pendingUri)
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage))
                             ) {
-                                Text("Switch to New Image", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
+                                Text("Switch to New Image", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -239,7 +239,7 @@ fun PaletteExtractorScreen(
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Copy All", color = AccentImage, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Copy All", color = accentText(AccentImage), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 

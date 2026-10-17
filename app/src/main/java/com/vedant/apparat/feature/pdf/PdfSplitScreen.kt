@@ -27,14 +27,15 @@ import com.vedant.apparat.core.model.ProcessState
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.ui.*
 import com.vedant.apparat.core.util.FileUtils
+import com.vedant.apparat.core.util.SaveItem
 import com.vedant.apparat.engine.pdf.PdfEngine
 import kotlinx.coroutines.launch
 import java.io.File
 
 enum class SplitMode(val label: String) {
-    CUSTOM_RANGES("Custom Ranges"),
-    EVERY_N_PAGES("Every N Pages"),
-    SINGLE_RANGE("Single Range")
+    CUSTOM_RANGES("Ranges"),
+    EVERY_N_PAGES("Every N"),
+    SINGLE_RANGE("Extract")
 }
 
 /** Nav route; also the key for this tool's background job and retained state. */
@@ -56,7 +57,7 @@ fun PdfSplitScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
     var splitMode by retained(JOB_KEY, "splitMode") { mutableStateOf(SplitMode.CUSTOM_RANGES) }
-    var customRangesText by retained(JOB_KEY, "customRangesText") { mutableStateOf("1-3, 4-6") }
+    var customRangesText by retained(JOB_KEY, "customRangesText") { mutableStateOf("") }
     var intervalPagesText by retained(JOB_KEY, "intervalPagesText") { mutableStateOf("1") }
     var startPageText by retained(JOB_KEY, "startPageText") { mutableStateOf("1") }
     var endPageText by retained(JOB_KEY, "endPageText") { mutableStateOf("3") }
@@ -66,7 +67,6 @@ fun PdfSplitScreen(
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
     var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
     var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
-    var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialUri) {
         if (initialUri != null && initialUri != lastHandledInitialUri) {
@@ -158,9 +158,9 @@ fun PdfSplitScreen(
                                     processState = ProcessState.Processing(0f, "Opening PDF...")
                                     generatedFiles = emptyList()
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -184,6 +184,10 @@ fun PdfSplitScreen(
                     pdfPassword = password
                     pageCount = count
                     processState = ProcessState.Idle
+                    // Start from ranges that fit this document instead of a fixed example.
+                    customRangesText = defaultRangesFor(count)
+                    startPageText = "1"
+                    endPageText = count.toString()
                 },
                 onFailed = { message ->
                     selectedUri = null
@@ -263,7 +267,7 @@ fun PdfSplitScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text("Comma-separated page ranges", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 placeholder = { Text("e.g. 1-2, 3-5, 6-10", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                isError = currentValidation is RangeValidation.Invalid,
+                                isError = pageCount != null && currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
@@ -274,18 +278,22 @@ fun PdfSplitScreen(
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
-                            when (currentValidation) {
+                            when (val shown = currentValidation.takeIf { pageCount != null }) {
+                                null -> Text(
+                                    text = "Pick a PDF to check these pages against it.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                )
                                 is RangeValidation.Invalid -> {
                                     Text(
-                                        text = currentValidation.errorMessage,
+                                        text = shown.errorMessage,
                                         style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
                                     )
                                 }
                                 is RangeValidation.Valid -> {
                                     Text(
-                                        text = if (pageCount != null) currentValidation.previewText else "Creates a distinct PDF file for each specified range.",
+                                        text = if (pageCount != null) shown.previewText else "Creates a distinct PDF file for each specified range.",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) accentText(SuccessGreen) else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -300,7 +308,7 @@ fun PdfSplitScreen(
                                 label = { Text("Pages per PDF chunk", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 placeholder = { Text("e.g. 1 for single-page PDFs", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                isError = currentValidation is RangeValidation.Invalid,
+                                isError = pageCount != null && currentValidation is RangeValidation.Invalid,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
@@ -311,18 +319,22 @@ fun PdfSplitScreen(
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
-                            when (currentValidation) {
+                            when (val shown = currentValidation.takeIf { pageCount != null }) {
+                                null -> Text(
+                                    text = "Pick a PDF to check these pages against it.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                )
                                 is RangeValidation.Invalid -> {
                                     Text(
-                                        text = currentValidation.errorMessage,
+                                        text = shown.errorMessage,
                                         style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
                                     )
                                 }
                                 is RangeValidation.Valid -> {
                                     Text(
-                                        text = if (pageCount != null) currentValidation.previewText else "Splits document into chunks of N pages (use 1 for single-page PDFs).",
+                                        text = if (pageCount != null) shown.previewText else "Splits document into chunks of N pages (use 1 for single-page PDFs).",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) accentText(SuccessGreen) else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -340,7 +352,7 @@ fun PdfSplitScreen(
                                     modifier = Modifier.weight(1f),
                                     label = { Text("Start Page", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    isError = currentValidation is RangeValidation.Invalid,
+                                    isError = pageCount != null && currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
@@ -357,7 +369,7 @@ fun PdfSplitScreen(
                                     modifier = Modifier.weight(1f),
                                     label = { Text("End Page", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    isError = currentValidation is RangeValidation.Invalid,
+                                    isError = pageCount != null && currentValidation is RangeValidation.Invalid,
                                     shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant, // red is reserved for invalid input
@@ -369,18 +381,22 @@ fun PdfSplitScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            when (currentValidation) {
+                            when (val shown = currentValidation.takeIf { pageCount != null }) {
+                                null -> Text(
+                                    text = "Pick a PDF to check these pages against it.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                )
                                 is RangeValidation.Invalid -> {
                                     Text(
-                                        text = currentValidation.errorMessage,
+                                        text = shown.errorMessage,
                                         style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed, fontSize = 11.sp)
                                     )
                                 }
                                 is RangeValidation.Valid -> {
                                     Text(
-                                        text = currentValidation.previewText,
+                                        text = shown.previewText,
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) accentText(SuccessGreen) else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -430,12 +446,12 @@ fun PdfSplitScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = selectedUri != null && pdfPassword != null && pageCount != null && currentValidation is RangeValidation.Valid && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Split Document", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                Text("Split Document", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
@@ -451,61 +467,23 @@ fun PdfSplitScreen(
                             text = "${generatedFiles.size} Split Files Generated",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = SuccessGreen
+                                color = accentText(SuccessGreen)
                             )
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(
+                        SaveAllButtons(
+                            items = remember(generatedFiles) {
+                                generatedFiles.mapIndexed { idx, f -> SaveItem(f, "application/pdf", splitPartName(fileName, f, idx)) }
+                            },
+                            noun = if (generatedFiles.size == 1) "PDF" else "PDFs"
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { FileUtils.shareFiles(context, generatedFiles, "application/pdf") },
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            shape = RoundedCornerShape(6.dp)
                         ) {
-                            Button(
-                                onClick = {
-                                    if (saveProgress != null) return@Button
-                                    val files = generatedFiles.toList()
-                                    val base = (fileName ?: "doc").substringBeforeLast(".")
-                                    val appContext = context.applicationContext
-                                    val total = files.size
-                                    scope.launch {
-                                        try {
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-                                                var count = 0
-                                                for ((idx, file) in files.withIndex()) {
-                                                    saveProgress = "Saving ${idx + 1} of $total…"
-                                                    val uri = FileUtils.saveToDownloads(
-                                                        appContext,
-                                                        file,
-                                                        "application/pdf",
-                                                        "${base}_part_${idx + 1}.pdf"
-                                                    )
-                                                    if (uri != null) count++
-                                                }
-                                                Toast.makeText(appContext, "Saved $count of $total PDF files to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        } finally {
-                                            saveProgress = null
-                                        }
-                                    }
-                                },
-                                enabled = saveProgress == null,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(saveProgress ?: "Save All Files", color = onPrimaryForAccent(SuccessGreen), fontWeight = FontWeight.Bold)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    if (generatedFiles.isNotEmpty()) {
-                                        FileUtils.shareFile(context, generatedFiles.first(), "application/pdf")
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Share First File", color = MaterialTheme.colorScheme.onSurface)
-                            }
+                            Text(if (generatedFiles.size == 1) "Share" else "Share all ${generatedFiles.size}", color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -607,4 +585,27 @@ internal fun validateSingleRange(startText: String, endText: String, totalPages:
     val pageCount = e - s + 1
     val preview = "Extracts pages $s to $e ($pageCount ${if (pageCount == 1) "page" else "pages"})"
     return RangeValidation.Valid(listOf(s..e), preview)
+}
+
+/** "report_pages_1-3.pdf" from the engine's part file name (part_<n>_p<first>_p<last>_<time>.pdf). */
+internal fun splitPartName(originalName: String?, part: File, index: Int): String {
+    val base = originalName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "document"
+    val m = Regex("""^part_\d+_p(\d+)_p(\d+)_""").find(part.name)
+    val pages = when {
+        m == null -> "part_${index + 1}"
+        m.groupValues[1] == m.groupValues[2] -> "page_${m.groupValues[1]}"
+        else -> "pages_${m.groupValues[1]}-${m.groupValues[2]}"
+    }
+    return "${base}_$pages.pdf"
+}
+
+/** A starting point that fits the document: "1" for one page, otherwise two halves ("1-5, 6-10"). */
+internal fun defaultRangesFor(pageCount: Int): String = when {
+    pageCount <= 1 -> "1"
+    pageCount == 2 -> "1, 2"
+    else -> (pageCount / 2).let { half ->
+        val first = if (half == 1) "1" else "1-$half"
+        val second = if (half + 1 == pageCount) "$pageCount" else "${half + 1}-$pageCount"
+        "$first, $second"
+    }
 }

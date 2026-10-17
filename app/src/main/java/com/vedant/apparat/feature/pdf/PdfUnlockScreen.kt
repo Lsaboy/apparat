@@ -154,9 +154,9 @@ fun PdfUnlockScreen(
                                     accessStatus = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -256,12 +256,12 @@ fun PdfUnlockScreen(
                                 .fillMaxWidth()
                                 .height(52.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                             enabled = processState !is ProcessState.Processing
                         ) {
-                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = LocalContentColor.current)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unlock & Export PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                            Text("Unlock & Export PDF", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -327,12 +327,12 @@ fun PdfUnlockScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                         enabled = password.isNotEmpty() && !isCheckingAccess && processState !is ProcessState.Processing
                     ) {
-                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = LocalContentColor.current)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unlock & Export PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                        Text("Unlock & Export PDF", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
                     }
                 }
                 is PdfAccess.Damaged -> {
@@ -366,20 +366,12 @@ fun PdfUnlockScreen(
                 val success = processState as ProcessState.Success
                 ResultCard(
                     outputFile = success.outputFile,
-                    originalSize = fileSize,
+                    originalSize = null, // size change is irrelevant when removing a password
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "application/pdf",
-                            displayName = "unlocked_${fileName ?: "document.pdf"}"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "document", "_unlocked", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "application/pdf")
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

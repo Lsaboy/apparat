@@ -296,6 +296,7 @@ fun ToolScaffold(
     jobKey: String? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val context = LocalContext.current
     val isRunning = jobKey != null && ToolJobs.isRunning(jobKey)
     var confirmLeave by remember { mutableStateOf(false) }
     val requestBack = { if (isRunning) confirmLeave = true else onBack() }
@@ -310,7 +311,16 @@ fun ToolScaffold(
             onDismissRequest = { confirmLeave = false },
             title = { Text("Still working") },
             text = {
-                Text("Keep it running in the background? You'll get a notification when it's done, and the result will be here when you come back.")
+                val notificationsOn = remember {
+                    androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+                }
+                Text(
+                    if (notificationsOn) {
+                        "Keep it running in the background? You'll get a notification when it's done, and the result will be here when you come back."
+                    } else {
+                        "Keep it running in the background? Notifications are off for Apparat, so you won't be told when it's done. Come back to this tool to see the result."
+                    }
+                )
             },
             confirmButton = {
                 TextButton(onClick = { confirmLeave = false; onBack() }) { Text("Keep running") }
@@ -341,7 +351,7 @@ fun ToolScaffold(
                         Text(
                             text = categoryName.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = accentColor,
+                                color = readableTextColor(accentColor, MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.onBackground),
                                 fontWeight = FontWeight.SemiBold,
                                 letterSpacing = 1.sp
                             )
@@ -506,13 +516,13 @@ fun ResultCard(
     outputFile: File,
     originalSize: Long? = null,
     message: String = "Processed successfully!",
-    onSaveToDownloads: suspend () -> Unit,
+    /** MIME type and suggested file name (with extension) used by the Save buttons. */
+    saveMimeType: String,
+    saveName: String,
     onShare: () -> Unit,
     onOpenFile: (() -> Unit)? = null,
     chainActions: List<ToolChainAction> = emptyList()
 ) {
-    val scope = rememberCoroutineScope()
-    var isSaving by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Surface(
@@ -534,7 +544,7 @@ fun ResultCard(
                 Text(
                     text = message,
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color = SuccessGreen,
+                        color = accentText(SuccessGreen),
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -587,7 +597,7 @@ fun ResultCard(
                         if (percent > 0) {
                             Text(
                                 text = "Reduced by $percent% (${FileUtils.formatFileSize(diff)} saved)",
-                                style = MaterialTheme.typography.bodySmall.copy(color = SuccessGreen)
+                                style = MaterialTheme.typography.bodySmall.copy(color = accentText(SuccessGreen))
                             )
                         }
                     }
@@ -596,48 +606,7 @@ fun ResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    if (isSaving) return@Button
-                    isSaving = true
-                    scope.launch {
-                        try {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-                                onSaveToDownloads()
-                            }
-                        } finally {
-                            isSaving = false
-                        }
-                    }
-                },
-                enabled = !isSaving,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving to Downloads…", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save to Downloads", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-                }
-            }
+            SaveButtons(file = outputFile, mimeType = saveMimeType, fileName = saveName)
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -755,7 +724,7 @@ fun ProcessStateView(
                         Text(
                             text = "${(state.progress * 100).toInt()}%",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = accentColor,
+                                color = accentText(accentColor),
                                 fontWeight = FontWeight.Bold
                             )
                         )

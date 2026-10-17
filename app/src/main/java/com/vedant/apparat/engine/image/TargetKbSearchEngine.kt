@@ -126,13 +126,14 @@ object TargetKbSearchEngine {
             // Estimate scale from area ratio (with 5% safety margin), bounded between 25% and 85%
             val areaScale = (sqrt(ratio) * 0.95).coerceIn(0.25, 0.85)
 
-            val nextWidth = (curWidth * areaScale).toInt().coerceAtLeast(config.minDimension)
-            val nextHeight = (curHeight * areaScale).toInt().coerceAtLeast(config.minDimension)
-
-            // If dimensions cannot shrink any further, stop
-            if (nextWidth >= curWidth && nextHeight >= curHeight) {
-                break
-            }
+            // Scale both sides by the same factor (keeps the aspect ratio of narrow images such as
+            // signature strips), but never below minDimension on the shorter side.
+            val shortSide = minOf(curWidth, curHeight)
+            val scale = maxOf(areaScale, config.minDimension.toDouble() / shortSide)
+            if (scale >= 1.0) break // already at the minimum size
+            val nextWidth = maxOf(1, (curWidth * scale).toInt())
+            val nextHeight = maxOf(1, (curHeight * scale).toInt())
+            if (nextWidth >= curWidth && nextHeight >= curHeight) break
 
             curWidth = nextWidth
             curHeight = nextHeight

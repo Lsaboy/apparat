@@ -192,9 +192,9 @@ fun VideoTrimMuteScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -248,6 +248,9 @@ fun VideoTrimMuteScreen(
                             checked = isMuteOnly,
                             onCheckedChange = { isMuteOnly = it },
                             colors = SwitchDefaults.colors(
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedThumbColor = onPrimaryForAccent(AccentVideo),
                                 checkedTrackColor = AccentVideo
                             )
@@ -356,18 +359,18 @@ fun VideoTrimMuteScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo)),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(
                     imageVector = if (isMuteOnly) Icons.Default.VolumeOff else Icons.Default.ContentCut,
                     contentDescription = null,
-                    tint = onPrimaryForAccent(AccentVideo)
+                    tint = LocalContentColor.current
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isMuteOnly) "Mute Video" else "Trim Video Losslessly",
-                    color = onPrimaryForAccent(AccentVideo),
+                    color = LocalContentColor.current,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -380,21 +383,10 @@ fun VideoTrimMuteScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val uri = FileUtils.saveToDownloads(
-                            context = context.applicationContext,
-                            file = success.outputFile,
-                            mimeType = "video/mp4",
-                            displayName = if (isMuteOnly) "Muted_${System.currentTimeMillis()}.mp4" else "Trimmed_${System.currentTimeMillis()}.mp4"
-                        )
-                        if (uri != null) {
-                            Toast.makeText(context.applicationContext, "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context.applicationContext, "Failed to save file", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "video", if (success.outputFile.name.startsWith("muted")) "_muted" else "_trimmed", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context.applicationContext, success.outputFile, "video/mp4")
+                        FileUtils.shareFile(context.applicationContext, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(

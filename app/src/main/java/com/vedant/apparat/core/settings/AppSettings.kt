@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.compose.ui.graphics.Color
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.util.FileUtils
+import com.vedant.apparat.core.util.OutputSaver
 
 enum class ThemeStyle(val displayName: String) {
     SYSTEM("System Default"),
@@ -24,7 +25,7 @@ enum class ThemeStyle(val displayName: String) {
 }
 
 enum class SaveMode(val label: String, val description: String) {
-    NEW_COPY("Create New Copy", "Save to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER} with unique filename"),
+    NEW_COPY("Create New Copy", "Keep the original and save the result as a new file"),
     OVERWRITE_ORIGINAL("Modify Original", "Replace original file in-place if format matches")
 }
 
@@ -52,6 +53,16 @@ class AppSettings(context: Context) {
     var hasSeenAppearancePrompt: Boolean
         get() = prefs.getBoolean("has_seen_appearance_prompt", false)
         set(value) = prefs.edit().putBoolean("has_seen_appearance_prompt", value).apply()
+
+    /** Subfolder of Downloads that outputs are saved to (see OutputSaver). */
+    var saveFolderName: String
+        get() = OutputSaver.sanitizeFolderName(prefs.getString("save_folder_name", OutputSaver.DEFAULT_FOLDER) ?: OutputSaver.DEFAULT_FOLDER)
+        set(value) = prefs.edit().putString("save_folder_name", OutputSaver.sanitizeFolderName(value)).apply()
+
+    /** A folder picked with the system folder picker (persisted tree URI), used instead of Downloads. */
+    var saveTreeUri: String?
+        get() = prefs.getString("save_tree_uri", null)
+        set(value) = prefs.edit().apply { if (value == null) remove("save_tree_uri") else putString("save_tree_uri", value) }.apply()
 
     var accentIndex: Int
         get() = prefs.getInt("accent_index", 0).coerceIn(0, AppAccentSwatches.size - 1)

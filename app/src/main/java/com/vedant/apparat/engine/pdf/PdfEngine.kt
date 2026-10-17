@@ -298,8 +298,8 @@ object PdfEngine {
 
             try {
                 for (uri in imageUris) {
-                    // 16 MP keeps A4 at 300 DPI (~8.7 MP) sharp while bounding memory per photo.
-                    val originalBitmap = BitmapDecoder.decode(context, uri, maxPixels = 16_000_000L)
+                    // A4 at 300 DPI is ~8.7 MP: anything above that only adds file size, never sharpness.
+                    val originalBitmap = BitmapDecoder.decode(context, uri, maxPixels = 9_000_000L)
                     var compositedBitmap: Bitmap? = null
                     try {
                         val bitmapToDraw = if (originalBitmap.hasAlpha()) {

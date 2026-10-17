@@ -59,6 +59,8 @@ internal fun <T> List<T>.moved(from: Int, to: Int): List<T> {
 @Composable
 fun PdfMergeScreen(
     initialUri: Uri? = null,
+    initialUris: List<Uri> = emptyList(),
+    shareToken: Long = 0L,
     onNavigateToTool: ((route: String, uri: Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
@@ -111,6 +113,13 @@ fun PdfMergeScreen(
         if (initialUri != null && initialUri != lastHandledInitialUri) {
             lastHandledInitialUri = initialUri
             addUris(listOf(initialUri))
+        }
+    }
+    var lastShareToken by retained(JOB_KEY, "lastShareToken") { mutableStateOf(0L) }
+    LaunchedEffect(shareToken) {
+        if (initialUris.isNotEmpty() && shareToken != lastShareToken) {
+            lastShareToken = shareToken
+            addUris(initialUris)
         }
     }
 
@@ -265,14 +274,14 @@ fun PdfMergeScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = entries.size >= 2 && !busy
             ) {
-                Icon(imageVector = Icons.Default.MergeType, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                Icon(imageVector = Icons.Default.MergeType, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (entries.size >= 2) "Merge ${entries.size} PDFs" else "Merge PDFs",
-                    color = onPrimaryForAccent(AccentPdf),
+                    color = LocalContentColor.current,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -284,22 +293,9 @@ fun PdfMergeScreen(
                 ResultCard(
                     outputFile = success.outputFile,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "application/pdf",
-                            displayName = "Merged_$stamp.pdf"
-                        )
-                        Toast.makeText(
-                            appContext,
-                            if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    onShare = { FileUtils.shareFile(context, success.outputFile, "application/pdf") },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { "Merged_${java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())}.pdf" },
+                    onShare = { FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile)) },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(
                             ToolChainAction(

@@ -11,7 +11,10 @@ not request the internet permission, so it cannot send your files or any data ab
 
 ## Your files
 Files you pick or share into Apparat are processed on your device. Results are kept in the app's
-private cache until you save or share them; saved files go to `Downloads/Apparat` on your device.
+private cache until you save or share them. Saved files go to the folder you choose: by default
+`Downloads/Apparat` on your device, or another folder you pick in Settings or with "Save as…".
+When you pick a folder in Settings, Android lets Apparat keep access to that folder only, until you
+change it.
 Temporary copies are deleted automatically. When you choose "Modify Original", a temporary backup
 of the original is kept in the app's cache only while it is being replaced, then deleted.
 

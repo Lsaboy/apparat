@@ -51,9 +51,9 @@ data class QuickActionItem(
 
 enum class BraunCategoryTab(val label: String, val category: ToolCategory?) {
     ALL("ALL", null),
-    DOCS("DOCS", ToolCategory.PDF),
+    DOCS("PDF", ToolCategory.PDF),
     VIDEO("VIDEO", ToolCategory.VIDEO),
-    GRAPHICS("GRAPHICS", ToolCategory.IMAGE),
+    GRAPHICS("PHOTO", ToolCategory.IMAGE),
     UTILITY("UTILITY", ToolCategory.UTILITIES)
 }
 
@@ -471,15 +471,16 @@ fun HomeScreen(
             // Tools Layout (Grid vs List)
             if (isGridView) {
                 items(filteredTools.chunked(2)) { pair ->
+                    // Equal-height cards in a row, so a two-line title doesn't make the row ragged.
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             ToolGridCard(tool = pair[0], onClick = { onNavigateToTool(pair[0].route) })
                         }
                         if (pair.size > 1) {
-                            Box(modifier = Modifier.weight(1f)) {
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                                 ToolGridCard(tool = pair[1], onClick = { onNavigateToTool(pair[1].route) })
                             }
                         } else {
@@ -573,6 +574,7 @@ fun ToolGridCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
@@ -615,7 +617,7 @@ fun ToolGridCard(
                             text = tool.badge.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = FontFamily.Monospace,
-                                color = tool.category.color,
+                                color = accentText(tool.category.color),
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             ),
@@ -633,9 +635,10 @@ fun ToolGridCard(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.5.sp,
+                    lineHeight = 17.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 ),
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
@@ -706,7 +709,7 @@ fun ToolListCard(
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         ),
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )

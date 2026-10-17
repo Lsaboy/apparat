@@ -137,9 +137,9 @@ fun PdfShrinkScreen(
                                     pageCount = null
                                     processState = ProcessState.Processing(0f, "Opening PDF...")
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -206,7 +206,7 @@ fun PdfShrinkScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Image Downsample Quality: ${(compressionLevel * 100).toInt()}%",
+                        text = "Image quality: ${(compressionLevel * 100).toInt()}% (lower = smaller file)",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
@@ -218,13 +218,15 @@ fun PdfShrinkScreen(
                         valueRange = 0.2f..0.9f,
                         steps = 6,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentPdf,
                             activeTrackColor = AccentPdf,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     Text(
-                        text = "Optimizes internal object streams and downscales embedded photos.",
+                        text = "Photos and colour scans inside the PDF are re-saved at about 150 DPI. Text, black-and-white scans and transparent images stay as they are.",
                         style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
@@ -253,7 +255,6 @@ fun PdfShrinkScreen(
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
-                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original PDF overwritten in-place!$passwordSuffix"
@@ -281,12 +282,12 @@ fun PdfShrinkScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Compress PDF", color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                Text("Compress PDF", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
@@ -297,18 +298,10 @@ fun PdfShrinkScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "application/pdf",
-                            displayName = "compressed_${fileName ?: "doc.pdf"}"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "document", "_compressed", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "application/pdf")
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

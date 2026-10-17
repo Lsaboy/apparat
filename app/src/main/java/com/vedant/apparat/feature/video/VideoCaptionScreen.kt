@@ -123,6 +123,8 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                         valueRange = 12f..36f,
                         steps = 11,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -167,12 +169,12 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo)),
                 enabled = videoUri != null && subtitleUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
+                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Burn Subtitles & Export", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
+                Text("Burn Subtitles & Export", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
@@ -183,19 +185,10 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                     outputFile = success.outputFile,
                     originalSize = videoSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val baseName = (videoName ?: "video").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "video/mp4",
-                            displayName = "${baseName}_captioned.mp4"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(videoName, "video", "_captioned", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "video/mp4")
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

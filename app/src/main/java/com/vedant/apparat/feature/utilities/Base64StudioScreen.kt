@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vedant.apparat.core.ui.SaveButtons
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.ui.ToolScaffold
 import com.vedant.apparat.core.jobs.retained
@@ -210,7 +211,7 @@ fun Base64StudioScreen(
                     ) {
                         Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, tint = AccentUtility, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Paste", color = AccentUtility, fontSize = 12.sp)
+                        Text("Paste", color = accentText(AccentUtility), fontSize = 12.sp)
                     }
 
                     if (inputText.isNotEmpty()) {
@@ -297,12 +298,12 @@ fun Base64StudioScreen(
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentUtility, contentColor = onPrimaryForAccent(AccentUtility)),
                 enabled = inputText.isNotBlank()
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEncoding) "Encode" else "Decode", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
+                Text(if (isEncoding) "Encode" else "Decode", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             // Detected Binary File Card
@@ -343,44 +344,21 @@ fun Base64StudioScreen(
                             }
                         }
 
-                        Button(
-                            onClick = {
-                                if (isSavingBinary) return@Button
-                                isSavingBinary = true
-                                val appContext = context.applicationContext
-                                scope.launch {
-                                    withContext(NonCancellable + Dispatchers.IO) {
-                                        try {
-                                            val tempFile = File.createTempFile("decoded_", ext, appContext.cacheDir)
-                                            tempFile.writeBytes(bytes)
-                                            val filename = "Decoded_${SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())}$ext"
-                                            val saved = FileUtils.saveToDownloads(appContext, tempFile, mime, filename)
-                                            withContext(Dispatchers.Main) {
-                                                if (saved != null) {
-                                                    Toast.makeText(appContext, "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(appContext, "Failed to save file", Toast.LENGTH_SHORT).show()
-                                                }
-                                                isSavingBinary = false
-                                            }
-                                            tempFile.delete()
-                                        } catch (e: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                Toast.makeText(appContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                                                isSavingBinary = false
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isSavingBinary
-                        ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
+                        // Write the decoded bytes to an output file so the shared Save buttons can use it.
+                        var binaryFile by remember(bytes) { mutableStateOf<File?>(null) }
+                        LaunchedEffect(bytes, ext) {
+                            binaryFile = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    FileUtils.createTempOutputFile(context.applicationContext, "decoded", ext).apply { writeBytes(bytes) }
+                                }.getOrNull()
+                            }
+                        }
+                        binaryFile?.let { f ->
+                            SaveButtons(
+                                file = f,
+                                mimeType = mime,
+                                fileName = remember(f) { "Decoded_${java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())}$ext" }
+                            )
                         }
                     }
                 }

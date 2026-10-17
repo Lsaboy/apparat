@@ -30,6 +30,7 @@ import com.vedant.apparat.core.model.ProcessState
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.ui.*
 import com.vedant.apparat.core.util.FileUtils
+import com.vedant.apparat.core.util.SaveItem
 import com.vedant.apparat.engine.pdf.PdfEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -70,7 +71,6 @@ fun PdfToImagesScreen(
     // Verified password for selectedUri ("" = none needed); null until PdfPasswordGate has checked.
     var pdfPassword by retained(JOB_KEY, "pdfPassword") { mutableStateOf<String?>(null) }
     var pageCount by retained(JOB_KEY, "pageCount") { mutableStateOf<Int?>(null) }
-    var saveProgress by retained(JOB_KEY, "saveProgress") { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialUri) {
         if (initialUri != null && initialUri != lastHandledInitialUri) {
@@ -156,9 +156,9 @@ fun PdfToImagesScreen(
                                     processState = ProcessState.Processing(0f, "Opening PDF...")
                                     renderedPages = emptyList()
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentPdf), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -399,12 +399,12 @@ fun PdfToImagesScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = isActionEnabled
             ) {
-                Icon(imageVector = Icons.Default.Collections, contentDescription = null, tint = onPrimaryForAccent(AccentPdf))
+                Icon(imageVector = Icons.Default.Collections, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(actionButtonText, color = onPrimaryForAccent(AccentPdf), fontWeight = FontWeight.Bold)
+                Text(actionButtonText, color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
@@ -420,66 +420,27 @@ fun PdfToImagesScreen(
                             text = "${renderedPages.size} Pages Rendered Successfully",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = SuccessGreen
+                                color = accentText(SuccessGreen)
                             )
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(
+                        val pageMime = remember(renderedPages) { renderedPages.firstOrNull()?.let { FileUtils.mimeForFile(it) } ?: "image/jpeg" }
+                        SaveAllButtons(
+                            items = remember(renderedPages) {
+                                renderedPages.map { f ->
+                                    val page = Regex("""^page_(\d+)_""").find(f.name)?.groupValues?.get(1) ?: "x"
+                                    SaveItem(f, pageMime, FileUtils.outputName(fileName, "document", "_page_$page", f))
+                                }
+                            },
+                            noun = if (renderedPages.size == 1) "image" else "images"
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { FileUtils.shareFiles(context, renderedPages, pageMime) },
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            shape = RoundedCornerShape(6.dp)
                         ) {
-                            Button(
-                                onClick = {
-                                    if (saveProgress != null) return@Button
-                                    val files = renderedPages.toList()
-                                    val base = (fileName ?: "doc").substringBeforeLast(".")
-                                    val appContext = context.applicationContext
-                                    val total = files.size
-                                    val isPng = files.firstOrNull()?.extension?.equals("png", ignoreCase = true) == true
-                                    val mime = if (isPng) "image/png" else "image/jpeg"
-                                    val ext = if (isPng) "png" else "jpg"
-                                    scope.launch {
-                                        try {
-                                            withContext(NonCancellable) {
-                                                var count = 0
-                                                for ((idx, file) in files.withIndex()) {
-                                                    saveProgress = "Saving ${idx + 1} of $total…"
-                                                    val uri = FileUtils.saveToDownloads(
-                                                        appContext,
-                                                        file,
-                                                        mime,
-                                                        "${base}_page_${idx + 1}.$ext"
-                                                    )
-                                                    if (uri != null) count++
-                                                }
-                                                Toast.makeText(appContext, "Saved $count of $total images to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        } finally {
-                                            saveProgress = null
-                                        }
-                                    }
-                                },
-                                enabled = saveProgress == null,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(saveProgress ?: "Save All Images", color = onPrimaryForAccent(SuccessGreen), fontWeight = FontWeight.Bold)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    if (renderedPages.isNotEmpty()) {
-                                        val isPng = renderedPages.first().extension.equals("png", ignoreCase = true)
-                                        val mime = if (isPng) "image/png" else "image/jpeg"
-                                        FileUtils.shareFile(context, renderedPages.first(), mime)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Share First Page", color = MaterialTheme.colorScheme.onSurface)
-                            }
+                            Text(if (renderedPages.size == 1) "Share" else "Share all ${renderedPages.size}", color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }

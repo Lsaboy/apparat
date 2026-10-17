@@ -97,6 +97,27 @@ object FileUtils {
         return FileProvider.getUriForFile(context, authority, file)
     }
 
+    /** MIME type of an output file, from its extension (outputs always have one). */
+    fun mimeForFile(file: File): String = when (file.extension.lowercase()) {
+        "pdf" -> "application/pdf"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "gif" -> "image/gif"
+        "mp4" -> "video/mp4"
+        "m4a" -> "audio/mp4"
+        "wav" -> "audio/wav"
+        "txt" -> "text/plain"
+        else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
+    }
+
+    /** "<base of [originalName]><suffix>.<ext of [output]>", e.g. report.pdf + "_compressed" → report_compressed.pdf */
+    fun outputName(originalName: String?, fallbackBase: String, suffix: String, output: File): String {
+        val base = originalName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: fallbackBase
+        val ext = output.extension.ifEmpty { "bin" }
+        return "$base$suffix.$ext"
+    }
+
     fun shareFile(context: Context, file: File, mimeType: String = "*/*") {
         if (!file.exists() || file.length() == 0L) {
             Toast.makeText(context, "Output file does not exist", Toast.LENGTH_SHORT).show()
@@ -114,6 +135,24 @@ object FileUtils {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(chooser)
+    }
+
+    /** Shares several outputs at once (one share sheet), or a single one like [shareFile]. */
+    fun shareFiles(context: Context, files: List<File>, mimeType: String) {
+        val existing = files.filter { it.exists() && it.length() > 0L }
+        if (existing.isEmpty()) {
+            Toast.makeText(context, "Output file does not exist", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (existing.size == 1) return shareFile(context, existing.first(), mimeType)
+        val uris = ArrayList(existing.map { getContentUri(context, it) })
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = mimeType
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            clipData = ClipData.newRawUri("Shared files", uris.first()).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share ${existing.size} files").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun openFile(context: Context, file: File, mimeType: String? = null) {
@@ -158,15 +197,23 @@ object FileUtils {
         }
     }
 
-    const val DOWNLOAD_SUBFOLDER = "Apparat"
-
-    /** Copies [file] into Downloads/Apparat on the IO dispatcher. Returns null on failure. */
-    suspend fun saveToDownloads(context: Context, file: File, mimeType: String, displayName: String): Uri? = withContext(Dispatchers.IO) {
+    /**
+     * Copies [file] into Downloads/[subfolder] through MediaStore, on the IO dispatcher. Returns null
+     * on failure. Screens don't call this directly: they save through [OutputSaver], which picks the
+     * destination from Settings.
+     */
+    suspend fun saveToDownloads(
+        context: Context,
+        file: File,
+        mimeType: String,
+        displayName: String,
+        subfolder: String = OutputSaver.DEFAULT_FOLDER
+    ): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOAD_SUBFOLDER")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$subfolder")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 

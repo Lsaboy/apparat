@@ -131,9 +131,9 @@ fun DocumentScanScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -200,6 +200,8 @@ fun DocumentScanScreen(
                         valueRange = 1.0f..3.0f,
                         steps = 8,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -224,6 +226,9 @@ fun DocumentScanScreen(
                             checked = isMonochrome,
                             onCheckedChange = { isMonochrome = it },
                             colors = SwitchDefaults.colors(
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedThumbColor = onPrimaryForAccent(AccentImage),
                                 checkedTrackColor = AccentImage
                             )
@@ -260,12 +265,12 @@ fun DocumentScanScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.DocumentScanner, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
+                Icon(imageVector = Icons.Default.DocumentScanner, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Enhance Document Scan", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
+                Text("Enhance Document Scan", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -276,19 +281,10 @@ fun DocumentScanScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val base = (fileName ?: "doc").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "image/jpeg",
-                            displayName = "${base}_scanned.jpg"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "scan", "_scanned", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, "image/jpeg")
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(

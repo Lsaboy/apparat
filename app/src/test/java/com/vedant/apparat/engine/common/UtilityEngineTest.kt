@@ -120,10 +120,13 @@ class UtilityEngineTest {
         assertFalse(UtilityEngine.isValidUpiAmount("0"))
         assertFalse(UtilityEngine.isValidUpiAmount("abc"))
 
-        // When invalid amount is passed to formatUpiQr, &am= is omitted
-        val qrInvalidAmount = UtilityEngine.formatUpiQr("merchant@upi", "Ram & Sons", "1,000", "Lunch bill")
-        assertFalse(qrInvalidAmount.contains("am="))
-        assertTrue(qrInvalidAmount.contains("pa=merchant@upi"))
+        // A typed but invalid amount gives no QR at all (never a QR with a payer-chosen amount)
+        assertEquals("", UtilityEngine.formatUpiQr("merchant@upi", "Ram & Sons", "1,000", "Lunch bill"))
+        // A malformed UPI ID gives no QR
+        assertEquals("", UtilityEngine.formatUpiQr("merchantupi", "Ram", "100", ""))
+        assertTrue(UtilityEngine.isValidUpiId("ram.sons-1@okhdfcbank"))
+        assertFalse(UtilityEngine.isValidUpiId("ram@"))
+        assertFalse(UtilityEngine.isValidUpiId("ram@ok bank"))
     }
 
     @Test
@@ -154,5 +157,15 @@ class UtilityEngineTest {
         assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", emptyChecksums["SHA-256"])
         assertEquals("d41d8cd98f00b204e9800998ecf8427e", emptyChecksums["MD5"])
     }
-}
 
+    @Test
+    fun `expected hashes are found in common pasted formats`() {
+        val h = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        assertEquals(h, UtilityEngine.normalizeExpectedHash(h.uppercase()))
+        assertEquals(h, UtilityEngine.normalizeExpectedHash("$h  hello.txt"))
+        assertEquals(h, UtilityEngine.normalizeExpectedHash("SHA256: $h"))
+        assertEquals(h, UtilityEngine.normalizeExpectedHash(h.chunked(2).joinToString(":")))
+        assertEquals(h, UtilityEngine.normalizeExpectedHash(h.chunked(8).joinToString(" ")))
+        assertEquals("not a hash", UtilityEngine.normalizeExpectedHash("  not a hash "))
+    }
+}

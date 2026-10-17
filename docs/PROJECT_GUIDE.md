@@ -20,8 +20,8 @@ app has no internet permission. 21 tools in 4 categories:
 | **Photo** | Shrink Image (manual or **target size in KB**) · Document Scanner · Palette Extractor · Convert Image · EXIF Metadata Stripper |
 | **Utilities** | QR Code Studio (text, Wi-Fi, UPI, vCard) · Checksum & Hash Verifier · JSON Formatter · Base64 Studio |
 
-Ways in: the Home grid/list (search, categories, 4 quick shortcuts), Android's share menu, "Open
-with" for PDFs, text-selection actions (Make QR, Format JSON, Base64, Hash), launcher long-press
+Ways in: the Home grid/list (search, categories, 4 quick shortcuts), Android's share menu (one
+file, or several photos → Photos to PDF / several PDFs → Merge), "Open with" for PDFs, text-selection actions (Make QR, Format JSON, Base64, Hash), launcher long-press
 shortcuts, and "Continue with…" chaining from one tool's result into another.
 
 ---
@@ -53,7 +53,7 @@ shortcuts, and "Continue with…" chaining from one tool's result into another.
 │       │       │   ├── video/          VideoEngine (Media3 Transformer), GifEncoder, Subtitles
 │       │       │   └── common/         UtilityEngine (QR, hashes, Base64, UPI/Wi-Fi/vCard), JsonFormatter
 │       │       └── feature/            one screen per tool: home, pdf, image, video, utilities, settings
-│       └── test/                       JVM unit tests (81) for engines and pure logic
+│       └── test/                       JVM unit tests (99) for engines and pure logic
 ├── docs/
 │   ├── PROJECT_GUIDE.md          this file
 │   ├── PLAY_STORE_GUIDE.md       Play Console + signing + CI steps
@@ -100,8 +100,17 @@ shortcuts, and "Continue with…" chaining from one tool's result into another.
   permissions. URIs with the `file` scheme or the app's own FileProvider are refused from outside.
 - Work copies: `FileUtils.copyUriToCache` → `cache/input_<time><ext>`. For PDFs, the copy made by
   the password check is reused for the run (`PdfEngine.takeInputCopy`).
-- Outputs: `cache/outputs/`. **Save** copies to `Downloads/Apparat/` through MediaStore.
-  **Modify Original** backs the original up, overwrites, checks the size, and restores on failure.
+- Outputs: `cache/outputs/`. Every save goes through `OutputSaver` (core/util) via the shared
+  `SaveButtons` / `SaveAllButtons` (core/ui); screens only pass the file, MIME type and a name.
+  - Default destination (Settings → Output & storage): a subfolder of Downloads (MediaStore, no
+    permission; name sanitised) or a folder picked with the system folder picker (persisted tree
+    URI). If a picked folder disappears or loses its permission, the save goes to Downloads/<folder>
+    and the message says so.
+  - "Save as…" uses the system save picker (folder + editable name). "Save all to a folder…" asks
+    for one folder for multi-file results (Split, PDF→Images).
+  - Names come from the produced file (`FileUtils.outputName`, `mimeForFile`), never from screen
+    state, so changing a format after a run can't mislabel the file.
+  - **Modify Original** backs the original up, overwrites, checks the size, and restores on failure.
 - Cleanup on start: stale `input_`, `decrypted_`, `backup_` and PDFBox scratch files; outputs older
   than 24 h.
 
@@ -120,9 +129,15 @@ shortcuts, and "Continue with…" chaining from one tool's result into another.
   Base64 with binary detection, and a lossless JSON pretty-printer (numbers and slashes untouched).
 
 ### 3.5 Look and feel
-`ApparatTheme` (core/theme): Classic Ivory, Atelier Charcoal or System; accent from Settings. Text on
-accent backgrounds must use `onPrimaryForAccent(accent)`, never a fixed colour. Red is for errors
-only. Valid hints use `SuccessGreen`.
+`ApparatTheme` (core/theme): Classic Ivory, Atelier Charcoal or System. The user's **accent** colours
+the app's shell (Home, Settings, Save buttons, dialogs); each tool keeps its **category colour** (red
+PDF, blue video, green photo, amber utilities). Rules:
+- Text on an accent background: `onPrimaryForAccent(accent)` (picks the higher-contrast of dark/white).
+  Inside filled buttons use `LocalContentColor.current` so the disabled state stays readable.
+- Accent or category colour used *as text*: `accentText(color)` / `readableTextColor(...)` (lifts it to
+  4.5:1 on the current surface).
+- Red is for errors only; valid hints use `accentText(SuccessGreen)`.
+- The colour schemes define every Material 3 surface role; leaving one out shows Material's lavender.
 
 ---
 
@@ -147,7 +162,7 @@ only. Valid hints use `SuccessGreen`.
 
 ```bash
 export JAVA_HOME=$JAVA_HOME
-./gradlew :app:testDebugUnitTest          # 81 unit tests
+./gradlew :app:testDebugUnitTest          # 99 unit tests
 ./gradlew assembleDebug                   # app/build/outputs/apk/debug/Apparat-debug.apk
 ./gradlew assemblePreview                 # release-speed, debug-signed: judge performance on the phone
 ./scripts/generate-keystore.sh            # once; back up the keystore + passwords
@@ -218,11 +233,6 @@ in a `LazyVerticalGrid`, rendered on IO with an LRU cache; selection mode with R
 drag-reorder (or up/down like Merge to start). Engine: `PdfEngine.organize(uri, password,
 List<PageOp(sourceIndex, rotation)>)` that builds a new document via `importPage` and sets
 `PDPage.rotation`. Reuse `PdfPasswordGate` and `takeInputCopy`.
-
-### 7.5 Share many files at once  ·  S  ·  Gemini Flash
-Accept `ACTION_SEND_MULTIPLE` (PDFs → Merge, images → Photos to PDF / batch shrink). Add intent
-filters with the same MIME types, read `EXTRA_STREAM` as a list in `MainActivity`, and let
-`SharedPayload` carry a list. Merge and Photos to PDF already accept lists.
 
 ### 7.6 Batch photo shrink  ·  M  ·  Sonnet
 Pick 10 photos → each under N KB → "Save all". Loop `shrinkToTargetKb` in one job with progress

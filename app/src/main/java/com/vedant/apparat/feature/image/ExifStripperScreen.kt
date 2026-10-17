@@ -146,9 +146,9 @@ fun ExifStripperScreen(
                                         exifInfo = ImageEngine.getExifData(context, pendingUri)
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -247,7 +247,7 @@ fun ExifStripperScreen(
                                     text = "No EXIF Metadata Found",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = SuccessGreen
+                                        color = accentText(SuccessGreen)
                                     )
                                 )
                             }
@@ -272,7 +272,6 @@ fun ExifStripperScreen(
                                 if (saveMode == SaveMode.OVERWRITE_ORIGINAL) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
-                                        fileSize = outputFile.length()
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original photo stripped of EXIF in-place!"
@@ -300,12 +299,12 @@ fun ExifStripperScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
+                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Strip EXIF & Clean Photo", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
+                Text("Strip EXIF & Clean Photo", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -316,31 +315,10 @@ fun ExifStripperScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val baseName = (fileName ?: "photo").substringBeforeLast(".")
-                        val ext = success.outputFile.extension.lowercase()
-                        val mime = when (ext) {
-                            "png" -> "image/png"
-                            "webp" -> "image/webp"
-                            else -> "image/jpeg"
-                        }
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = mime,
-                            displayName = "${baseName}_clean.${ext.ifEmpty { "jpg" }}"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "photo", "_clean", success.outputFile) },
                     onShare = {
-                        val ext = success.outputFile.extension.lowercase()
-                        val mime = when (ext) {
-                            "png" -> "image/png"
-                            "webp" -> "image/webp"
-                            else -> "image/jpeg"
-                        }
-                        FileUtils.shareFile(context, success.outputFile, mime)
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

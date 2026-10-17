@@ -142,9 +142,9 @@ fun ImageConvertScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -241,6 +241,8 @@ fun ImageConvertScreen(
                             onValueChange = { quality = it },
                             valueRange = 10f..100f,
                             colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                                 thumbColor = AccentImage,
                                 activeTrackColor = AccentImage,
                                 inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -293,12 +295,12 @@ fun ImageConvertScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to ${targetFormat.name}", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
+                Text("Convert to ${targetFormat.name}", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -309,19 +311,10 @@ fun ImageConvertScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val baseName = (fileName ?: "photo").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = targetFormat.mimeType,
-                            displayName = "${baseName}_converted${targetFormat.extension}"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "photo", "_converted", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(

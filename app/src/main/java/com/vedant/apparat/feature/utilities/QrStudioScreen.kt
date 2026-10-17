@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vedant.apparat.core.ui.SaveButtons
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.ui.ToolScaffold
 import com.vedant.apparat.core.jobs.retained
@@ -77,6 +78,14 @@ fun QrStudioScreen(
     var vcardEmail by retained(JOB_KEY, "vcardEmail") { mutableStateOf("") }
 
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    // The current QR as a PNG in the output cache, for Save / Save as / Share.
+    var qrFile by remember { mutableStateOf<java.io.File?>(null) }
+    LaunchedEffect(qrBitmap) {
+        val bmp = qrBitmap
+        val previous = qrFile
+        qrFile = bmp?.let { UtilityEngine.saveQrToFile(context.applicationContext, it) }
+        previous?.delete()
+    }
     var qrErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialText) {
@@ -245,12 +254,17 @@ fun QrStudioScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        val isVpaInvalid = upiVpa.isNotBlank() && !UtilityEngine.isValidUpiId(upiVpa)
                         OutlinedTextField(
                             value = upiVpa,
                             onValueChange = { upiVpa = it },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("UPI ID / VPA (e.g. merchant@okhdfcbank)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
+                            isError = isVpaInvalid,
+                            supportingText = if (isVpaInvalid) {
+                                { Text("A UPI ID looks like name@bank (no spaces). No QR until it's valid.") }
+                            } else null,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -289,7 +303,7 @@ fun QrStudioScreen(
                                 label = { Text("Amount (₹, opt.)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 isError = isAmountInvalid,
                                 supportingText = if (isAmountInvalid) {
-                                    { Text("e.g. 500 or 150.50", color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+                                    { Text("Digits only, like 500 or 150.50 (no commas). No QR until it's valid.", color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
                                 } else null,
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -398,44 +412,16 @@ fun QrStudioScreen(
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            val bmp = qrBitmap ?: return@Button
-                            val appContext = context.applicationContext
-                            scope.launch {
-                                withContext(NonCancellable) {
-                                    val file = UtilityEngine.saveQrToFile(appContext, bmp)
-                                    val saved = FileUtils.saveToDownloads(appContext, file, "image/png", "qrcode_${System.currentTimeMillis()}.png")
-                                    Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = onPrimaryForAccent(AccentUtility))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save PNG", color = onPrimaryForAccent(AccentUtility), fontWeight = FontWeight.Bold)
-                    }
-
+                qrFile?.let { f ->
+                    SaveButtons(
+                        file = f,
+                        mimeType = "image/png",
+                        fileName = remember(f) { "qrcode_${java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US).format(java.util.Date())}.png" }
+                    )
                     OutlinedButton(
-                        onClick = {
-                            val bmp = qrBitmap ?: return@OutlinedButton
-                            val appContext = context.applicationContext
-                            scope.launch {
-                                withContext(NonCancellable) {
-                                    val file = UtilityEngine.saveQrToFile(appContext, bmp)
-                                    FileUtils.shareFile(appContext, file, "image/png")
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp)
+                        onClick = { FileUtils.shareFile(context, f, "image/png") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.width(6.dp))

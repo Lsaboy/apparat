@@ -163,9 +163,9 @@ fun ImageShrinkScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentImage), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -241,7 +241,7 @@ fun ImageShrinkScreen(
             // Quick Presets
             val presets = remember {
                 listOf(
-                    Triple("Portal / ID (<100KB)", 1000f, Pair(70f, ImageOutputFormat.JPEG)),
+                    Triple("Compact (1000 px)", 1000f, Pair(70f, ImageOutputFormat.JPEG)),
                     Triple("WhatsApp / Chat", 1600f, Pair(80f, ImageOutputFormat.WEBP)),
                     Triple("Email / Social", 1920f, Pair(85f, ImageOutputFormat.JPEG)),
                     Triple("Max Quality", 3840f, Pair(95f, ImageOutputFormat.JPEG))
@@ -262,6 +262,10 @@ fun ImageShrinkScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    AssistChip(
+                        onClick = { targetMode = true; if (targetKb == null) targetKbText = "100" },
+                        label = { Text("Portal limit? Use Target size", fontSize = 12.sp) }
+                    )
                     presets.forEach { (name, dim, settings) ->
                         val (q, fmt) = settings
                         val isSelected = maxDimension == dim && quality == q && outputFormat == fmt
@@ -382,6 +386,8 @@ fun ImageShrinkScreen(
                         steps = 17,
                         enabled = !isLosslessPng,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -403,6 +409,8 @@ fun ImageShrinkScreen(
                         valueRange = 720f..3840f,
                         steps = 0,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -435,6 +443,9 @@ fun ImageShrinkScreen(
                             checked = stripExif,
                             onCheckedChange = { stripExif = it },
                             colors = SwitchDefaults.colors(
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedThumbColor = onPrimaryForAccent(AccentImage),
                                 checkedTrackColor = AccentImage
                             )
@@ -491,7 +502,6 @@ fun ImageShrinkScreen(
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
-                                        fileSize = newBytes
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
                                             message = "Original photo overwritten in-place!"
@@ -523,12 +533,12 @@ fun ImageShrinkScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentImage, contentColor = onPrimaryForAccent(AccentImage)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing && (!targetMode || targetKb != null)
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = onPrimaryForAccent(AccentImage))
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Photo", color = onPrimaryForAccent(AccentImage), fontWeight = FontWeight.Bold)
+                Text("Shrink Photo", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -541,19 +551,10 @@ fun ImageShrinkScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val base = (fileName ?: "photo").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = resultFormat.mimeType,
-                            displayName = "${base}_shrunk${resultFormat.extension}"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "photo", "_shrunk", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context, success.outputFile, resultFormat.mimeType)
+                        FileUtils.shareFile(context, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     }
                 )
             }

@@ -117,4 +117,14 @@ class TargetKbSearchEngineTest {
         val finalRatio = result.width.toDouble() / result.height.toDouble()
         assertEquals(initialRatio, finalRatio, 0.05) // Aspect ratio preserved within rounding tolerance
     }
+
+    @Test
+    fun `narrow images keep their aspect ratio when downscaled`() {
+        // A 600x200 signature strip whose size is roughly proportional to its area; the target forces downscaling.
+        val config = TargetKbSearchEngine.SearchConfig(targetKb = 2, initialWidth = 600, initialHeight = 200)
+        val result = TargetKbSearchEngine.findOptimalParameters(config) { w, h, q -> w.toLong() * h * q / 300 }
+        val ratio = result.width.toDouble() / result.height
+        org.junit.Assert.assertEquals(3.0, ratio, 0.1)
+        org.junit.Assert.assertTrue("short side ${result.height} must not go below the minimum", result.height >= TargetKbSearchEngine.DEFAULT_MIN_DIMENSION)
+    }
 }

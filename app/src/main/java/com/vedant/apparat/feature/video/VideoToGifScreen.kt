@@ -174,9 +174,9 @@ fun VideoToGifScreen(
                                     pendingShareUri = null
                                     processState = ProcessState.Idle
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo))
                             ) {
-                                Text("Switch to New File", color = onPrimaryForAccent(AccentVideo), fontSize = 12.sp)
+                                Text("Switch to New File", color = LocalContentColor.current, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -220,6 +220,8 @@ fun VideoToGifScreen(
                         valueRange = 8f..30f,
                         steps = 10,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -241,6 +243,8 @@ fun VideoToGifScreen(
                         valueRange = 240f..720f,
                         steps = 7,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -262,6 +266,8 @@ fun VideoToGifScreen(
                             onValueChange = { startSec = it },
                             valueRange = 0f..maxStart,
                             colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                                 thumbColor = AccentVideo,
                                 activeTrackColor = AccentVideo,
                                 inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -286,6 +292,8 @@ fun VideoToGifScreen(
                         onValueChange = { durationSec = it },
                         valueRange = 1f..maxDurationAllowed,
                         colors = SliderDefaults.colors(
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
                             inactiveTrackColor = MaterialTheme.colorScheme.outline
@@ -336,12 +344,12 @@ fun VideoToGifScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentVideo, contentColor = onPrimaryForAccent(AccentVideo)),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = onPrimaryForAccent(AccentVideo))
+                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate Smooth GIF", color = onPrimaryForAccent(AccentVideo), fontWeight = FontWeight.Bold)
+                Text("Generate Smooth GIF", color = LocalContentColor.current, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
@@ -352,19 +360,10 @@ fun VideoToGifScreen(
                     outputFile = success.outputFile,
                     originalSize = fileSize,
                     message = success.message,
-                    onSaveToDownloads = {
-                        val appContext = context.applicationContext
-                        val base = (fileName ?: "animation").substringBeforeLast(".")
-                        val saved = FileUtils.saveToDownloads(
-                            context = appContext,
-                            file = success.outputFile,
-                            mimeType = "image/gif",
-                            displayName = "${base}.gif"
-                        )
-                        Toast.makeText(appContext, if (saved != null) "Saved to Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}" else "Failed to save", Toast.LENGTH_SHORT).show()
-                    },
+                    saveMimeType = FileUtils.mimeForFile(success.outputFile),
+                    saveName = remember(success.outputFile) { FileUtils.outputName(fileName, "animation", "", success.outputFile) },
                     onShare = {
-                        FileUtils.shareFile(context.applicationContext, success.outputFile, "image/gif")
+                        FileUtils.shareFile(context.applicationContext, success.outputFile, FileUtils.mimeForFile(success.outputFile))
                     },
                     chainActions = if (onNavigateToTool != null) {
                         listOf(

@@ -24,11 +24,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.vedant.apparat.core.model.ALL_TOOLS
 import com.vedant.apparat.core.settings.*
 import com.vedant.apparat.core.theme.*
 import com.vedant.apparat.core.ui.BraunSegmentedControl
 import com.vedant.apparat.core.util.FileUtils
+import com.vedant.apparat.core.util.OutputSaver
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +50,52 @@ fun CustomizationScreen(
     var currentTheme by remember { mutableStateOf(appSettings.themeStyle) }
     var currentAccentIndex by remember { mutableIntStateOf(appSettings.accentIndex) }
     var currentSaveMode by remember { mutableStateOf(appSettings.defaultSaveMode) }
+
+    // Default save destination (see OutputSaver)
+    var destinationLabel by remember { mutableStateOf(OutputSaver.destination(context).label) }
+    var usingPickedFolder by remember { mutableStateOf(appSettings.saveTreeUri != null) }
+    var pickedFolderUnavailable by remember { mutableStateOf(OutputSaver.isPickedFolderUnavailable(context)) }
+    fun refreshDestination() {
+        destinationLabel = OutputSaver.destination(context).label
+        usingPickedFolder = appSettings.saveTreeUri != null
+        pickedFolderUnavailable = OutputSaver.isPickedFolderUnavailable(context)
+    }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameDraft by remember { mutableStateOf("") }
+    val pickDefaultFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+        if (tree != null) {
+            val ok = OutputSaver.setDefaultTree(context, tree)
+            if (!ok) Toast.makeText(context, "Apparat can't save to that folder. Pick another one.", Toast.LENGTH_LONG).show()
+            refreshDestination()
+        }
+    }
+    if (showRenameDialog) {
+        val preview = OutputSaver.sanitizeFolderName(renameDraft)
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Folder in Downloads") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = renameDraft,
+                        onValueChange = { renameDraft = it.take(80) },
+                        singleLine = true,
+                        label = { Text("Folder name") }
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Files will be saved to Downloads/$preview", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    OutputSaver.useDownloads(context, renameDraft)
+                    refreshDestination()
+                    showRenameDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } }
+        )
+    }
     var enabledShortcuts by remember { mutableStateOf(appSettings.enabledShortcuts) }
 
     Scaffold(
@@ -95,7 +150,7 @@ fun CustomizationScreen(
             item {
                 SettingsGroupCard(title = "01 // THEME & APPEARANCE") {
                     Text(
-                        text = "HARDWARE APPEARANCE",
+                        text = "APPEARANCE",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -139,7 +194,7 @@ fun CustomizationScreen(
 
                     // Accent Colors
                     Text(
-                        text = "INDICATOR ACCENT",
+                        text = "ACCENT COLOUR",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -164,6 +219,11 @@ fun CustomizationScreen(
                                         color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline,
                                         shape = RoundedCornerShape(6.dp)
                                     )
+                                    .semantics {
+                                        contentDescription = swatch.name
+                                        selected = isSelected
+                                        role = Role.RadioButton
+                                    }
                                     .clickable {
                                         currentAccentIndex = index
                                         appSettings.accentIndex = index
@@ -176,12 +236,17 @@ fun CustomizationScreen(
                                         modifier = Modifier
                                             .size(8.dp)
                                             .clip(CircleShape)
-                                            .background(Color.White)
+                                            .background(onPrimaryForAccent(swatch.color))
                                     )
                                 }
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${AppAccentSwatches[currentAccentIndex].name}: used for Home, Settings, the Save buttons and dialogs. Each tool keeps its category colour (red PDF, blue video, green photo, amber utilities) so you can tell them apart.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
                 }
             }
 
@@ -189,7 +254,7 @@ fun CustomizationScreen(
             item {
                 SettingsGroupCard(title = "02 // OUTPUT & STORAGE") {
                     Text(
-                        text = "DESTINATION DIRECTORY",
+                        text = "SAVE FILES TO",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -198,24 +263,56 @@ fun CustomizationScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}/",
+                        text = destinationLabel,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
+                    if (pickedFolderUnavailable) {
+                        Text(
+                            text = "The folder you chose isn't available any more (moved, deleted or permission removed). Files will be saved to Downloads/${appSettings.saveFolderName} until you choose another.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.error)
+                        )
+                    }
                     Text(
-                        text = "All processed files and exports are saved strictly to this folder for easy discovery.",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        text = if (usingPickedFolder) {
+                            "A folder you chose. If it's removed or the permission is revoked, files go to Downloads/${OutputSaver.DEFAULT_FOLDER} instead."
+                        } else {
+                            "Every tool saves here with one tap. Use \"Save as…\" on a result to pick another place just once."
+                        },
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Dark text with an accent outline: accent-coloured text is too faint on Ivory.
+                    val storageButtonColors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    val storageButtonBorder = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!usingPickedFolder) {
+                            OutlinedButton(onClick = { renameDraft = appSettings.saveFolderName; showRenameDialog = true }, shape = RoundedCornerShape(6.dp), colors = storageButtonColors, border = storageButtonBorder) {
+                                Text("Rename folder", fontSize = 12.sp)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    OutputSaver.useDownloads(context, appSettings.saveFolderName)
+                                    refreshDestination()
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = storageButtonColors,
+                                border = storageButtonBorder
+                            ) { Text("Use Downloads", fontSize = 12.sp) }
+                        }
+                        OutlinedButton(onClick = { runCatching { pickDefaultFolder.launch(null) } }, shape = RoundedCornerShape(6.dp), colors = storageButtonColors, border = storageButtonBorder) {
+                            Text("Choose folder…", fontSize = 12.sp)
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = "COLLISION BEHAVIOR",
+                        text = "WHEN A TOOL CAN CHANGE THE ORIGINAL",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -311,14 +408,24 @@ fun CustomizationScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
+                    val chosenCount = ALL_TOOLS.count { it.id in enabledShortcuts }
+                    Text(
+                        text = "$chosenCount of 4 chosen",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
                     Spacer(modifier = Modifier.height(10.dp))
 
                     ALL_TOOLS.forEach { tool ->
                         val isChecked = enabledShortcuts.contains(tool.id)
+                        // Android shows at most 4 launcher shortcuts; don't let a 5th be ticked.
+                        val canToggle = isChecked || chosenCount < 4
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickable(enabled = canToggle) {
                                     val updated = if (isChecked) {
                                         enabledShortcuts - tool.id
                                     } else {
@@ -334,6 +441,7 @@ fun CustomizationScreen(
                         ) {
                             Checkbox(
                                 checked = isChecked,
+                                enabled = canToggle,
                                 onCheckedChange = { checked ->
                                     val updated = if (checked) {
                                         enabledShortcuts + tool.id
