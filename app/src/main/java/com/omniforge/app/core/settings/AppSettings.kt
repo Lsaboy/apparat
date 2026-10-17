@@ -40,7 +40,7 @@ val AppAccentSwatches = listOf(
 )
 
 class AppSettings(context: Context) {
-    private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("apparat_settings", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("dpk_settings", Context.MODE_PRIVATE)
 
     var themeStyle: ThemeStyle
         get() {

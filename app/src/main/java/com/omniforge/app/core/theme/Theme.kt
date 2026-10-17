@@ -10,9 +10,18 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.omniforge.app.core.settings.ThemeStyle
 
+fun onPrimaryForAccent(accent: Color): Color {
+    return if (accent == BraunOrange || accent == TechnicalIndicatorYellow || accent == BraunSignalOrange || accent == BraunSignalOrangeDark) {
+        OnBraunOrange
+    } else {
+        val lum = 0.2126f * accent.red + 0.7152f * accent.green + 0.0722f * accent.blue
+        if (lum > 0.4f) OnBraunOrange else Color.White
+    }
+}
+
 val BraunLightColorScheme = lightColorScheme(
     primary = BraunOrange,
-    onPrimary = Color.White,
+    onPrimary = OnBraunOrange,
     primaryContainer = IvorySurfaceElevated,
     onPrimaryContainer = IvoryTextPrimary,
     secondary = TechnicalIndicatorBlue,
@@ -39,7 +48,7 @@ val BraunLightColorScheme = lightColorScheme(
 
 val BraunDarkColorScheme = darkColorScheme(
     primary = BraunOrange,
-    onPrimary = Color.White,
+    onPrimary = OnBraunOrange,
     primaryContainer = CharcoalSurfaceElevated,
     onPrimaryContainer = CharcoalTextPrimary,
     secondary = TechnicalIndicatorBlue,
@@ -81,7 +90,8 @@ fun ApparatTheme(
 
     val baseScheme = if (isDark) BraunDarkColorScheme else BraunLightColorScheme
     val colorScheme = baseScheme.copy(
-        primary = accentColor
+        primary = accentColor,
+        onPrimary = onPrimaryForAccent(accentColor)
     )
 
     val view = LocalView.current
