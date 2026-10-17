@@ -9,3 +9,12 @@
 .cxx
 local.properties
 app/build
+
+# Signing keystores & Play Store API secrets
+*.keystore
+*.jks
+keystore.properties
+play-service-account*.json
+play-api-key*.json
+service-account*.json
+

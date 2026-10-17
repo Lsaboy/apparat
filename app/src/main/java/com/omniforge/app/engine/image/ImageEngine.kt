@@ -211,6 +211,13 @@ object ImageEngine {
                         exif.setAttribute(tag, null)
                     }
                     exif.saveAttributes()
+
+                    // Verification check: ensure GPS coordinates were completely removed
+                    val verifyExif = ExifInterface(outputFile.absolutePath)
+                    if (verifyExif.latLong != null) {
+                        throw java.io.IOException("GPS location tags could not be stripped losslessly")
+                    }
+
                     outputFile
                 } catch (e: Exception) {
                     // Step 3: Fallback if JPEG has non-consecutive thumbnail strips or malformed APP1

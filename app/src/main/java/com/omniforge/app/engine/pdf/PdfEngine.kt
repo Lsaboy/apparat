@@ -177,16 +177,21 @@ object PdfEngine {
             val cachedInput = FileUtils.copyUriToCache(context, inputUri)
             val outputFile = FileUtils.createTempOutputFile(context, "compressed", ".pdf")
 
-            val document = openDocument(context, cachedInput, password)
             try {
-                // PDFBox compression: optimize stream filters and resave
-                document.save(outputFile)
+                val document = openDocument(context, cachedInput, password)
+                try {
+                    // PDFBox compression: optimize stream filters and resave
+                    document.save(outputFile)
+                    outputFile
+                } finally {
+                    document.close()
+                }
+            } catch (t: Throwable) {
+                outputFile.delete()
+                throw t
             } finally {
-                document.close()
                 cachedInput.delete()
             }
-
-            outputFile
         }
     }
 
@@ -235,11 +240,13 @@ object PdfEngine {
                     }
                 }
                 document.save(outputFile)
+                outputFile
+            } catch (t: Throwable) {
+                outputFile.delete()
+                throw t
             } finally {
                 document.close()
             }
-
-            outputFile
         }
     }
 
@@ -264,11 +271,13 @@ object PdfEngine {
                     merger.addSource(file)
                 }
                 merger.mergeDocuments(tempFileMemory(context))
+                outputFile
+            } catch (t: Throwable) {
+                outputFile.delete()
+                throw t
             } finally {
                 cachedFiles.forEach { it.delete() }
             }
-
-            outputFile
         }
     }
 
@@ -415,23 +424,34 @@ object PdfEngine {
             try {
                 for (i in 0 until renderer.pageCount) {
                     val page = renderer.openPage(i)
-                    // Render at 2x (144 DPI) for crisp quality, capped at 16 MP so huge pages can't OOM.
-                    val scale = min(2.0, sqrt(16_000_000.0 / (page.width.toDouble() * page.height)))
-                    val bitmap = Bitmap.createBitmap(
-                        max(1, (page.width * scale).toInt()), max(1, (page.height * scale).toInt()), Bitmap.Config.ARGB_8888
-                    )
-                    val canvas = android.graphics.Canvas(bitmap)
-                    canvas.drawColor(android.graphics.Color.WHITE) // White background for transparent pages
-                    page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    page.close()
-
+                    var bitmap: Bitmap? = null
                     val pageFile = FileUtils.createTempOutputFile(context, "page_${i + 1}", ".png")
-                    FileOutputStream(pageFile).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    try {
+                        // Render at 2x (144 DPI) for crisp quality, capped at 16 MP so huge pages can't OOM.
+                        val scale = min(2.0, sqrt(16_000_000.0 / (page.width.toDouble() * page.height)))
+                        bitmap = Bitmap.createBitmap(
+                            max(1, (page.width * scale).toInt()), max(1, (page.height * scale).toInt()), Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bitmap)
+                        canvas.drawColor(android.graphics.Color.WHITE) // White background for transparent pages
+                        page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+                        FileOutputStream(pageFile).use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
+                        renderedFiles.add(pageFile)
+                    } catch (e: Throwable) {
+                        pageFile.delete()
+                        throw e
+                    } finally {
+                        bitmap?.recycle()
+                        page.close()
                     }
-                    bitmap.recycle()
-                    renderedFiles.add(pageFile)
                 }
+                renderedFiles
+            } catch (t: Throwable) {
+                renderedFiles.forEach { it.delete() }
+                throw t
             } finally {
                 renderer.close()
                 pfd.close()

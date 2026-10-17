@@ -109,6 +109,24 @@ class MainActivity : ComponentActivity() {
                     navController.navigate(route)
                 }
 
+                @Composable
+                fun ConsumeSharedPayloadEffect(targetUri: Uri?) {
+                    LaunchedEffect(targetUri) {
+                        if (targetUri != null) {
+                            currentSharedPayload = null
+                        }
+                    }
+                }
+
+                @Composable
+                fun ConsumeSharedTextEffect(targetText: String?) {
+                    LaunchedEffect(targetText) {
+                        if (!targetText.isNullOrBlank()) {
+                            currentSharedPayload = null
+                        }
+                    }
+                }
+
                 NavHost(
                     navController = navController,
                     startDestination = "home",
@@ -123,7 +141,8 @@ class MainActivity : ComponentActivity() {
                             sharedUri = incomingUri,
                             sharedMimeType = incomingMimeType,
                             onNavigateToTool = { route -> navController.navigate(route) },
-                            onNavigateToSettings = { navController.navigate("settings") }
+                            onNavigateToSettings = { navController.navigate("settings") },
+                            onDismissSharedPayload = { currentSharedPayload = null }
                         )
                     }
 
@@ -138,26 +157,34 @@ class MainActivity : ComponentActivity() {
 
                     // PDF Tools
                     composable("pdf_unlock") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
+                        ConsumeSharedPayloadEffect(targetUri)
                         PdfUnlockScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("pdf_shrink") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
+                        ConsumeSharedPayloadEffect(targetUri)
                         PdfShrinkScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("pdf_split") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
+                        ConsumeSharedPayloadEffect(targetUri)
                         PdfSplitScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("pdf_to_images") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
+                        ConsumeSharedPayloadEffect(targetUri)
                         PdfToImagesScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -170,14 +197,18 @@ class MainActivity : ComponentActivity() {
 
                     // Video Tools
                     composable("video_shrink") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         VideoShrinkScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("video_trim") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         VideoTrimMuteScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            initialUri = targetUri,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
@@ -186,21 +217,27 @@ class MainActivity : ComponentActivity() {
                         VideoCaptionScreen(onBack = { navController.popBackStack() })
                     }
                     composable("video_to_gif") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         VideoToGifScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            initialUri = targetUri,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("video_convert") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         VideoConvertScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("audio_extract") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true || incomingMimeType?.startsWith("audio/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         AudioExtractScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true || incomingMimeType?.startsWith("audio/") == true },
+                            initialUri = targetUri,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
@@ -208,46 +245,62 @@ class MainActivity : ComponentActivity() {
 
                     // Image Tools
                     composable("image_shrink") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         ImageShrinkScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("document_scan") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         DocumentScanScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            initialUri = targetUri,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("palette_extractor") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         PaletteExtractorScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("image_convert") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         ImageConvertScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            initialUri = targetUri,
                             onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("exif_strip") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true }
+                        ConsumeSharedPayloadEffect(targetUri)
                         ExifStripperScreen(
-                            initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            initialUri = targetUri,
                             onBack = { navController.popBackStack() }
                         )
                     }
 
                     // Utility Tools
                     composable("qr_studio") {
+                        ConsumeSharedTextEffect(incomingText)
                         QrStudioScreen(
                             initialText = incomingText,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("hash_verifier") {
+                        if (incomingUri != null) {
+                            ConsumeSharedPayloadEffect(incomingUri)
+                        } else if (!incomingText.isNullOrBlank()) {
+                            ConsumeSharedTextEffect(incomingText)
+                        }
                         HashVerifierScreen(
                             initialUri = incomingUri,
                             initialText = incomingText,
@@ -255,12 +308,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("json_tool") {
+                        ConsumeSharedTextEffect(incomingText)
                         JsonToolScreen(
                             initialText = incomingText,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("base64_studio") {
+                        ConsumeSharedTextEffect(incomingText)
                         Base64StudioScreen(
                             initialText = incomingText,
                             onBack = { navController.popBackStack() }
@@ -277,6 +332,12 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
+    private fun isUnsafeUri(uri: Uri): Boolean {
+        if (uri.scheme == "file") return true
+        if (uri.authority == "${packageName}.fileprovider") return true
+        return false
+    }
+
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
         val action = intent.action
@@ -284,7 +345,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> {
                 val uri = intent.data
                 val mime = intent.type ?: uri?.let { contentResolver.getType(it) }
-                if (uri != null && uri.scheme != "dpk") {
+                if (uri != null && uri.scheme != "dpk" && !isUnsafeUri(uri)) {
                     currentSharedPayload = SharedPayload(uri = uri, mimeType = mime)
                     navEvents.trySend("home")
                 }
@@ -300,7 +361,7 @@ class MainActivity : ComponentActivity() {
 
                 val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
 
-                if (streamUri != null) {
+                if (streamUri != null && !isUnsafeUri(streamUri)) {
                     currentSharedPayload = SharedPayload(uri = streamUri, mimeType = mime)
                     navEvents.trySend("home")
                 } else if (!sharedText.isNullOrBlank()) {

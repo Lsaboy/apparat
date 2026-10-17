@@ -30,7 +30,7 @@ object FileUtils {
         return DecimalFormat("#,##0.#").format(value) + " " + units[digitGroups]
     }
 
-    fun getFileName(context: Context, uri: Uri): String {
+    fun getFileName(context: Context, uri: Uri): String = runCatching {
         var result: String? = null
         if (uri.scheme == "content") {
             val cursor = context.contentResolver.query(uri, null, null, null, null)
@@ -50,35 +50,41 @@ object FileUtils {
                 result = result?.substring(cut + 1)
             }
         }
-        return result ?: "unnamed_file"
-    }
+        result?.takeIf { it.isNotBlank() } ?: "unnamed_file"
+    }.getOrDefault("unnamed_file")
 
-    fun getFileSize(context: Context, uri: Uri): Long {
+    fun getFileSize(context: Context, uri: Uri): Long = runCatching {
         if (uri.scheme == "content") {
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             cursor?.use {
                 if (it.moveToFirst()) {
                     val index = it.getColumnIndex(OpenableColumns.SIZE)
                     if (index >= 0) {
-                        return it.getLong(index)
+                        return@runCatching it.getLong(index)
                     }
                 }
             }
         } else if (uri.scheme == "file") {
-            uri.path?.let { File(it).length() }?.let { return it }
+            uri.path?.let { File(it).length() }?.let { return@runCatching it }
         }
-        return 0L
-    }
+        0L
+    }.getOrDefault(0L)
 
     fun copyUriToCache(context: Context, uri: Uri, targetFileName: String? = null): File {
         val name = targetFileName ?: getFileName(context, uri)
-        val cacheFile = File(context.cacheDir, "input_${System.currentTimeMillis()}_$name")
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            FileOutputStream(cacheFile).use { output ->
-                input.copyTo(output)
-            }
-        } ?: throw IllegalStateException("Could not open input stream for $uri")
-        return cacheFile
+        val ext = name.substringAfterLast('.', "").takeIf { it.isNotEmpty() }?.let { ".$it" } ?: ""
+        val cacheFile = File(context.cacheDir, "input_${System.currentTimeMillis()}$ext")
+        try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(cacheFile).use { output ->
+                    input.copyTo(output)
+                }
+            } ?: throw IllegalStateException("Could not open input stream for $uri")
+            return cacheFile
+        } catch (e: Exception) {
+            cacheFile.delete()
+            throw e
+        }
     }
 
     fun createTempOutputFile(context: Context, prefix: String, extensionWithDot: String): File {

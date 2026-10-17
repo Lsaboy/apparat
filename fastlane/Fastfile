@@ -1,0 +1,38 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build release Android App Bundle (AAB)"
+  lane :build do
+    gradle(task: "clean bundleRelease")
+  end
+
+  desc "Deploy to Google Play Internal Test Track"
+  lane :internal do
+    build
+    upload_to_play_store(
+      track: 'internal',
+      release_status: 'completed',
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Deploy to Google Play Closed Testing (Alpha)"
+  lane :alpha do
+    build
+    upload_to_play_store(
+      track: 'alpha',
+      release_status: 'completed'
+    )
+  end
+
+  desc "Promote Alpha to Production"
+  lane :promote_to_production do
+    upload_to_play_store(
+      track: 'alpha',
+      track_promote_to: 'production',
+      skip_upload_aab: true
+    )
+  end
+end

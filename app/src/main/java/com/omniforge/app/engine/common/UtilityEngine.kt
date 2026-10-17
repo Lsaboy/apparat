@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.SystemClock
 import android.util.Base64
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.omniforge.app.core.util.FileUtils
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,8 @@ object UtilityEngine {
      */
     fun generateQrCode(text: String, size: Int = 512): Bitmap {
         val writer = QRCodeWriter()
-        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size)
+        val hints = mapOf(EncodeHintType.CHARACTER_SET to "UTF-8")
+        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size, hints)
         val pixels = IntArray(size * size)
         for (y in 0 until size) {
             val offset = y * size

@@ -53,7 +53,8 @@ fun HomeScreen(
     sharedUri: Uri? = null,
     sharedMimeType: String? = null,
     onNavigateToTool: (String) -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onDismissSharedPayload: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
@@ -91,7 +92,7 @@ fun HomeScreen(
         }
     }
 
-    val filteredTools = remember(searchQuery, selectedCategory, compatibleCategory) {
+    val filteredTools = remember(searchQuery, selectedCategory, compatibleCategory, sharedUri) {
         ALL_TOOLS.filter { tool ->
             val matchesCategory = when {
                 sharedUri != null && compatibleCategory == null -> {
@@ -321,7 +322,7 @@ fun HomeScreen(
             // Contextual Share Banner (if file was shared into app)
             if (sharedUri != null) {
                 item {
-                    val sharedName = FileUtils.getFileName(context, sharedUri)
+                    val sharedName = remember(sharedUri) { FileUtils.getFileName(context, sharedUri) }
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -329,35 +330,55 @@ fun HomeScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Shared File: $sharedName",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextPrimary
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Tap a tool below or select from the list:",
+                                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = onDismissSharedPayload,
+                                    modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Shared File: $sharedName",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "Tap a tool below or select from the list:",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Dismiss shared file",
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }

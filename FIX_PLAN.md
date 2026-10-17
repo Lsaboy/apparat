@@ -609,29 +609,27 @@ Decided by user on 2026-10-16:
 1. Video engine: **Media3 only**. No FFmpeg (see 1A.1 for per-tool consequences).
 2. Document scanner: **fully offline custom**. No ML Kit (see 3A).
 3. **Drop Android 8/9** → `minSdk = 29` (see 1A.7).
-4. App name: **Digital Pocket Knife**. Package id stays `com.omniforge.app` unless asked (see 3B).
+4. App name: **Apparat** (final decision 2026-10-17). Package id stays `com.omniforge.app`.
 
-Still open (ask when reached):
-5. Which Phase 2.9 extras (sign, stamp, page numbers) are worth building.
-6. ~~Video→GIF and Burn Subtitles under Media3~~ — implemented in 1A.1 (pure-Kotlin GIF
-   encoder; subtitles via a Media3 `BitmapOverlay`). Check quality/speed on a device; remove if poor.
-
-## Verification checklist per phase
-
-- Build: `JAVA_HOME=$JAVA_HOME ./gradlew assembleDebug testDebugUnitTest` clean;
-  `lintDebug` with no new errors.
-- Phase 1A specifics: see 1D.1 (detailed per-item device checks).
-- Phase 1: test on API 29 + API 35 emulators and a real phone: 10-page and 150-page PDFs,
-  encrypted PDF, 100 MB scanned PDF, 108 MP portrait photo, PNG with transparency, every video
-  tool once, deep link `adb shell am start -d dpk://nonsense`.
-- Phase 2: split/merge/organize round-trips, page counts match, output opens in another viewer.
-- Phase 3: light theme pass on every screen, share-in from Gallery/Files/WhatsApp.
+### Post-Audit Resolved Issues (2026-10-17)
+- **Master (`6fc8b11`, `58f378c`):**
+  - **B2:** Shared-file payload auto-clears on destination tool consumption (`ConsumeSharedPayloadEffect`) and adds dismiss (X) button on `HomeScreen` banner.
+  - **B3:** QR codes pass UTF-8 hint to ZXing (`EncodeHintType.CHARACTER_SET to "UTF-8"`), preserving Hindi, ₹, and emoji.
+  - **B4:** Release workflow fixes environment variable scoping and `build.gradle.kts` enforces release keystore.
+  - **B7:** ProGuard keep rule added for `ExifInterface.TAG_*` and GPS post-strip check added.
+  - **B9:** `FileUtils.getFileName` and `getFileSize` wrapped in `runCatching` to prevent `SecurityException` crashes.
+  - **B10:** Cache file names use `input_<ts><ext>` to avoid `ENAMETOOLONG`, and delete partial files on failure.
+  - **B15:** Partial output files deleted on failure in `PdfEngine` (compress, imagesToPdf, merge, pdfToImages), with `try-finally` for pages/bitmaps.
+  - **B16:** Reject `file://` schemes and internal FileProvider authorities in incoming intents.
+- **Theme branch (`c0eed39` in `apparat-braun`):**
+  - **T1:** Restored `dpk_settings` SharedPreferences name in `AppSettings.kt` to preserve user preferences on app upgrade.
+  - **T4:** Mapped `onPrimary` to `OnBraunOrange` (`#161618`) for Braun Orange and Amber Indicator accents in `Theme.kt`, ensuring WCAG AA contrast compliance (~5.7:1 vs 3.2:1).
 
 ---
 
 ## Handover Code Audit & Roadmap for Claude (2026-10-17)
 
-This audit is based on full static analysis across all 20 tools, engine implementations, subagent architectural reviews, and 52 unit tests. It documents every broken, incomplete, or high-risk mechanism in the project as of commit `cf2f310`.
+This audit is based on full static analysis across all 20 tools, engine implementations, subagent architectural reviews, and 52 unit tests. It documents every broken, incomplete, or high-risk mechanism in the project.
 
 ### 1. High-Priority Broken Features & Architectural Debt
 

@@ -678,8 +678,26 @@ When reviewing these changes, please inspect:
 33. **Deep Link Scheme Filtering in ACTION_VIEW:** Verify in `MainActivity.kt:handleIncomingIntent` that `uri.scheme != "dpk"` prevents launcher shortcuts or notification deep links from overwriting `currentSharedPayload` with non-file URIs.
 34. **AudioExtract Pure Audio Fallback:** In `AudioExtractScreen.kt`, verify that selecting a pure audio file (where `VideoEngine.getVideoMetadata` returns null due to width/height $\le 0$) safely queries duration via `MediaMetadataRetriever` on `Dispatchers.IO`.
 35. **HashVerifier Chaining State Reset:** Verify that initializing `lastHandledInitialUri` to `null` allows chained tool invocations to trigger `startCalculation(initialUri)` immediately upon screen entry while retaining state across configuration changes.
-36. **DocumentScan Coil Memory Bounding:** Inspect `DocumentScanScreen.kt` to ensure `AsyncImage` uses `size(coil.size.Size(512, 512))` and explicit `Modifier.height(160.dp)` to prevent OOM when loading large camera captures inside a vertically scrolling column.
+37. **ExifInterface Keep Rules:** Verified `-keepclassmembers class androidx.exifinterface.media.ExifInterface { public static final java.lang.String TAG_*; }` in `proguard-rules.pro` to ensure R8 shrinking does not strip EXIF tag constants.
+38. **EXIF GPS Verification:** In `ImageEngine.kt:stripExif`, added post-strip verification using `ExifInterface.latLong` with fallback to clean re-encoding if metadata remains.
+39. **Shared Payload Consumption:** In `MainActivity.kt` and `HomeScreen.kt`, verified that `currentSharedPayload` is cleared via `ConsumeSharedPayloadEffect` when entering destination tools and can be dismissed explicitly via the close button on the home screen banner.
+40. **QR UTF-8 Encoding:** In `UtilityEngine.kt:generateQrCode`, verified `EncodeHintType.CHARACTER_SET to "UTF-8"` correctly preserves non-Latin-1 scripts, Hindi characters, and the ₹ currency symbol.
+41. **FileUtils URI Safety & Error Handling:** In `FileUtils.kt`, verified `runCatching` on `getFileName`/`getFileSize` and timestamped cache filenames `input_${System.currentTimeMillis()}$ext` with cleanup on failure.
+42. **PDF Partial Output Cleanup:** In `PdfEngine.kt`, verified `try-catch` deletion of `outputFile` on failure and `try-finally` cleanup of `page.close()` and `bitmap.recycle()` in `pdfToImages`.
+43. **Apparat Rebranding & Theme Contrast:** Renamed application to Apparat in `strings.xml`, `build.gradle.kts`, and `settings.gradle.kts`. In `apparat-braun` worktree, restored `dpk_settings` prefs name and updated `onPrimary` to `OnBraunOrange` (`#161618`) on orange/amber accents for WCAG AA compliance.
 
+---
 
+## 3. Post-Audit Fixes & Apparat Rebranding
+**Commit Range:** `43e4c53` -> `HEAD`
 
-
+1. **Rebranding:** App name updated to **Apparat** (`strings.xml`, `build.gradle.kts`, `settings.gradle.kts`).
+2. **Issue B2:** Shared-file payload auto-clears on destination tool consumption (`ConsumeSharedPayloadEffect`) and includes an explicit dismiss (X) button on `HomeScreen`. Added `sharedUri` to `remember` keys in `filteredTools`.
+3. **Issue B3:** UTF-8 character encoding hint passed to ZXing in `UtilityEngine.generateQrCode`, fixing Hindi/Devanagari, ₹, and emoji corruption.
+4. **Issue B4:** Fixed Play Store release workflow environment variable scoping and made release builds require a valid keystore rather than silently falling back to the debug key.
+5. **Issue B7:** Added ProGuard keep rule for `ExifInterface.TAG_*` and added post-strip GPS verification check with fallback re-encoding.
+6. **Issue B9:** Wrapped `getFileName` and `getFileSize` in `runCatching` to prevent `SecurityException` crashes from invalid shared URIs.
+7. **Issue B10:** Replaced unbounded cache filenames with `input_<timestamp><ext>` in `FileUtils.copyUriToCache` to prevent `ENAMETOOLONG`, and added failure deletion.
+8. **Issue B15:** Added deletion of partial outputs in `PdfEngine` (`compressPdf`, `imagesToPdf`, `mergePdfs`, `pdfToImages`) and wrapped page rendering in `try-finally`.
+9. **Issue B16:** Rejected `file://` scheme and internal FileProvider authorities in `MainActivity.handleIncomingIntent` to prevent local file disclosure.
+10. **Themes Issue 1 & 4 (in `apparat-braun`):** Restored `dpk_settings` SharedPreferences name to prevent user preference loss on upgrade. Updated `onPrimary` to use `OnBraunOrange` (`#161618`) for Braun Orange and Amber accents, ensuring WCAG AA contrast compliance.

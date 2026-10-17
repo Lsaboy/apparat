@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Digital Pocket Knife</string>
+    <string name="app_name">Apparat</string>
     <string name="shortcut_pdf_unlock_short">Unlock PDF</string>
     <string name="shortcut_pdf_unlock_long">Remove PDF Password</string>
     <string name="shortcut_image_shrink_short">Shrink Photo</string>

@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DigitalPocketKnife"
+rootProject.name = "Apparat"
 include(":app")
