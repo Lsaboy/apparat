@@ -36,7 +36,7 @@ fun JsonToolScreen(
     val context = LocalContext.current
 
     var jsonInput by retained(JOB_KEY, "jsonInput") {
-        mutableStateOf(initialText ?: "{\n  \"app\": \"Apparat\",\n  \"version\": \"2.0.0\",\n  \"offline\": true,\n  \"features\": [\"video\", \"photo\", \"pdf\", \"utilities\"]\n}")
+        mutableStateOf(initialText ?: "{\n  \"app\": \"Apparat\",\n  \"version\": \"2.0.0\",\n  \"pages\": 12,\n  \"features\": [\"video\", \"photo\", \"pdf\", \"utilities\"]\n}")
     }
     var jsonOutput by retained(JOB_KEY, "jsonOutput") { mutableStateOf("") }
     var errorMessage by retained(JOB_KEY, "errorMessage") { mutableStateOf<String?>(null) }

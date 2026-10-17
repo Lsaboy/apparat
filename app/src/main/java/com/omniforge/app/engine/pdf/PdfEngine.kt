@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.BitmapDecoder
+import com.tom_roush.pdfbox.cos.COSName
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.PDDocument
@@ -16,6 +17,7 @@ import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory
+import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -165,7 +167,8 @@ object PdfEngine {
     }
 
     /**
-     * Compresses a PDF by optimizing page content streams and downscaling images.
+     * Compresses a PDF by downscaling embedded image XObjects and re-encoding to JPEG.
+     * Resolves Audit Issue B5: imageQuality is actively applied to embedded PDImageXObjects.
      */
     suspend fun compressPdf(
         context: Context,
@@ -180,7 +183,78 @@ object PdfEngine {
             try {
                 val document = openDocument(context, cachedInput, password)
                 try {
-                    // PDFBox compression: optimize stream filters and resave
+                    val quality = imageQuality.coerceIn(0.1f, 0.95f)
+                    val processedImageKeys = mutableSetOf<String>()
+
+                    for (page in document.pages) {
+                        val resources = page.resources ?: continue
+                        val xObjectNames = resources.xObjectNames ?: continue
+
+                        for (cosName in xObjectNames) {
+                            if (!resources.isImageXObject(cosName)) continue
+
+                            val xObject = try {
+                                resources.getXObject(cosName)
+                            } catch (e: Exception) {
+                                null
+                            }
+                            if (xObject !is PDImageXObject) continue
+
+                            val key = "${cosName.name}_${xObject.width}x${xObject.height}"
+                            if (!processedImageKeys.add(key)) continue
+
+                            val originalBitmap = try {
+                                xObject.image
+                            } catch (e: Exception) {
+                                null
+                            } ?: continue
+
+                            try {
+                                // Calculate target dimensions based on page size and target DPI (~150 DPI)
+                                val pageMediaBox = page.mediaBox ?: page.cropBox
+                                val pageWidthInches = (pageMediaBox?.width ?: 595f) / 72f
+                                val pageHeightInches = (pageMediaBox?.height ?: 842f) / 72f
+                                val maxW = maxOf(600, (pageWidthInches * 150f).toInt())
+                                val maxH = maxOf(600, (pageHeightInches * 150f).toInt())
+
+                                val needsDownscale = originalBitmap.width > maxW || originalBitmap.height > maxH
+                                val scaledBitmap = if (needsDownscale) {
+                                    val scale = minOf(maxW.toFloat() / originalBitmap.width, maxH.toFloat() / originalBitmap.height)
+                                    val newW = maxOf(100, (originalBitmap.width * scale).toInt())
+                                    val newH = maxOf(100, (originalBitmap.height * scale).toInt())
+                                    Bitmap.createScaledBitmap(originalBitmap, newW, newH, true)
+                                } else {
+                                    originalBitmap
+                                }
+
+                                var compositedBitmap: Bitmap? = null
+                                val bitmapToCompress = if (scaledBitmap.hasAlpha()) {
+                                    compositedBitmap = Bitmap.createBitmap(scaledBitmap.width, scaledBitmap.height, Bitmap.Config.ARGB_8888)
+                                    val canvas = Canvas(compositedBitmap)
+                                    canvas.drawColor(Color.WHITE)
+                                    canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+                                    compositedBitmap
+                                } else {
+                                    scaledBitmap
+                                }
+
+                                try {
+                                    val newImageXObject = JPEGFactory.createFromImage(document, bitmapToCompress, quality)
+                                    resources.put(cosName, newImageXObject)
+                                } finally {
+                                    if (scaledBitmap !== originalBitmap) {
+                                        scaledBitmap.recycle()
+                                    }
+                                    compositedBitmap?.recycle()
+                                }
+                            } finally {
+                                if (!originalBitmap.isRecycled) {
+                                    originalBitmap.recycle()
+                                }
+                            }
+                        }
+                    }
+
                     document.save(outputFile)
                     outputFile
                 } finally {

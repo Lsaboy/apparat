@@ -175,7 +175,7 @@ val ALL_TOOLS = listOf(
     ToolItem(
         id = "qr_studio",
         title = "QR Code Studio",
-        description = "Generate high-res QR codes for Wi-Fi, URLs, and text offline.",
+        description = "Generate high-res QR codes for Wi-Fi, URLs, UPI and text.",
         category = ToolCategory.UTILITIES,
         route = "qr_studio",
         keywords = listOf("qr", "barcode", "matrix", "wifi", "url", "link", "generator", "create", "code")

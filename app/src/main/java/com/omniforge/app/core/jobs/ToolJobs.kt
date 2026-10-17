@@ -7,7 +7,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.core.content.ContextCompat
 import com.omniforge.app.core.model.ProcessState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +51,10 @@ object ToolJobs {
         val appContext = context.applicationContext
         running[key] = title
         // Best effort: if the service can't start, the job still runs while the app is open.
-        runCatching { ContextCompat.startForegroundService(appContext, Intent(appContext, ToolJobService::class.java)) }
+        // Plain startService (jobs only start from a visible screen, so it's allowed): the service
+        // promotes itself to foreground, and if the system refuses, it can stop without the
+        // "did not call startForeground" crash that startForegroundService would trigger.
+        runCatching { appContext.startService(Intent(appContext, ToolJobService::class.java)) }
         val job = scope.launch {
             block(appContext)
         }

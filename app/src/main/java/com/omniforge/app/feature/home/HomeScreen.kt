@@ -185,7 +185,7 @@ fun HomeScreen(
                             )
                         }
                         Text(
-                            text = "Mod. 2026 // 20 Instruments • 100% Offline",
+                            text = "Mod. 2026 // 20 Instruments",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

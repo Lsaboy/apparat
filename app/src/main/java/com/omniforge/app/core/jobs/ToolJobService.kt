@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.snapshotFlow
 import androidx.core.app.NotificationCompat
@@ -40,15 +41,29 @@ class ToolJobService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannels(this)
-        // Must call startForeground promptly after startForegroundService.
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
-        } else {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        }
-        ServiceCompat.startForeground(this, PROGRESS_ID, progressNotification(), type)
-        if (ToolJobs.running.isEmpty()) stopSelfNow()
+        // Promote to foreground right away so long jobs survive backgrounding. The system can refuse
+        // a type (e.g. its daily time limit is used up, or newer Android rules), so try each one and
+        // fall back to running without the service: jobs still finish while the app is open.
+        if (!startForegroundWithFallback() || ToolJobs.running.isEmpty()) stopSelfNow()
         return START_NOT_STICKY
+    }
+
+    private fun startForegroundWithFallback(): Boolean {
+        val types = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                add(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING)
+            }
+            add(ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        }
+        for (type in types) {
+            try {
+                ServiceCompat.startForeground(this, PROGRESS_ID, progressNotification(), type)
+                return true
+            } catch (e: Exception) {
+                Log.w(TAG, "Foreground service type $type refused", e)
+            }
+        }
+        return false
     }
 
     override fun onCreate() {
@@ -112,6 +127,7 @@ class ToolJobService : Service() {
         private const val CHANNEL_PROGRESS = "jobs_progress"
         private const val CHANNEL_DONE = "jobs_done"
         private const val PROGRESS_ID = 1001
+        private const val TAG = "ToolJobService"
 
         private fun ensureChannels(context: Context) {
             val nm = context.getSystemService(NotificationManager::class.java)
