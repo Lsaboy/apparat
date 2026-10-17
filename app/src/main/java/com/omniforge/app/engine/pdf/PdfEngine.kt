@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
+import android.util.Log
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.BitmapDecoder
 import com.tom_roush.pdfbox.cos.COSName
@@ -73,6 +74,8 @@ internal fun calculateA4Fit(
 
 object PdfEngine {
 
+    private const val TAG = "PdfEngine"
+
     /**
      * PDFBox buffers in temp files under cache/pdfbox instead of the heap, so 100+ page
      * scanned PDFs don't run out of memory.
@@ -97,6 +100,7 @@ object PdfEngine {
             val cachedInput = try {
                 FileUtils.copyUriToCache(context, inputUri)
             } catch (e: Exception) {
+                Log.w(TAG, "checkAccess: could not copy $inputUri", e)
                 return@withContext PdfAccess.Damaged("Could not read the selected file. Pick it again.")
             }
             try {
@@ -104,6 +108,7 @@ object PdfEngine {
             } catch (e: PdfPasswordException) {
                 PdfAccess.NeedsPassword(e.wrongPassword)
             } catch (e: Exception) {
+                Log.w(TAG, "checkAccess: could not open $inputUri as PDF", e)
                 PdfAccess.Damaged("This file isn't a readable PDF (it may be damaged).")
             } finally {
                 cachedInput.delete()

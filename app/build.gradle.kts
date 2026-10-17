@@ -67,6 +67,13 @@ android {
             )
             signingConfig = signingConfigs.getByName("release")
         }
+        // Release-speed build for testing on a phone: not debuggable, signed with the debug key so
+        // it installs over a debug build. Never upload this one to Play.
+        create("preview") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {

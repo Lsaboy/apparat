@@ -99,8 +99,8 @@ class AppSettings(context: Context) {
                     flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 androidx.core.content.pm.ShortcutInfoCompat.Builder(context, "shortcut_${tool.id}")
-                    .setShortLabel(tool.title)
-                    .setLongLabel("${tool.title} - ${tool.description}")
+                    .setShortLabel(tool.shortTitle)
+                    .setLongLabel(tool.title)
                     .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, com.omniforge.app.R.mipmap.ic_launcher))
                     .setIntent(intent)
                     .build()

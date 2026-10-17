@@ -95,7 +95,7 @@ fun HomeScreen(
         }
         effectiveTools.map { tool ->
             QuickActionItem(
-                title = tool.title,
+                title = tool.shortTitle,
                 subtitle = tool.badge ?: tool.category.displayName.substringBefore(" "),
                 icon = getCategoryIcon(tool.id, tool.category),
                 color = tool.category.color,
@@ -185,7 +185,7 @@ fun HomeScreen(
                             )
                         }
                         Text(
-                            text = "Mod. 2026 // 20 Instruments",
+                            text = "Model 69 // 20 Instruments",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -507,7 +507,7 @@ fun QuickActionCard(
 ) {
     Surface(
         modifier = Modifier
-            .width(136.dp)
+            .widthIn(min = 136.dp)
             .height(68.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
@@ -517,8 +517,8 @@ fun QuickActionCard(
     ) {
         Row(
             modifier = Modifier
-                .padding(10.dp)
-                .fillMaxSize(),
+                .padding(horizontal = 10.dp)
+                .fillMaxHeight(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -555,7 +555,8 @@ fun QuickActionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 10.sp
                     ),
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

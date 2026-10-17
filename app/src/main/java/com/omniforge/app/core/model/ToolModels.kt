@@ -21,7 +21,9 @@ data class ToolItem(
     val category: ToolCategory,
     val route: String,
     val badge: String? = null,
-    val keywords: List<String> = emptyList()
+    val keywords: List<String> = emptyList(),
+    /** Fits a quick-action card and a launcher shortcut's short label (~12 chars). */
+    val shortTitle: String = title
 )
 
 sealed interface ProcessState {
@@ -35,6 +37,7 @@ val ALL_TOOLS = listOf(
     // PDF Tools
     ToolItem(
         id = "pdf_unlock",
+        shortTitle = "Unlock PDF",
         title = "Remove PDF Password",
         description = "Enter password once to decrypt and save an unlocked, unrestricted PDF.",
         category = ToolCategory.PDF,
@@ -43,6 +46,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "pdf_shrink",
+        shortTitle = "Compress PDF",
         title = "Compress PDF",
         description = "Downsample embedded images and clean redundant streams to reduce size.",
         category = ToolCategory.PDF,
@@ -51,6 +55,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "pdf_split",
+        shortTitle = "Split PDF",
         title = "Split PDF",
         description = "Split into multiple PDFs by custom ranges (e.g. 1-3, 4-6) or page intervals.",
         category = ToolCategory.PDF,
@@ -60,6 +65,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "pdf_to_images",
+        shortTitle = "PDF to Images",
         title = "PDF to Images",
         description = "Render every page of a PDF into high-res PNG images.",
         category = ToolCategory.PDF,
@@ -68,6 +74,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "images_to_pdf",
+        shortTitle = "Photos to PDF",
         title = "Photos to PDF",
         description = "Combine multiple pictures into a clean multi-page PDF document.",
         category = ToolCategory.PDF,
@@ -78,6 +85,7 @@ val ALL_TOOLS = listOf(
     // Video Tools
     ToolItem(
         id = "video_shrink",
+        shortTitle = "Shrink Video",
         title = "Video Shrinker",
         description = "Compress videos for Discord, WhatsApp, Email, or custom resolutions.",
         category = ToolCategory.VIDEO,
@@ -86,6 +94,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_trim",
+        shortTitle = "Trim Video",
         title = "Trim & Mute",
         description = "Cut a clip or remove sound. Near-lossless fast trimming without quality loss.",
         category = ToolCategory.VIDEO,
@@ -95,6 +104,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_caption",
+        shortTitle = "Subtitles",
         title = "Burn Subtitles & Captions",
         description = "Burn .srt or .vtt subtitles into a video, with adjustable text size.",
         category = ToolCategory.VIDEO,
@@ -103,6 +113,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_to_gif",
+        shortTitle = "Video to GIF",
         title = "Video to GIF",
         description = "Turn a short video clip into an animated GIF.",
         category = ToolCategory.VIDEO,
@@ -111,6 +122,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_convert",
+        shortTitle = "To MP4",
         title = "Convert to MP4",
         description = "Turn MKV, WEBM, MOV or 3GP videos into an MP4 that plays everywhere.",
         category = ToolCategory.VIDEO,
@@ -119,6 +131,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "audio_extract",
+        shortTitle = "Get Audio",
         title = "Extract Audio from Video",
         description = "Save the sound from a video as M4A (small) or WAV (uncompressed).",
         category = ToolCategory.VIDEO,
@@ -129,6 +142,7 @@ val ALL_TOOLS = listOf(
     // Image Tools
     ToolItem(
         id = "image_shrink",
+        shortTitle = "Shrink Photo",
         title = "Shrink Image",
         description = "Compress photo file size with quality slider, resolution downscaling, and EXIF strip.",
         category = ToolCategory.IMAGE,
@@ -137,6 +151,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "document_scan",
+        shortTitle = "Scan Doc",
         title = "Document & Receipt Enhancer",
         description = "Turn photos of documents into crisp, high-contrast black & white scans.",
         category = ToolCategory.IMAGE,
@@ -146,6 +161,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "palette_extractor",
+        shortTitle = "Palette",
         title = "Palette & Color Extractor",
         description = "Extract dominant colors and HEX codes directly from photos.",
         category = ToolCategory.IMAGE,
@@ -155,6 +171,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "image_convert",
+        shortTitle = "Convert Photo",
         title = "Convert Image",
         description = "Convert between JPEG, PNG, and WEBP formats seamlessly.",
         category = ToolCategory.IMAGE,
@@ -163,6 +180,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "exif_strip",
+        shortTitle = "Strip EXIF",
         title = "EXIF Metadata Stripper",
         description = "Inspect hidden camera/GPS info and strip all location & metadata before sharing.",
         category = ToolCategory.IMAGE,
@@ -174,6 +192,7 @@ val ALL_TOOLS = listOf(
     // Utility Tools
     ToolItem(
         id = "qr_studio",
+        shortTitle = "QR Code",
         title = "QR Code Studio",
         description = "Generate high-res QR codes for Wi-Fi, URLs, UPI and text.",
         category = ToolCategory.UTILITIES,
@@ -182,6 +201,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "hash_verifier",
+        shortTitle = "Checksum",
         title = "Checksum & Hash Verifier",
         description = "Compute and verify MD5, SHA-1, SHA-256 hashes against clipboard.",
         category = ToolCategory.UTILITIES,
@@ -191,6 +211,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "json_tool",
+        shortTitle = "JSON",
         title = "JSON Formatter & Validator",
         description = "Prettify, format, validate, or minify JSON data.",
         category = ToolCategory.UTILITIES,
@@ -199,6 +220,7 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "base64_studio",
+        shortTitle = "Base64",
         title = "Base64 Studio",
         description = "Fast Base64 encoder and decoder for strings and text.",
         category = ToolCategory.UTILITIES,

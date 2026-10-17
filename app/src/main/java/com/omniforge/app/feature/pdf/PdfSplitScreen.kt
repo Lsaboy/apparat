@@ -285,7 +285,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = if (pageCount != null) currentValidation.previewText else "Creates a distinct PDF file for each specified range.",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -322,7 +322,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = if (pageCount != null) currentValidation.previewText else "Splits document into chunks of N pages (use 1 for single-page PDFs).",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -380,7 +380,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = currentValidation.previewText,
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (pageCount != null) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
