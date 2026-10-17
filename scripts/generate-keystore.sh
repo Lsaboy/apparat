@@ -17,7 +17,7 @@ else
 fi
 
 KEYSTORE_FILE="release.keystore"
-KEY_ALIAS="pocketknife_release_key"
+KEY_ALIAS="apparat"
 
 echo "====================================================="
 echo " Apparat - Release Keystore Generator              "
@@ -61,7 +61,7 @@ echo "Generating keystore with keytool..."
     -keystore "$KEYSTORE_FILE" \
     -alias "$KEY_ALIAS" \
     -keyalg RSA \
-    -keysize 2048 \
+    -keysize 4096 \
     -validity 10000 \
     -storepass "$PASSWORD" \
     -keypass "$PASSWORD" \

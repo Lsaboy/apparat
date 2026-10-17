@@ -49,8 +49,8 @@ android {
             val kPass = System.getenv("KEY_PASSWORD")
                 ?: keystoreProperties.getProperty("keyPassword")
 
-            if (storeFilePath != null && file(storeFilePath).exists()) {
-                storeFile = file(storeFilePath)
+            if (storeFilePath != null && rootProject.file(storeFilePath).exists()) {
+                storeFile = rootProject.file(storeFilePath) // relative paths are from the project root
                 storePassword = storePass
                 keyAlias = kAlias
                 keyPassword = kPass
