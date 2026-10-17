@@ -38,6 +38,11 @@ object ToolJobs {
 
     private val store = HashMap<String, Any>()
 
+    /** Tools that run a video encoder. Their jobs queue so only one encodes at a time. */
+    private val videoEncodeKeys = setOf("video_shrink", "video_convert", "video_caption", "video_trim")
+    private const val VIDEO_ENCODE_GROUP = "video-encode"
+    private val exclusive = ExclusiveRunner()
+
     fun isRunning(key: String): Boolean = running.containsKey(key)
 
     /** Starts [block] for [key] unless a job is already running there. */
@@ -56,7 +61,16 @@ object ToolJobs {
         // "did not call startForeground" crash that startForegroundService would trigger.
         runCatching { appContext.startService(Intent(appContext, ToolJobService::class.java)) }
         val job = scope.launch {
-            block(appContext)
+            if (key in videoEncodeKeys) {
+                exclusive.run(
+                    group = VIDEO_ENCODE_GROUP,
+                    onWait = {
+                        setProcessState(key, ProcessState.Processing(0f, "Waiting for the other video job to finish..."))
+                    }
+                ) { block(appContext) }
+            } else {
+                block(appContext)
+            }
         }
         jobs[key] = job
         job.invokeOnCompletion { cause ->
