@@ -72,9 +72,9 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { multiPicker.launch(arrayOf("image/*")) },
-                shape = RoundedCornerShape(16.dp),
-                color = DarkSurfaceElevated,
-                border = BorderStroke(1.dp, if (selectedUris.isNotEmpty()) AccentPdf else DarkBorder)
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, if (selectedUris.isNotEmpty()) AccentPdf else MaterialTheme.colorScheme.outline)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -92,12 +92,12 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                             text = if (selectedUris.isEmpty()) "Select Photos to Combine" else "${selectedUris.size} Photos Selected",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         Text(
                             text = if (selectedUris.isEmpty()) "Tap to select one or multiple images" else "Tap to replace selection",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                         )
                     }
                 }
@@ -125,13 +125,13 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUris.isNotEmpty() && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate PDF", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Generate PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)

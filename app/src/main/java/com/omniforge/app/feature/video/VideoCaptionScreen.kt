@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -104,14 +105,15 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
 
             // Subtitle Options
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Subtitle Text Size: ${fontSize.toInt()}",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -123,12 +125,12 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     Text(
                         text = "Subtitles are scaled to video height and drawn near the bottom on a dark box. The video is re-encoded.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -164,13 +166,13 @@ fun VideoCaptionScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = videoUri != null && subtitleUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Subtitles, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Burn Subtitles & Export", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Burn Subtitles & Export", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

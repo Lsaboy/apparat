@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.utilities
 
+import androidx.compose.foundation.BorderStroke
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -143,7 +144,7 @@ fun QrStudioScreen(
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentUtility,
-                            selectedLabelColor = AmoledBlack
+                            selectedLabelColor = OnBraunOrange
                         )
                     )
                 }
@@ -156,15 +157,15 @@ fun QrStudioScreen(
                         value = rawText,
                         onValueChange = { rawText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Enter Text, URL, or data", color = TextSecondary) },
+                        label = { Text("Enter Text, URL, or data", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AccentUtility,
-                            unfocusedBorderColor = DarkBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             cursorColor = AccentUtility
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(8.dp),
                         minLines = 3
                     )
                 }
@@ -178,16 +179,16 @@ fun QrStudioScreen(
                             value = wifiSsid,
                             onValueChange = { wifiSsid = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Network Name (SSID)", color = TextSecondary) },
+                            label = { Text("Network Name (SSID)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         if (wifiSecurity != "nopass") {
@@ -195,16 +196,16 @@ fun QrStudioScreen(
                                 value = wifiPassword,
                                 onValueChange = { wifiPassword = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Wi-Fi Password", color = TextSecondary) },
+                                label = { Text("Wi-Fi Password", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentUtility,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     cursorColor = AccentUtility
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
 
@@ -221,7 +222,7 @@ fun QrStudioScreen(
                                     modifier = Modifier.weight(1f),
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = AccentUtility,
-                                        selectedLabelColor = AmoledBlack
+                                        selectedLabelColor = OnBraunOrange
                                     )
                                 )
                             }
@@ -238,32 +239,32 @@ fun QrStudioScreen(
                             value = upiVpa,
                             onValueChange = { upiVpa = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("UPI ID / VPA (e.g. merchant@okhdfcbank)", color = TextSecondary) },
+                            label = { Text("UPI ID / VPA (e.g. merchant@okhdfcbank)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         OutlinedTextField(
                             value = upiName,
                             onValueChange = { upiName = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Payee Name (Required by UPI apps)", color = TextSecondary) },
+                            label = { Text("Payee Name (Required by UPI apps)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         Row(
@@ -274,33 +275,33 @@ fun QrStudioScreen(
                                 value = upiAmount,
                                 onValueChange = { upiAmount = it },
                                 modifier = Modifier.weight(1f),
-                                label = { Text("Amount (₹, opt.)", color = TextSecondary) },
+                                label = { Text("Amount (₹, opt.)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentUtility,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     cursorColor = AccentUtility
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
 
                             OutlinedTextField(
                                 value = upiNote,
                                 onValueChange = { upiNote = it },
                                 modifier = Modifier.weight(1f),
-                                label = { Text("Note (opt.)", color = TextSecondary) },
+                                label = { Text("Note (opt.)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentUtility,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     cursorColor = AccentUtility
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
                     }
@@ -315,50 +316,50 @@ fun QrStudioScreen(
                             value = vcardName,
                             onValueChange = { vcardName = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Full Name", color = TextSecondary) },
+                            label = { Text("Full Name", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         OutlinedTextField(
                             value = vcardPhone,
                             onValueChange = { vcardPhone = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Phone Number", color = TextSecondary) },
+                            label = { Text("Phone Number", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         OutlinedTextField(
                             value = vcardEmail,
                             onValueChange = { vcardEmail = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Email Address", color = TextSecondary) },
+                            label = { Text("Email Address", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AccentUtility,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 cursorColor = AccentUtility
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
                 }
@@ -399,11 +400,11 @@ fun QrStudioScreen(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = AmoledBlack)
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = OnBraunOrange)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save PNG", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                        Text("Save PNG", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
@@ -418,22 +419,22 @@ fun QrStudioScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = TextPrimary)
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("Share", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                     }
                 }
             } else if (activePayload.isNotBlank()) {
                 Text(
                     text = "Generating QR code...",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             } else {
                 Text(
                     text = "Fill in the fields above to generate a QR code",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
 

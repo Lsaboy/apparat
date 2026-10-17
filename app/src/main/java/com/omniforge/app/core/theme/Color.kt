@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 
 // Braun Signal Orange - Tactile focal point (ET66 calculator, TP1 power switch)
 val BraunOrange = Color(0xFFFF5500)
+val OnBraunOrange = Color(0xFF161618)
 val BraunSignalOrange = BraunOrange
 val BraunSignalOrangeDark = Color(0xFFCC4400)
 

@@ -126,7 +126,7 @@ fun BraunActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     containerColor: Color = BraunOrange,
-    contentColor: Color = Color.White,
+    contentColor: Color = OnBraunOrange,
     content: @Composable RowScope.() -> Unit
 ) {
     Button(
@@ -629,25 +629,28 @@ fun ResultCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BraunOrange),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BraunOrange,
+                    contentColor = OnBraunOrange
+                ),
                 shape = RoundedCornerShape(6.dp)
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = Color.White
+                        color = OnBraunOrange
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving to Downloads…", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Saving to Downloads…", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                 } else {
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = Color.White
+                        tint = OnBraunOrange
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save to Downloads", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Save to Downloads", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                 }
             }
 

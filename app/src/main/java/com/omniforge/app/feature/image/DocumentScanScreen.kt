@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.image
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,14 +82,15 @@ fun DocumentScanScreen(onBack: () -> Unit) {
             )
 
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Contrast Boost: ${String.format("%.1f", contrast)}x",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -100,7 +102,7 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -115,14 +117,14 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                             text = "Monochrome / B&W Mode",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         Switch(
                             checked = isMonochrome,
                             onCheckedChange = { isMonochrome = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = AmoledBlack,
+                                checkedThumbColor = OnBraunOrange,
                                 checkedTrackColor = AccentImage
                             )
                         )
@@ -157,13 +159,13 @@ fun DocumentScanScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.DocumentScanner, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.DocumentScanner, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Enhance Document Scan", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Enhance Document Scan", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)

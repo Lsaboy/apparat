@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import androidx.compose.foundation.BorderStroke
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
@@ -143,7 +144,7 @@ fun VideoTrimMuteScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -154,7 +155,7 @@ fun VideoTrimMuteScreen(
                         Text(
                             text = "A job is currently running on another video. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -169,7 +170,7 @@ fun VideoTrimMuteScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -196,8 +197,9 @@ fun VideoTrimMuteScreen(
 
             // Mode Toggle
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -210,19 +212,19 @@ fun VideoTrimMuteScreen(
                                 text = "Mute Audio Only",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             Text(
                                 text = "Strip audio track without trimming or re-encoding.",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                             )
                         }
                         Switch(
                             checked = isMuteOnly,
                             onCheckedChange = { isMuteOnly = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = AmoledBlack,
+                                checkedThumbColor = OnBraunOrange,
                                 checkedTrackColor = AccentVideo
                             )
                         )
@@ -239,13 +241,13 @@ fun VideoTrimMuteScreen(
                                 text = "Trim Range (Seconds)",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             if (videoTotalSec > 0f) {
                                 Text(
                                     text = "Total: %.1fs".format(Locale.US, videoTotalSec),
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 )
                             }
                         }
@@ -258,14 +260,14 @@ fun VideoTrimMuteScreen(
                                 value = startSecText,
                                 onValueChange = { startSecText = it },
                                 modifier = Modifier.weight(1f),
-                                label = { Text("Start Time (s)", color = TextSecondary) },
+                                label = { Text("Start Time (s)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentVideo,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
 
@@ -273,14 +275,14 @@ fun VideoTrimMuteScreen(
                                 value = durationSecText,
                                 onValueChange = { durationSecText = it },
                                 modifier = Modifier.weight(1f),
-                                label = { Text("Duration (s)", color = TextSecondary) },
+                                label = { Text("Duration (s)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentVideo,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
@@ -319,17 +321,17 @@ fun VideoTrimMuteScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(
                     imageVector = if (isMuteOnly) Icons.Default.VolumeOff else Icons.Default.ContentCut,
                     contentDescription = null,
-                    tint = AmoledBlack
+                    tint = OnBraunOrange
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isMuteOnly) "Mute Video" else "Trim Video Losslessly",
-                    color = AmoledBlack,
+                    color = OnBraunOrange,
                     fontWeight = FontWeight.Bold
                 )
             }

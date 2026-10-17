@@ -121,7 +121,7 @@ fun PaletteExtractorScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -132,7 +132,7 @@ fun PaletteExtractorScreen(
                         Text(
                             text = "Extraction is currently running on another photo. Switch to this new image or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -146,7 +146,7 @@ fun PaletteExtractorScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New Image", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New Image", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -197,14 +197,15 @@ fun PaletteExtractorScreen(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     color = AccentImage,
-                    trackColor = DarkBorder
+                    trackColor = MaterialTheme.colorScheme.outline
                 )
             }
 
             if (paletteColors.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -216,7 +217,7 @@ fun PaletteExtractorScreen(
                                 text = "Extracted Dominant Colors",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
 
@@ -273,7 +274,7 @@ fun PaletteExtractorScreen(
                                         .size(36.dp)
                                         .clip(CircleShape)
                                         .background(color)
-                                        .border(1.dp, DarkBorder, CircleShape)
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
@@ -282,21 +283,21 @@ fun PaletteExtractorScreen(
                                         style = MaterialTheme.typography.bodyLarge.copy(
                                             fontFamily = FontFamily.Monospace,
                                             fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     )
                                     Text(
                                         text = rgbText,
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             fontFamily = FontFamily.Monospace,
-                                            color = TextSecondary
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     )
                                 }
                                 Icon(
                                     imageVector = Icons.Default.ContentCopy,
                                     contentDescription = "Copy $hex",
-                                    tint = TextSecondary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }

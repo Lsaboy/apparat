@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.utilities
 
+import androidx.compose.foundation.BorderStroke
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -74,21 +75,21 @@ fun JsonToolScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp),
-                label = { Text("Enter Raw JSON", color = TextSecondary) },
+                label = { Text("Enter Raw JSON", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = AccentUtility,
-                    unfocusedBorderColor = DarkBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 trailingIcon = {
                     if (jsonInput.isNotEmpty()) {
                         IconButton(onClick = {
                             jsonInput = ""
                             errorMessage = null
                         }) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         IconButton(onClick = {
@@ -125,12 +126,12 @@ fun JsonToolScreen(
                         )
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                 ) {
-                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = AmoledBlack)
+                    Icon(imageVector = Icons.Default.DataObject, contentDescription = null, tint = OnBraunOrange)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Prettify", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    Text("Prettify", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
@@ -147,10 +148,10 @@ fun JsonToolScreen(
                         )
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Text("Minify", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("Minify", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -163,8 +164,9 @@ fun JsonToolScreen(
 
             if (jsonOutput.isNotBlank()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -175,7 +177,7 @@ fun JsonToolScreen(
                                 text = "Formatted JSON",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             IconButton(onClick = {
@@ -191,7 +193,7 @@ fun JsonToolScreen(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }

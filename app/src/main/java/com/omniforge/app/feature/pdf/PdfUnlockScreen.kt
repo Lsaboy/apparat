@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.pdf
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -127,7 +128,7 @@ fun PdfUnlockScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -138,7 +139,7 @@ fun PdfUnlockScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -155,7 +156,7 @@ fun PdfUnlockScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -184,11 +185,11 @@ fun PdfUnlockScreen(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     color = AccentPdf,
-                    trackColor = DarkBorder
+                    trackColor = MaterialTheme.colorScheme.outline
                 )
                 Text(
                     text = "Checking PDF encryption status...",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
 
@@ -196,8 +197,9 @@ fun PdfUnlockScreen(
                 is PdfAccess.Open -> {
                     if (!access.isEncrypted) {
                         Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -207,15 +209,16 @@ fun PdfUnlockScreen(
                                 Icon(Icons.Default.Info, contentDescription = null, tint = AccentPdf)
                                 Text(
                                     text = "This PDF has no password. It is already unlocked and does not need decryption.",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextPrimary)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface)
                                 )
                             }
                         }
                     } else {
                         // Owner/permission restricted without a user password
                         Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -225,7 +228,7 @@ fun PdfUnlockScreen(
                                 Icon(Icons.Default.LockOpen, contentDescription = null, tint = AccentPdf)
                                 Text(
                                     text = "This PDF opens without a password, but contains restrictions. Tap Unlock below to export an unrestricted copy.",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextPrimary)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface)
                                 )
                             }
                         }
@@ -252,13 +255,13 @@ fun PdfUnlockScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                             enabled = processState !is ProcessState.Processing
                         ) {
-                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = AmoledBlack)
+                            Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = OnBraunOrange)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unlock & Export PDF", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                            Text("Unlock & Export PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -268,7 +271,7 @@ fun PdfUnlockScreen(
                         value = password,
                         onValueChange = { password = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Enter PDF Password", color = TextSecondary) },
+                        label = { Text("Enter PDF Password", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         singleLine = true,
                         visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -277,23 +280,23 @@ fun PdfUnlockScreen(
                                 Icon(
                                     imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                     contentDescription = "Toggle password",
-                                    tint = TextSecondary
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AccentPdf,
-                            unfocusedBorderColor = DarkBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             cursorColor = AccentPdf
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
 
                     Text(
                         text = "Enter the current password once to decrypt the PDF and export an unlocked copy.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
 
                     // Action Button
@@ -323,19 +326,20 @@ fun PdfUnlockScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                         enabled = password.isNotEmpty() && !isCheckingAccess && processState !is ProcessState.Processing
                     ) {
-                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = AmoledBlack)
+                        Icon(imageVector = Icons.Default.LockOpen, contentDescription = null, tint = OnBraunOrange)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unlock & Export PDF", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                        Text("Unlock & Export PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                     }
                 }
                 is PdfAccess.Damaged -> {
                     Card(
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
