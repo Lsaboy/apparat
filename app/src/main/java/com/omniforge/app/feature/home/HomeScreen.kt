@@ -185,7 +185,7 @@ fun HomeScreen(
                             )
                         }
                         Text(
-                            text = "Model 69 // 20 Instruments",
+                            text = "Model 69 // ${ALL_TOOLS.size} Instruments",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -780,6 +780,7 @@ fun getCategoryIcon(id: String, category: ToolCategory): ImageVector = when {
     id.contains("qr") -> Icons.Default.QrCode
     id.contains("hash") -> Icons.Default.Fingerprint
     id.contains("split") -> Icons.AutoMirrored.Filled.CallSplit
+    id.contains("merge") -> Icons.Default.MergeType
     id.contains("to_images") -> Icons.Default.Collections
     id.contains("json") -> Icons.Default.DataObject
     id.contains("base64") -> Icons.Default.Code

@@ -22,6 +22,7 @@ import com.omniforge.app.feature.image.ImageConvertScreen
 import com.omniforge.app.feature.image.ImageShrinkScreen
 import com.omniforge.app.feature.image.PaletteExtractorScreen
 import com.omniforge.app.feature.pdf.ImagesToPdfScreen
+import com.omniforge.app.feature.pdf.PdfMergeScreen
 import com.omniforge.app.feature.pdf.PdfShrinkScreen
 import com.omniforge.app.feature.pdf.PdfSplitScreen
 import com.omniforge.app.feature.pdf.PdfToImagesScreen
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
         /** Every tool destination in the NavHost below. Keep in sync when adding a screen. */
         val TOOL_ROUTES = setOf(
             "settings",
-            "pdf_unlock", "pdf_shrink", "pdf_split", "pdf_to_images", "images_to_pdf",
+            "pdf_unlock", "pdf_shrink", "pdf_split", "pdf_merge", "pdf_to_images", "images_to_pdf",
             "video_shrink", "video_trim", "video_caption", "video_to_gif", "video_convert", "audio_extract",
             "image_shrink", "document_scan", "palette_extractor", "image_convert", "exif_strip",
             "qr_studio", "hash_verifier", "json_tool", "base64_studio"
@@ -170,6 +171,15 @@ class MainActivity : ComponentActivity() {
                         ConsumeSharedPayloadEffect(targetUri)
                         PdfShrinkScreen(
                             initialUri = targetUri,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("pdf_merge") {
+                        val targetUri = incomingUri?.takeIf { incomingMimeType == "application/pdf" }
+                        ConsumeSharedPayloadEffect(targetUri)
+                        PdfMergeScreen(
+                            initialUri = targetUri,
+                            onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }

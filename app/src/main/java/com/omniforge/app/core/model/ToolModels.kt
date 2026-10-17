@@ -64,6 +64,15 @@ val ALL_TOOLS = listOf(
         keywords = listOf("split", "separate", "cut", "extract", "range", "interval", "divide", "pages", "break")
     ),
     ToolItem(
+        id = "pdf_merge",
+        shortTitle = "Merge PDFs",
+        title = "Merge PDFs",
+        description = "Combine several PDFs into one, in the order you choose. Handles password-protected files.",
+        category = ToolCategory.PDF,
+        route = "pdf_merge",
+        keywords = listOf("merge", "combine", "join", "append", "bills", "invoices", "kyc", "documents", "attach", "one pdf")
+    ),
+    ToolItem(
         id = "pdf_to_images",
         shortTitle = "PDF to Images",
         title = "PDF to Images",
