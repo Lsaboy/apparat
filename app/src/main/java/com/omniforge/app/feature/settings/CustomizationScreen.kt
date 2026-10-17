@@ -1,7 +1,6 @@
 package com.omniforge.app.feature.settings
 
 import android.os.Build
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,10 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,12 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omniforge.app.core.model.ALL_TOOLS
 import com.omniforge.app.core.settings.*
 import com.omniforge.app.core.theme.*
+import com.omniforge.app.core.ui.BraunSegmentedControl
+import com.omniforge.app.core.util.FileUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,13 +49,24 @@ fun CustomizationScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Customization & Settings",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(BraunOrange)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "APPARAT // CONFIGURATION",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -79,72 +92,51 @@ fun CustomizationScreen(
         ) {
             item { Spacer(modifier = Modifier.height(4.dp)) }
 
-            // 1. APPEARANCE CARD
+            // 1. APPEARANCE & THEME ENGINE CARD
             item {
-                SettingsGroupCard(title = "Theme & Appearance") {
+                SettingsGroupCard(title = "01 // THEME & APPEARANCE") {
                     Text(
-                        text = "Theme Engine",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary,
+                        text = "HARDWARE APPEARANCE",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Segmented Theme Pills
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .padding(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            ThemePill(
-                                title = "AMOLED Black",
-                                isSelected = currentTheme == ThemeStyle.AMOLED,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                currentTheme = ThemeStyle.AMOLED
-                                appSettings.themeStyle = ThemeStyle.AMOLED
-                                onSettingsChanged()
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            ThemePill(
-                                title = "Material You",
-                                isSelected = currentTheme == ThemeStyle.MATERIAL_YOU,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                currentTheme = ThemeStyle.MATERIAL_YOU
-                                appSettings.themeStyle = ThemeStyle.MATERIAL_YOU
-                                onSettingsChanged()
+                    // Braun 3-way Mechanical Rocker Switch
+                    BraunSegmentedControl(
+                        options = listOf(ThemeStyle.SYSTEM, ThemeStyle.LIGHT, ThemeStyle.DARK),
+                        selectedOption = currentTheme,
+                        onOptionSelected = { selected ->
+                            currentTheme = selected
+                            appSettings.themeStyle = selected
+                            onSettingsChanged()
+                        },
+                        labelForOption = { mode ->
+                            when (mode) {
+                                ThemeStyle.SYSTEM -> "SYSTEM"
+                                ThemeStyle.LIGHT -> "LIGHT"
+                                ThemeStyle.DARK -> "DARK"
                             }
                         }
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            ThemePill(
-                                title = "Dark",
-                                isSelected = currentTheme == ThemeStyle.DARK,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                currentTheme = ThemeStyle.DARK
-                                appSettings.themeStyle = ThemeStyle.DARK
-                                onSettingsChanged()
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            ThemePill(
-                                title = "Light",
-                                isSelected = currentTheme == ThemeStyle.LIGHT,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                currentTheme = ThemeStyle.LIGHT
-                                appSettings.themeStyle = ThemeStyle.LIGHT
-                                onSettingsChanged()
-                            }
-                        }
-                    }
+                    )
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && currentTheme == ThemeStyle.MATERIAL_YOU) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = when (currentTheme) {
+                            ThemeStyle.SYSTEM -> "Following system appearance automatically."
+                            ThemeStyle.LIGHT -> "Classic Ivory mode locked. Optimal daylight legibility."
+                            ThemeStyle.DARK -> "Atelier Charcoal mode locked. Low-glare studio finish."
+                        },
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         Spacer(modifier = Modifier.height(14.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -153,15 +145,17 @@ fun CustomizationScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Android 17 Dynamic Color",
+                                    text = "Dynamic Color Calibration",
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
                                 Text(
-                                    text = "Extract color palette from system wallpaper",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                    text = "Harmonize accents with device system palette",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 )
                             }
                             Switch(
@@ -179,9 +173,10 @@ fun CustomizationScreen(
 
                     // Accent Colors
                     Text(
-                        text = "Accent Color Swatch",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary,
+                        text = "INDICATOR ACCENT",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -195,33 +190,71 @@ fun CustomizationScreen(
                             val isSelected = currentAccentIndex == index
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(6.dp))
                                     .background(swatch.color)
-                                    .then(
-                                        if (isSelected) {
-                                            Modifier.border(3.dp, Color.White, RoundedCornerShape(10.dp))
-                                        } else {
-                                            Modifier.border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
-                                        }
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline,
+                                        shape = RoundedCornerShape(6.dp)
                                     )
                                     .clickable {
                                         currentAccentIndex = index
                                         appSettings.accentIndex = index
                                         onSettingsChanged()
-                                    }
-                            )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // 2. FILE SAVING BEHAVIOR
+            // 2. OUTPUT DESTINATION & FILE BEHAVIOR
             item {
-                SettingsGroupCard(title = "Default Save Behavior") {
+                SettingsGroupCard(title = "02 // OUTPUT & STORAGE") {
                     Text(
-                        text = "When processing an existing file:",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                        text = "DESTINATION DIRECTORY",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Downloads/${FileUtils.DOWNLOAD_SUBFOLDER}/",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = BraunOrange
+                        )
+                    )
+                    Text(
+                        text = "All processed files and exports are saved strictly to this folder for easy discovery.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "COLLISION BEHAVIOR",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -230,19 +263,22 @@ fun CustomizationScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .padding(vertical = 3.dp)
+                                .clip(RoundedCornerShape(6.dp))
                                 .clickable {
                                     currentSaveMode = mode
                                     appSettings.defaultSaveMode = mode
                                     onSettingsChanged()
                                 },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent,
-                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else DarkBorder)
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) BraunOrange.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline
+                            )
                         ) {
                             Row(
-                                modifier = Modifier.padding(14.dp),
+                                modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
@@ -264,7 +300,9 @@ fun CustomizationScreen(
                                     )
                                     Text(
                                         text = mode.description,
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     )
                                 }
                             }
@@ -273,12 +311,36 @@ fun CustomizationScreen(
                 }
             }
 
-            // 3. QUICK ACTIONS & LAUNCHER SHORTCUTS
+            // 3. DIETER RAMS DESIGN PHILOSOPHY
             item {
-                SettingsGroupCard(title = "Quick Actions & Launcher Shortcuts") {
+                SettingsGroupCard(title = "03 // PHILOSOPHY") {
                     Text(
-                        text = "Choose which tools appear as pinned Quick Actions on the Home screen and in your Android app launcher long-press menu (up to 4 dynamic shortcuts):",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        text = "“WENIGER, ABER BESSER”",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = BraunOrange
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Less, but better. Apparat is designed according to the functionalist principles of Dieter Rams: honest, unobtrusive, aesthetic, and down to the absolute essential minimum.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp
+                        )
+                    )
+                }
+            }
+
+            // 4. QUICK ACTIONS & LAUNCHER SHORTCUTS
+            item {
+                SettingsGroupCard(title = "04 // QUICK ACTIONS & LAUNCHER SHORTCUTS") {
+                    Text(
+                        text = "Choose which tools appear as pinned Quick Actions on the Home screen and in your launcher long-press menu (up to 4):",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -298,7 +360,7 @@ fun CustomizationScreen(
                                     appSettings.updateLauncherShortcuts(context)
                                     onSettingsChanged()
                                 }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -343,43 +405,30 @@ fun CustomizationScreen(
 }
 
 @Composable
-private fun ThemePill(
-    title: String,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            color = if (isSelected) AmoledBlack else TextPrimary,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}
-
-@Composable
 private fun SettingsGroupCard(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = DarkSurfaceElevated,
-        border = BorderStroke(1.dp, DarkBorder)
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            content = content
-        )
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            content()
+        }
     }
 }

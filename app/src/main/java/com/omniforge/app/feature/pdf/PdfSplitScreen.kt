@@ -131,7 +131,7 @@ fun PdfSplitScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -142,7 +142,7 @@ fun PdfSplitScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -160,7 +160,7 @@ fun PdfSplitScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -214,15 +214,16 @@ fun PdfSplitScreen(
 
             // Split Mode Selector
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Split Strategy",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -235,12 +236,12 @@ fun PdfSplitScreen(
                             OutlinedButton(
                                 onClick = { splitMode = mode },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (isSelected) AccentPdf else DarkSurfaceElevated,
-                                    contentColor = if (isSelected) AmoledBlack else TextPrimary
+                                    containerColor = if (isSelected) AccentPdf else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) OnBraunOrange else MaterialTheme.colorScheme.onSurface
                                 ),
-                                border = BorderStroke(1.dp, if (isSelected) AccentPdf else DarkBorder)
+                                border = BorderStroke(1.dp, if (isSelected) AccentPdf else MaterialTheme.colorScheme.outline)
                             ) {
                                 Text(
                                     text = mode.label,
@@ -260,15 +261,15 @@ fun PdfSplitScreen(
                                 value = customRangesText,
                                 onValueChange = { customRangesText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Comma-separated page ranges", color = TextSecondary) },
-                                placeholder = { Text("e.g. 1-2, 3-5, 6-10", color = TextTertiary) },
+                                label = { Text("Comma-separated page ranges", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                placeholder = { Text("e.g. 1-2, 3-5, 6-10", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 isError = currentValidation is RangeValidation.Invalid,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentPdf,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     errorBorderColor = ErrorRed
                                 )
                             )
@@ -284,7 +285,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = if (pageCount != null) currentValidation.previewText else "Creates a distinct PDF file for each specified range.",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -296,16 +297,16 @@ fun PdfSplitScreen(
                                 value = intervalPagesText,
                                 onValueChange = { intervalPagesText = it.filter { c -> c.isDigit() } },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Pages per PDF chunk", color = TextSecondary) },
-                                placeholder = { Text("e.g. 1 for single-page PDFs", color = TextTertiary) },
+                                label = { Text("Pages per PDF chunk", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                placeholder = { Text("e.g. 1 for single-page PDFs", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 isError = currentValidation is RangeValidation.Invalid,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AccentPdf,
-                                    unfocusedBorderColor = DarkBorder,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                     errorBorderColor = ErrorRed
                                 )
                             )
@@ -321,7 +322,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = if (pageCount != null) currentValidation.previewText else "Splits document into chunks of N pages (use 1 for single-page PDFs).",
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -337,15 +338,15 @@ fun PdfSplitScreen(
                                     value = startPageText,
                                     onValueChange = { startPageText = it.filter { c -> c.isDigit() } },
                                     modifier = Modifier.weight(1f),
-                                    label = { Text("Start Page", color = TextSecondary) },
+                                    label = { Text("Start Page", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     isError = currentValidation is RangeValidation.Invalid,
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = AccentPdf,
-                                        unfocusedBorderColor = DarkBorder,
-                                        focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                         errorBorderColor = ErrorRed
                                     )
                                 )
@@ -354,15 +355,15 @@ fun PdfSplitScreen(
                                     value = endPageText,
                                     onValueChange = { endPageText = it.filter { c -> c.isDigit() } },
                                     modifier = Modifier.weight(1f),
-                                    label = { Text("End Page", color = TextSecondary) },
+                                    label = { Text("End Page", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     isError = currentValidation is RangeValidation.Invalid,
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = AccentPdf,
-                                        unfocusedBorderColor = DarkBorder,
-                                        focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                                         errorBorderColor = ErrorRed
                                     )
                                 )
@@ -379,7 +380,7 @@ fun PdfSplitScreen(
                                     Text(
                                         text = currentValidation.previewText,
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (pageCount != null) AccentPdf else TextSecondary,
+                                            color = if (pageCount != null) AccentPdf else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     )
@@ -428,21 +429,22 @@ fun PdfSplitScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUri != null && pdfPassword != null && pageCount != null && currentValidation is RangeValidation.Valid && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.CallSplit, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Split Document", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Split Document", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
 
             if (generatedFiles.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -488,9 +490,9 @@ fun PdfSplitScreen(
                                 enabled = saveProgress == null,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text(saveProgress ?: "Save All Files", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                                Text(saveProgress ?: "Save All Files", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedButton(
@@ -500,9 +502,9 @@ fun PdfSplitScreen(
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text("Share First File", color = TextPrimary)
+                                Text("Share First File", color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }

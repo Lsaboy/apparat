@@ -142,7 +142,8 @@ class MainActivity : ComponentActivity() {
                             sharedMimeType = incomingMimeType,
                             onNavigateToTool = { route -> navController.navigate(route) },
                             onNavigateToSettings = { navController.navigate("settings") },
-                            onDismissSharedPayload = { currentSharedPayload = null }
+                            onDismissSharedPayload = { currentSharedPayload = null },
+                            onThemeChanged = { themeRecomposeTrigger++ }
                         )
                     }
 

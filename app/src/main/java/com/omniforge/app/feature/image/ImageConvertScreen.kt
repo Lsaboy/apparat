@@ -118,7 +118,7 @@ fun ImageConvertScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -129,7 +129,7 @@ fun ImageConvertScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -144,7 +144,7 @@ fun ImageConvertScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -188,7 +188,7 @@ fun ImageConvertScreen(
                         Text(
                             text = "Note: Animated images are processed as a still frame.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -220,8 +220,9 @@ fun ImageConvertScreen(
 
             if (targetFormat != ImageOutputFormat.PNG) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         val isLosslessWebp = targetFormat == ImageOutputFormat.WEBP && quality >= 100f
@@ -229,7 +230,7 @@ fun ImageConvertScreen(
                         Text(
                             text = qualityLabel,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -240,7 +241,7 @@ fun ImageConvertScreen(
                             colors = SliderDefaults.colors(
                                 thumbColor = AccentImage,
                                 activeTrackColor = AccentImage,
-                                inactiveTrackColor = DarkBorder
+                                inactiveTrackColor = MaterialTheme.colorScheme.outline
                             )
                         )
                     }
@@ -289,13 +290,13 @@ fun ImageConvertScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to ${targetFormat.name}", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Convert to ${targetFormat.name}", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)

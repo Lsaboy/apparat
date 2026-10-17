@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.utilities
 
+import androidx.compose.foundation.BorderStroke
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -122,7 +123,7 @@ fun Base64StudioScreen(
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = AmoledBlack
+                        selectedLabelColor = OnBraunOrange
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -138,7 +139,7 @@ fun Base64StudioScreen(
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = AmoledBlack
+                        selectedLabelColor = OnBraunOrange
                     )
                 )
             }
@@ -154,13 +155,13 @@ fun Base64StudioScreen(
                     label = { Text("URL-Safe (- and _)") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = AmoledBlack
+                        selectedLabelColor = OnBraunOrange
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (urlSafe) "URL-safe format (- and _ instead of + and /)" else "Standard Base64 format (+ and /)",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     fontSize = 11.sp
                 )
             }
@@ -173,7 +174,7 @@ fun Base64StudioScreen(
             ) {
                 Text(
                     text = if (isEncoding) "Input Text" else "Input Base64",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = TextPrimary)
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
@@ -208,9 +209,9 @@ fun Base64StudioScreen(
                             },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = Icons.Default.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear", color = TextSecondary, fontSize = 12.sp)
+                            Text("Clear", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                     }
                 }
@@ -226,14 +227,14 @@ fun Base64StudioScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp),
-                placeholder = { Text(if (isEncoding) "Enter text to encode..." else "Paste Base64 string to decode...", color = TextTertiary) },
+                placeholder = { Text(if (isEncoding) "Enter text to encode..." else "Paste Base64 string to decode...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = AccentUtility,
-                    unfocusedBorderColor = DarkBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(8.dp)
             )
 
             Button(
@@ -268,13 +269,13 @@ fun Base64StudioScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
                 enabled = inputText.isNotBlank()
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEncoding) "Encode" else "Decode", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text(if (isEncoding) "Encode" else "Decode", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             // Detected Binary File Card
@@ -285,8 +286,8 @@ fun Base64StudioScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -305,12 +306,12 @@ fun Base64StudioScreen(
                                     text = "Binary File: ${mime.substringAfter('/') .uppercase()}",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
                                 Text(
                                     text = "${FileUtils.formatFileSize(bytes.size.toLong())} • Format $ext",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 )
                             }
                         }
@@ -347,12 +348,12 @@ fun Base64StudioScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = AccentUtility),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
                             enabled = !isSavingBinary
                         ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = AmoledBlack)
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = OnBraunOrange)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                            Text(if (isSavingBinary) "Saving..." else "Save Decoded File to Downloads", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -361,8 +362,9 @@ fun Base64StudioScreen(
             // Output Text Card (for text results or errors)
             if (outputText.isNotBlank()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -374,7 +376,7 @@ fun Base64StudioScreen(
                                 text = "Result",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             IconButton(onClick = {
@@ -390,7 +392,7 @@ fun Base64StudioScreen(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }

@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -113,7 +114,7 @@ fun VideoConvertScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -124,7 +125,7 @@ fun VideoConvertScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -139,7 +140,7 @@ fun VideoConvertScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -166,7 +167,7 @@ fun VideoConvertScreen(
 
             Text(
                 text = "Accepts MKV, WEBM, MOV, 3GP and other videos your phone can play. Output is an MP4 (H.264 + AAC) that plays everywhere.",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
 
             Button(
@@ -195,13 +196,13 @@ fun VideoConvertScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to MP4", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Convert to MP4", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

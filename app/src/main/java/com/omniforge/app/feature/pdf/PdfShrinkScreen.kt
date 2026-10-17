@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.pdf
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -110,7 +111,7 @@ fun PdfShrinkScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -121,7 +122,7 @@ fun PdfShrinkScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -138,7 +139,7 @@ fun PdfShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -199,14 +200,15 @@ fun PdfShrinkScreen(
 
             // Compression slider
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Image Downsample Quality: ${(compressionLevel * 100).toInt()}%",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -218,12 +220,12 @@ fun PdfShrinkScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentPdf,
                             activeTrackColor = AccentPdf,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     Text(
                         text = "Optimizes internal object streams and downscales embedded photos.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -278,13 +280,13 @@ fun PdfShrinkScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Compress PDF", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Compress PDF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)

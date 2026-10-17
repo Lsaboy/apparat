@@ -171,7 +171,7 @@ fun HashVerifierScreen(
                     label = { Text("Verify File") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = AmoledBlack
+                        selectedLabelColor = OnBraunOrange
                     )
                 )
                 FilterChip(
@@ -191,7 +191,7 @@ fun HashVerifierScreen(
                     label = { Text("Hash Text") },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = AccentUtility,
-                        selectedLabelColor = AmoledBlack
+                        selectedLabelColor = OnBraunOrange
                     )
                 )
             }
@@ -204,7 +204,7 @@ fun HashVerifierScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
@@ -215,7 +215,7 @@ fun HashVerifierScreen(
                             Text(
                                 text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
@@ -231,7 +231,7 @@ fun HashVerifierScreen(
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                                 ) {
-                                    Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                    Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                                 }
                                 OutlinedButton(
                                     onClick = {
@@ -263,12 +263,12 @@ fun HashVerifierScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
                     ) {
-                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = AmoledBlack)
+                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = OnBraunOrange)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Calculate Checksums", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                        Text("Calculate Checksums", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -284,23 +284,23 @@ fun HashVerifierScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Enter or paste text to hash", color = TextSecondary) },
+                    label = { Text("Enter or paste text to hash", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     minLines = 3,
                     maxLines = 8,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AccentUtility,
-                        unfocusedBorderColor = DarkBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(8.dp),
                     trailingIcon = {
                         if (textInput.isNotEmpty()) {
                             IconButton(onClick = {
                                 textInput = ""
                                 calculatedHashes = emptyMap()
                             }) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
                             IconButton(onClick = {
@@ -324,7 +324,7 @@ fun HashVerifierScreen(
                     Text(
                         text = "${textInput.length} characters • $byteCount UTF-8 bytes",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -355,14 +355,14 @@ fun HashVerifierScreen(
                     value = compareHash,
                     onValueChange = { compareHash = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Paste Expected Hash to Verify", color = TextSecondary) },
+                    label = { Text("Paste Expected Hash to Verify", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AccentUtility,
-                        unfocusedBorderColor = DarkBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(8.dp),
                     trailingIcon = {
                         if (cleanCompare.isNotEmpty()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -372,7 +372,7 @@ fun HashVerifierScreen(
                                     tint = if (matchedAlgo != null) SuccessGreen else ErrorRed
                                 )
                                 IconButton(onClick = { compareHash = "" }) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         } else {
@@ -410,8 +410,8 @@ fun HashVerifierScreen(
 @Composable
 private fun HashCard(title: String, hash: String, onCopy: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -423,7 +423,7 @@ private fun HashCard(title: String, hash: String, onCopy: () -> Unit) {
                     text = title,
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 IconButton(onClick = onCopy) {
@@ -435,7 +435,7 @@ private fun HashCard(title: String, hash: String, onCopy: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             )

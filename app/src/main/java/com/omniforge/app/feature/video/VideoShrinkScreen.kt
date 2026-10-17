@@ -129,7 +129,7 @@ fun VideoShrinkScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -140,7 +140,7 @@ fun VideoShrinkScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -155,7 +155,7 @@ fun VideoShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -191,15 +191,16 @@ fun VideoShrinkScreen(
 
             // Preset Selection
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Target Size / Resolution Preset",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -210,12 +211,12 @@ fun VideoShrinkScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = if (isSelected) AccentVideo else DarkSurfaceElevated,
-                                contentColor = if (isSelected) AmoledBlack else TextPrimary
+                                containerColor = if (isSelected) AccentVideo else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) OnBraunOrange else MaterialTheme.colorScheme.onSurface
                             ),
-                            border = BorderStroke(1.dp, if (isSelected) AccentVideo else DarkBorder)
+                            border = BorderStroke(1.dp, if (isSelected) AccentVideo else MaterialTheme.colorScheme.outline)
                         ) {
                             Text(
                                 text = preset.label,
@@ -281,13 +282,13 @@ fun VideoShrinkScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Video", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Shrink Video", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)

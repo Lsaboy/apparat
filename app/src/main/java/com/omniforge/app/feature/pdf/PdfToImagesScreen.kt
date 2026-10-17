@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.pdf
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -110,7 +111,7 @@ fun PdfToImagesScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -121,7 +122,7 @@ fun PdfToImagesScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -139,7 +140,7 @@ fun PdfToImagesScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -218,21 +219,22 @@ fun PdfToImagesScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf),
                 enabled = selectedUri != null && pdfPassword != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Collections, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Collections, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Extract All Pages to Images", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Extract All Pages to Images", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentPdf)
 
             if (renderedPages.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -278,9 +280,9 @@ fun PdfToImagesScreen(
                                 enabled = saveProgress == null,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text(saveProgress ?: "Save All Images", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                                Text(saveProgress ?: "Save All Images", color = OnBraunOrange, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedButton(
@@ -290,9 +292,9 @@ fun PdfToImagesScreen(
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text("Share First Page", color = TextPrimary)
+                                Text("Share First Page", color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }

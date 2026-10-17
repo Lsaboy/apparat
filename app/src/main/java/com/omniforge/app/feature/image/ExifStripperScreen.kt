@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.image
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -118,7 +119,7 @@ fun ExifStripperScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -129,7 +130,7 @@ fun ExifStripperScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -147,7 +148,7 @@ fun ExifStripperScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -205,8 +206,9 @@ fun ExifStripperScreen(
             if (exifInfo != null) {
                 val info = exifInfo!!
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (info.hasAnyMetadata()) {
@@ -214,7 +216,7 @@ fun ExifStripperScreen(
                                 text = "Detected Metadata in Image",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -247,7 +249,7 @@ fun ExifStripperScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "This photo is already free of camera details, timestamps, and GPS coordinates. Stripping will produce a clean copy without private tags.",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                             )
                         }
                     }
@@ -292,13 +294,13 @@ fun ExifStripperScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Strip EXIF & Clean Photo", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Strip EXIF & Clean Photo", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)
@@ -346,11 +348,11 @@ private fun MetaItem(label: String, value: String?, isWarning: Boolean = false) 
                 .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = label, style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
+            Text(text = label, style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (isWarning) ErrorRed else TextPrimary,
+                    color = if (isWarning) ErrorRed else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
             )

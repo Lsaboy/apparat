@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.image
 
+import androidx.compose.foundation.BorderStroke
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -121,7 +122,7 @@ fun ImageShrinkScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -132,7 +133,7 @@ fun ImageShrinkScreen(
                         Text(
                             text = "A job is currently running on another file. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -147,7 +148,7 @@ fun ImageShrinkScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -191,7 +192,7 @@ fun ImageShrinkScreen(
                         Text(
                             text = "Note: Animated images are processed as a still frame.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -211,7 +212,7 @@ fun ImageShrinkScreen(
                 Text(
                     text = "Quick Presets",
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -234,7 +235,7 @@ fun ImageShrinkScreen(
                             label = { Text(name, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = AccentImage,
-                                selectedLabelColor = AmoledBlack
+                                selectedLabelColor = OnBraunOrange
                             )
                         )
                     }
@@ -267,8 +268,9 @@ fun ImageShrinkScreen(
 
             // Compression Settings Card
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val isLosslessPng = outputFormat == ImageOutputFormat.PNG
@@ -281,7 +283,7 @@ fun ImageShrinkScreen(
                     Text(
                         text = qualityLabel,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (isLosslessPng) TextSecondary else TextPrimary,
+                            color = if (isLosslessPng) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -294,7 +296,7 @@ fun ImageShrinkScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -303,7 +305,7 @@ fun ImageShrinkScreen(
                     Text(
                         text = "Max Resolution Dimension: ${maxDimension.toInt()}px",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -315,7 +317,7 @@ fun ImageShrinkScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -331,19 +333,19 @@ fun ImageShrinkScreen(
                                 text = "Strip EXIF / Location",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                             Text(
                                 text = "Wipes GPS coords and device tags",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                             )
                         }
                         Switch(
                             checked = stripExif,
                             onCheckedChange = { stripExif = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = AmoledBlack,
+                                checkedThumbColor = OnBraunOrange,
                                 checkedTrackColor = AccentImage
                             )
                         )
@@ -406,13 +408,13 @@ fun ImageShrinkScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentImage),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Shrink Photo", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Shrink Photo", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentImage)

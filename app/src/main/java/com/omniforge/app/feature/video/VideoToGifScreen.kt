@@ -1,5 +1,6 @@
 package com.omniforge.app.feature.video
 
+import androidx.compose.foundation.BorderStroke
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
@@ -142,7 +143,7 @@ fun VideoToGifScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -153,7 +154,7 @@ fun VideoToGifScreen(
                         Text(
                             text = "A job is currently running on another video. Switch to this new file or dismiss it.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -168,7 +169,7 @@ fun VideoToGifScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo)
                             ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+                                Text("Switch to New File", color = OnBraunOrange, fontSize = 12.sp)
                             }
                             OutlinedButton(
                                 onClick = {
@@ -194,14 +195,15 @@ fun VideoToGifScreen(
             )
 
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Frame Rate: ${fps.toInt()} FPS",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -213,7 +215,7 @@ fun VideoToGifScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -222,7 +224,7 @@ fun VideoToGifScreen(
                     Text(
                         text = "Output Width: ${width.toInt()}px",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -234,7 +236,7 @@ fun VideoToGifScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -244,7 +246,7 @@ fun VideoToGifScreen(
                         Text(
                             text = "Start Offset: %.1fs (of %.1fs)".format(Locale.US, startSec, videoDurationSec),
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -255,7 +257,7 @@ fun VideoToGifScreen(
                             colors = SliderDefaults.colors(
                                 thumbColor = AccentVideo,
                                 activeTrackColor = AccentVideo,
-                                inactiveTrackColor = DarkBorder
+                                inactiveTrackColor = MaterialTheme.colorScheme.outline
                             )
                         )
                     }
@@ -268,7 +270,7 @@ fun VideoToGifScreen(
                     Text(
                         text = "GIF Duration: %.1fs".format(Locale.US, durationSec.coerceIn(1f, maxDurationAllowed)),
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -279,7 +281,7 @@ fun VideoToGifScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = AccentVideo,
                             activeTrackColor = AccentVideo,
-                            inactiveTrackColor = DarkBorder
+                            inactiveTrackColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -290,7 +292,7 @@ fun VideoToGifScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Estimated output: $totalFrames frames (~${FileUtils.formatFileSize(estBytes)})",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -326,13 +328,13 @@ fun VideoToGifScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentVideo),
                 enabled = selectedUri != null && processState !is ProcessState.Processing
             ) {
-                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = AmoledBlack)
+                Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = OnBraunOrange)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate Smooth GIF", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                Text("Generate Smooth GIF", color = OnBraunOrange, fontWeight = FontWeight.Bold)
             }
 
             ProcessStateView(state = processState, accentColor = AccentVideo)
