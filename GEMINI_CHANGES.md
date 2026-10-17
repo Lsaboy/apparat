@@ -21,7 +21,7 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
 6. `3d66375` - **Batch 6:** Hash Verifier multi-digest & FGS, QR Studio 50x speedup, Base64 URL-safe, Media3 HDR tone-mapping, and encryption honesty (`1D.2`, `3D`).
 7. `85e8fa0` - **Batch 7:** Search keywords for 20 tools, PDF unlock encryption detection, JSON line/col reporting, timestamped PDF output, and APK naming (`2.5`, `2.7`, `3B`, `3D`).
 8. `964f437` - **Batch 8:** Comprehensive share sheet & open-with intent routing, initial URI rotation safety, QR Studio templates, and Base64 binary magic-byte detection (`2.8`, `3B`, `3D`, `3F`).
-9. `78b2521` & `current` - **Batch 9:** ResultCard direct file opening & image preview, lossless WebP, palette extractor polish, and video share-in routing (`3B` lines 460, 479, 484-486, 497, 502-504).
+9. `78b2521` & `5bb9f4d` - **Batch 9:** ResultCard direct file opening & image preview, lossless WebP, palette extractor polish, and video share-in routing (`3B` lines 460, 479, 484-486, 497, 502-504).
 
 ---
 
@@ -365,7 +365,7 @@ All changes were implemented to resolve safety, data corruption, memory leak, an
     - Added "Save Decoded File to Downloads" button running on `Dispatchers.IO + NonCancellable` with timestamped filename (`Decoded_yyyyMMdd_HHmmss.<ext>`).
 
 ### Batch 9: ResultCard Direct Open & Image Preview, Lossless WebP, Palette Extractor Polish, and Video Share-In Routing
-**Commit:** `78b2521` & `current`
+**Commit:** `78b2521` & `5bb9f4d`
 
 #### 1. ResultCard Upgrade with Direct "Open File" via FileProvider & Image Thumbnail Preview (`3B` / line 497)
 - **Problem:**
