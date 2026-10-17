@@ -5,7 +5,7 @@ plugins {
 }
 
 base {
-    archivesName.set("DigitalPocketKnife")
+    archivesName.set("Apparat")
 }
 
 android {

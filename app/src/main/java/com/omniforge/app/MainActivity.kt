@@ -111,7 +111,8 @@ class MainActivity : ComponentActivity() {
                             sharedUri = incomingUri,
                             sharedMimeType = incomingMimeType,
                             onNavigateToTool = { route -> navController.navigate(route) },
-                            onNavigateToSettings = { navController.navigate("settings") }
+                            onNavigateToSettings = { navController.navigate("settings") },
+                            onThemeChanged = { themeRecomposeTrigger++ }
                         )
                     }
 

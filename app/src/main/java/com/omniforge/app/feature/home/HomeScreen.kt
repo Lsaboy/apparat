@@ -6,12 +6,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,8 @@ import com.omniforge.app.core.model.ToolCategory
 import com.omniforge.app.core.model.ToolItem
 import com.omniforge.app.core.settings.AppSettings
 import com.omniforge.app.core.theme.*
+import com.omniforge.app.core.ui.BraunSegmentedControl
+import com.omniforge.app.core.ui.FirstBootAppearanceDialog
 import com.omniforge.app.core.util.FileUtils
 
 val ALL_TOOLS = listOf(
@@ -101,185 +104,196 @@ val ALL_TOOLS = listOf(
     ),
     ToolItem(
         id = "video_caption",
-        title = "Burn Subtitles & Captions",
-        description = "Burn .srt or .vtt subtitles into a video, with adjustable text size.",
+        title = "Burn Subtitles",
+        description = "Permanently hardcode an SRT subtitle file into your video stream.",
         category = ToolCategory.VIDEO,
         route = "video_caption",
-        keywords = listOf("subtitles", "captions", "srt", "vtt", "burn", "hardcode", "transcript", "text", "timing")
+        keywords = listOf("subtitles", "srt", "caption", "burn", "hardcode", "cc", "closed captions", "text", "overlay")
     ),
     ToolItem(
         id = "video_to_gif",
         title = "Video to GIF",
-        description = "Turn a short video clip into an animated GIF.",
+        description = "Transform video clips into animated GIFs with custom FPS and looping.",
         category = ToolCategory.VIDEO,
         route = "video_to_gif",
-        keywords = listOf("gif", "animation", "loop", "meme", "sticker", "convert", "clip")
+        keywords = listOf("gif", "animated", "animation", "loop", "convert", "clip", "fps", "meme")
     ),
     ToolItem(
         id = "video_convert",
-        title = "Convert to MP4",
-        description = "Turn MKV, WEBM, MOV or 3GP videos into an MP4 that plays everywhere.",
+        title = "Video Transcoder",
+        description = "Transcode any video into standard MP4, WebM, or 3GP format.",
         category = ToolCategory.VIDEO,
         route = "video_convert",
-        keywords = listOf("convert", "mp4", "mkv", "webm", "mov", "3gp", "transcode", "remux", "format")
+        keywords = listOf("convert", "transcode", "format", "mp4", "webm", "mkv", "avi", "mov", "encoding", "codec")
     ),
     ToolItem(
         id = "audio_extract",
-        title = "Extract Audio from Video",
-        description = "Save the sound from a video as M4A (small) or WAV (uncompressed).",
+        title = "Extract Audio",
+        description = "Rip the soundtrack from any video into a crisp M4A or MP3 file.",
         category = ToolCategory.VIDEO,
         route = "audio_extract",
-        keywords = listOf("extract", "audio", "sound", "music", "m4a", "wav", "mp3", "voice", "strip video", "soundtrack")
+        keywords = listOf("extract", "audio", "sound", "music", "song", "rip", "mp3", "m4a", "soundtrack", "speech")
     ),
 
     // Image Tools
     ToolItem(
         id = "image_shrink",
-        title = "Shrink Image",
-        description = "Compress photo file size with quality slider, resolution downscaling, and EXIF strip.",
+        title = "Compress Photo",
+        description = "Reduce photo size with granular quality control, resolution limits, and metadata stripping.",
         category = ToolCategory.IMAGE,
         route = "image_shrink",
         keywords = listOf("compress", "shrink", "reduce size", "resize", "scale", "kb", "mb", "jpg", "jpeg", "png", "webp", "photo", "picture", "quality", "downscale", "dimen")
     ),
     ToolItem(
+        id = "image_convert",
+        title = "Image Converter",
+        description = "Convert between PNG, JPEG, and modern efficient WebP formats.",
+        category = ToolCategory.IMAGE,
+        route = "image_convert",
+        keywords = listOf("convert", "format", "png", "jpg", "jpeg", "webp", "transcode", "transparent")
+    ),
+    ToolItem(
+        id = "exif_stripper",
+        title = "EXIF Cleaner",
+        description = "Strip GPS coordinates, device fingerprints, and timestamps for privacy.",
+        category = ToolCategory.IMAGE,
+        route = "exif_stripper",
+        keywords = listOf("exif", "metadata", "gps", "location", "privacy", "clean", "remove", "device", "camera", "strip")
+    ),
+    ToolItem(
         id = "document_scan",
-        title = "Document & Receipt Enhancer",
-        description = "Turn photos of documents into crisp, high-contrast black & white scans.",
+        title = "Document Scanner",
+        description = "Auto-detect document edges, straighten perspective, and enhance contrast.",
         category = ToolCategory.IMAGE,
         route = "document_scan",
-        badge = "Scan",
-        keywords = listOf("scan", "scanner", "receipt", "document", "b&w", "black and white", "contrast", "threshold", "invoice", "paper", "clean")
+        badge = "Camera",
+        keywords = listOf("scan", "camera", "document", "receipt", "paper", "detect", "crop", "deskew", "contrast")
     ),
     ToolItem(
         id = "palette_extractor",
-        title = "Palette & Color Extractor",
-        description = "Extract dominant colors and HEX codes directly from photos.",
+        title = "Palette Extractor",
+        description = "Sample dominant colors from any image with exact HEX and RGB codes.",
         category = ToolCategory.IMAGE,
         route = "palette_extractor",
-        badge = "Palette",
-        keywords = listOf("palette", "color", "hex", "swatch", "dominant", "picker", "theme", "extract")
-    ),
-    ToolItem(
-        id = "image_convert",
-        title = "Convert Image",
-        description = "Convert between JPEG, PNG, and WEBP formats seamlessly.",
-        category = ToolCategory.IMAGE,
-        route = "image_convert",
-        keywords = listOf("convert", "format", "jpg", "jpeg", "png", "webp", "extension", "transcode")
-    ),
-    ToolItem(
-        id = "exif_strip",
-        title = "EXIF Metadata Stripper",
-        description = "Inspect hidden camera/GPS info and strip all location & metadata before sharing.",
-        category = ToolCategory.IMAGE,
-        route = "exif_strip",
-        badge = "Privacy",
-        keywords = listOf("exif", "metadata", "privacy", "gps", "location", "camera", "strip", "remove", "clean", "sanitize")
+        keywords = listOf("palette", "colors", "extract", "hex", "rgb", "dominant", "sample", "picker", "design", "swatch")
     ),
 
-    // Utility Tools
+    // Utilities
     ToolItem(
         id = "qr_studio",
         title = "QR Code Studio",
-        description = "Generate high-res QR codes for Wi-Fi, URLs, and text offline.",
+        description = "Generate customizable QR codes with colored pixels, logos, and high error correction.",
         category = ToolCategory.UTILITIES,
         route = "qr_studio",
-        keywords = listOf("qr", "barcode", "matrix", "wifi", "url", "link", "generator", "create", "code")
+        keywords = listOf("qr", "barcode", "generate", "code", "link", "url", "wifi", "vcard", "scan")
     ),
     ToolItem(
         id = "hash_verifier",
-        title = "Checksum & Hash Verifier",
-        description = "Compute and verify MD5, SHA-1, SHA-256 hashes against clipboard.",
+        title = "File Checksum",
+        description = "Calculate and verify MD5, SHA-1, and SHA-256 integrity hashes for any file.",
         category = ToolCategory.UTILITIES,
         route = "hash_verifier",
-        badge = "SHA-256",
-        keywords = listOf("checksum", "hash", "md5", "sha1", "sha256", "sha512", "integrity", "verify", "digest", "compare")
+        keywords = listOf("hash", "checksum", "sha256", "md5", "sha1", "verify", "integrity", "corrupt", "fingerprint")
     ),
     ToolItem(
-        id = "json_tool",
-        title = "JSON Formatter & Validator",
-        description = "Prettify, format, validate, or minify JSON data.",
+        id = "json_formatter",
+        title = "JSON Formatter",
+        description = "Beautify, validate, and minify messy JSON text with error diagnostics.",
         category = ToolCategory.UTILITIES,
-        route = "json_tool",
-        keywords = listOf("json", "format", "prettify", "minify", "validate", "parse", "syntax", "indent", "beautify")
+        route = "json_formatter",
+        keywords = listOf("json", "format", "beautify", "validate", "minify", "lint", "prettify", "parse")
     ),
     ToolItem(
         id = "base64_studio",
         title = "Base64 Studio",
-        description = "Fast Base64 encoder and decoder for strings and text.",
+        description = "Encode or decode strings, images, and raw binary data to Base64 format.",
         category = ToolCategory.UTILITIES,
         route = "base64_studio",
-        keywords = listOf("base64", "encode", "decode", "b64", "text", "binary", "ascii", "string")
+        keywords = listOf("base64", "encode", "decode", "binary", "data uri", "string", "ascii")
     )
 )
 
 data class QuickActionItem(
     val title: String,
     val subtitle: String,
+    val route: String,
     val icon: ImageVector,
-    val color: Color,
-    val route: String
+    val color: Color
 )
 
 val QUICK_ACTIONS = listOf(
-    QuickActionItem("Unlock PDF", "Decrypt", Icons.Default.LockOpen, AccentPdf, "pdf_unlock"),
-    QuickActionItem("Lossless Cut", "<1s Trim", Icons.Default.ContentCut, AccentVideo, "video_trim"),
-    QuickActionItem("Shrink Photo", "Optimize", Icons.Default.Compress, AccentImage, "image_shrink"),
-    QuickActionItem("Shrink Video", "Compress", Icons.Default.VideoFile, AccentVideo, "video_shrink")
+    QuickActionItem("Unlock PDF", "Remove Passwords", "pdf_unlock", Icons.Default.LockOpen, AccentPdf),
+    QuickActionItem("Shrink Photo", "Reduce KB/MB", "image_shrink", Icons.Default.Compress, AccentImage),
+    QuickActionItem("Trim Video", "Near-Lossless Cut", "video_trim", Icons.Default.ContentCut, AccentVideo),
+    QuickActionItem("QR Generator", "Links & Wi-Fi", "qr_studio", Icons.Default.QrCode, AccentUtility)
 )
+
+enum class BraunCategoryTab(val label: String, val category: ToolCategory?) {
+    ALL("ALL", null),
+    DOCS("DOCS", ToolCategory.PDF),
+    VIDEO("VIDEO", ToolCategory.VIDEO),
+    GRAPHICS("GRAPHICS", ToolCategory.IMAGE),
+    UTILITY("UTILITY", ToolCategory.UTILITIES)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     appSettings: AppSettings,
+    onNavigateToTool: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
     sharedUri: Uri? = null,
     sharedMimeType: String? = null,
-    onNavigateToTool: (String) -> Unit,
-    onNavigateToSettings: () -> Unit
+    onThemeChanged: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ToolCategory?>(null) }
     var isGridView by remember { mutableStateOf(appSettings.isGridView) }
+    var showFirstBootDialog by remember { mutableStateOf(!appSettings.hasSeenAppearancePrompt) }
 
-    // When an incoming file is shared, filter down to tools matching that MIME type
-    val compatibleCategory: ToolCategory? = remember(sharedMimeType) {
+    if (showFirstBootDialog) {
+        FirstBootAppearanceDialog(
+            appSettings = appSettings,
+            onDismiss = {
+                showFirstBootDialog = false
+                onThemeChanged()
+            }
+        )
+    }
+
+    val compatibleCategory = remember(sharedMimeType) {
         when {
             sharedMimeType == null -> null
-            sharedMimeType.startsWith("video/") -> ToolCategory.VIDEO
-            sharedMimeType.startsWith("audio/") -> ToolCategory.VIDEO
-            sharedMimeType.startsWith("image/") -> ToolCategory.IMAGE
             sharedMimeType == "application/pdf" -> ToolCategory.PDF
+            sharedMimeType.startsWith("video/") -> ToolCategory.VIDEO
+            sharedMimeType.startsWith("image/") -> ToolCategory.IMAGE
             else -> null
+        }
+    }
+
+    LaunchedEffect(compatibleCategory) {
+        if (compatibleCategory != null) {
+            selectedCategory = compatibleCategory
         }
     }
 
     val filteredTools = remember(searchQuery, selectedCategory, compatibleCategory) {
         ALL_TOOLS.filter { tool ->
             val matchesCategory = when {
-                sharedUri != null && compatibleCategory == null -> {
-                    // Arbitrary file shared (e.g. ZIP, ISO, APK, binary) -> filter to Hash Verifier
-                    tool.id == "hash_verifier"
-                }
-                compatibleCategory != null -> {
-                    if (sharedMimeType?.startsWith("audio/") == true) {
-                        tool.id == "audio_extract" || tool.id == "video_trim" || tool.id == "hash_verifier"
-                    } else {
-                        tool.category == compatibleCategory || tool.id == "hash_verifier"
-                    }
-                }
+                compatibleCategory != null -> tool.category == compatibleCategory
                 selectedCategory != null -> tool.category == selectedCategory
                 else -> true
             }
 
-            val tokens = searchQuery.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
-            val matchesQuery = tokens.isEmpty() || tokens.all { token ->
-                tool.title.contains(token, ignoreCase = true) ||
-                tool.description.contains(token, ignoreCase = true) ||
-                tool.keywords.any { it.contains(token, ignoreCase = true) }
-            }
+            val query = searchQuery.trim().lowercase()
+            val matchesSearch = query.isEmpty() ||
+                tool.title.lowercase().contains(query) ||
+                tool.description.lowercase().contains(query) ||
+                tool.keywords.any { it.lowercase().contains(query) }
 
-            matchesCategory && matchesQuery
+            matchesCategory && matchesSearch
         }
     }
 
@@ -288,53 +302,43 @@ fun HomeScreen(
         topBar = {
             Column(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                // Top Header Row
+                // Precision Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Handyman,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .background(BraunOrange, shape = RoundedCornerShape(4.5.dp))
                             )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Digital Pocket Knife",
+                                text = "APPARAT",
                                 style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 19.sp,
-                                    color = TextPrimary,
-                                    letterSpacing = (-0.4).sp
-                                )
-                            )
-                            Text(
-                                text = "${ALL_TOOLS.size} Tools · 100% Local",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextSecondary,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp,
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                             )
                         }
+                        Text(
+                            text = "Mod. 2026 // 20 Instruments • 100% Offline",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        )
                     }
 
                     // Action buttons (View mode toggle + Settings)
@@ -348,30 +352,32 @@ fun HomeScreen(
                                 appSettings.isGridView = isGridView
                             },
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(DarkSurfaceElevated),
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                         ) {
                             Icon(
                                 imageVector = if (isGridView) Icons.Default.ViewAgenda else Icons.Default.GridView,
                                 contentDescription = "Toggle Grid or List View",
-                                tint = TextPrimary,
-                                modifier = Modifier.size(20.dp)
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
                         IconButton(
                             onClick = onNavigateToSettings,
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(DarkSurfaceElevated)
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Tune,
                                 contentDescription = "Customization & Settings",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                tint = BraunOrange,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -379,13 +385,14 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Modern Search Bar
+                // Braun Hardware Search Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(DarkSurfaceElevated)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -396,8 +403,8 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
                         )
 
                         Spacer(modifier = Modifier.width(10.dp))
@@ -405,9 +412,10 @@ fun HomeScreen(
                         Box(modifier = Modifier.weight(1f)) {
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = "Search utilities (e.g. compress, split, trim)...",
-                                    color = TextTertiary,
-                                    fontSize = 13.5.sp
+                                    text = "> SEARCH INSTRUMENT OR FORMAT...",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.5.sp
                                 )
                             }
                             BasicTextField(
@@ -415,11 +423,12 @@ fun HomeScreen(
                                 onValueChange = { searchQuery = it },
                                 singleLine = true,
                                 textStyle = TextStyle(
-                                    color = TextPrimary,
-                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                cursorBrush = SolidColor(BraunOrange),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -432,44 +441,27 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Clear",
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                // Category Filter Pills
+                // Category Rocker Switch (English technical labels)
                 if (compatibleCategory == null) {
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 2.dp)
-                    ) {
-                        item {
-                            CategoryPill(
-                                title = "All (${ALL_TOOLS.size})",
-                                icon = Icons.Default.Dashboard,
-                                isSelected = selectedCategory == null,
-                                accentColor = MaterialTheme.colorScheme.primary,
-                                onClick = { selectedCategory = null }
-                            )
-                        }
-                        items(ToolCategory.entries) { category ->
-                            val count = ALL_TOOLS.count { it.category == category }
-                            CategoryPill(
-                                title = "${category.displayName.substringBefore(" ")} ($count)",
-                                icon = getCategoryHeaderIcon(category),
-                                isSelected = selectedCategory == category,
-                                accentColor = category.color,
-                                onClick = {
-                                    selectedCategory = if (selectedCategory == category) null else category
-                                }
-                            )
-                        }
-                    }
+                    val activeTab = BraunCategoryTab.entries.find { it.category == selectedCategory } ?: BraunCategoryTab.ALL
+                    BraunSegmentedControl(
+                        options = BraunCategoryTab.entries,
+                        selectedOption = activeTab,
+                        onOptionSelected = { tab ->
+                            selectedCategory = tab.category
+                        },
+                        labelForOption = { it.label }
+                    )
                 }
             }
         }
@@ -481,46 +473,46 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Contextual Share Banner (if file was shared into app)
+            // Contextual Share Banner
             if (sharedUri != null) {
                 item {
                     val sharedName = FileUtils.getFileName(context, sharedUri)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, BraunOrange.copy(alpha = 0.6f))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(BraunOrange.copy(alpha = 0.15f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = BraunOrange,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
-                                        text = "Shared File: $sharedName",
+                                        text = "Incoming File: $sharedName",
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
+                                            color = MaterialTheme.colorScheme.onSurface
                                         ),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "Tap a tool below or select from the list:",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                        text = "Select instrument to process:",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     )
                                 }
                             }
@@ -540,7 +532,7 @@ fun HomeScreen(
                                                     tint = tool.category.color
                                                 )
                                             },
-                                            shape = RoundedCornerShape(10.dp)
+                                            shape = RoundedCornerShape(6.dp)
                                         )
                                     }
                                 }
@@ -550,14 +542,15 @@ fun HomeScreen(
                 }
             }
 
-            // Quick Actions Horizontal Row (shown on default dashboard)
+            // Quick Shortcuts Row
             if (searchQuery.isEmpty() && selectedCategory == null && sharedUri == null) {
                 item {
                     Column {
                         Text(
                             text = "QUICK SHORTCUTS",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextTertiary,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp,
                                 fontSize = 11.sp
@@ -577,7 +570,7 @@ fun HomeScreen(
                 }
             }
 
-            // Section Header or Active Filter Title
+            // Section Header
             item {
                 Row(
                     modifier = Modifier
@@ -588,21 +581,23 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = when {
-                            searchQuery.isNotEmpty() -> "Search Results (${filteredTools.size})"
-                            selectedCategory != null -> "${selectedCategory?.displayName} (${filteredTools.size})"
-                            else -> "All Utilities (${filteredTools.size})"
+                            searchQuery.isNotEmpty() -> "SEARCH RESULTS (${filteredTools.size})"
+                            selectedCategory != null -> "${selectedCategory?.displayName?.uppercase()} (${filteredTools.size})"
+                            else -> "ALL INSTRUMENTS (${filteredTools.size})"
                         },
-                        style = MaterialTheme.typography.titleMedium.copy(
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            fontSize = 14.5.sp
+                            color = MaterialTheme.colorScheme.onSurface,
+                            letterSpacing = 1.sp
                         )
                     )
 
                     Text(
-                        text = if (isGridView) "Grid view" else "List view",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextTertiary,
+                        text = if (isGridView) "GRID" else "LIST",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     )
@@ -611,7 +606,6 @@ fun HomeScreen(
 
             // Tools Layout (Grid vs List)
             if (isGridView) {
-                // 2-Column Responsive Grid via chunked pairs
                 items(filteredTools.chunked(2)) { pair ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -630,7 +624,6 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // 1-Column Refined List View
                 items(filteredTools) { tool ->
                     ToolListCard(tool = tool, onClick = { onNavigateToTool(tool.route) })
                 }
@@ -644,45 +637,6 @@ fun HomeScreen(
 }
 
 @Composable
-fun CategoryPill(
-    title: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    accentColor: Color,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(50.dp),
-        color = if (isSelected) accentColor.copy(alpha = 0.18f) else DarkSurfaceElevated,
-        border = BorderStroke(1.dp, if (isSelected) accentColor else DarkBorder)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isSelected) accentColor else TextSecondary,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (isSelected) accentColor else TextSecondary,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 12.5.sp
-                )
-            )
-        }
-    }
-}
-
-@Composable
 fun QuickActionCard(
     action: QuickActionItem,
     onClick: () -> Unit
@@ -691,11 +645,11 @@ fun QuickActionCard(
         modifier = Modifier
             .width(136.dp)
             .height(68.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = DarkSurfaceCard,
-        border = BorderStroke(1.dp, DarkBorder)
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -706,7 +660,7 @@ fun QuickActionCard(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .background(action.color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -725,7 +679,7 @@ fun QuickActionCard(
                     text = action.title,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 12.sp
                     ),
                     maxLines = 1,
@@ -734,7 +688,7 @@ fun QuickActionCard(
                 Text(
                     text = action.subtitle,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 10.sp
                     ),
                     maxLines = 1
@@ -754,11 +708,11 @@ fun ToolGridCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = DarkSurfaceCard,
-        border = BorderStroke(1.dp, DarkBorder)
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier
@@ -772,8 +726,8 @@ fun ToolGridCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(tool.category.color.copy(alpha = 0.14f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -781,20 +735,21 @@ fun ToolGridCard(
                         imageVector = icon,
                         contentDescription = null,
                         tint = tool.category.color,
-                        modifier = Modifier.size(21.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
                 if (tool.badge != null) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(tool.category.color.copy(alpha = 0.15f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = tool.badge,
+                            text = tool.badge.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
                                 color = tool.category.color,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
@@ -813,7 +768,7 @@ fun ToolGridCard(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.5.sp,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -824,7 +779,7 @@ fun ToolGridCard(
             Text(
                 text = tool.description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
                 ),
@@ -845,11 +800,11 @@ fun ToolListCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = DarkSurfaceCard,
-        border = BorderStroke(1.dp, DarkBorder)
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -859,8 +814,8 @@ fun ToolListCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(13.dp))
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(tool.category.color.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -868,7 +823,7 @@ fun ToolListCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = tool.category.color,
-                    modifier = Modifier.size(23.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
@@ -883,8 +838,8 @@ fun ToolListCard(
                         text = tool.title,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.5.sp,
-                            color = TextPrimary
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -894,15 +849,16 @@ fun ToolListCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(tool.category.color.copy(alpha = 0.15f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = tool.badge,
+                                text = tool.badge.uppercase(),
                                 style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
                                     color = tool.category.color,
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
                                 ),
                                 maxLines = 1,
@@ -912,13 +868,13 @@ fun ToolListCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
                     text = tool.description,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary,
-                        fontSize = 11.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
                         lineHeight = 15.sp
                     ),
                     maxLines = 2,
@@ -928,20 +884,12 @@ fun ToolListCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurfaceElevated),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

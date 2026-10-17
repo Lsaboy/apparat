@@ -7,10 +7,20 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.util.FileUtils
 
 enum class ThemeStyle(val displayName: String) {
-    AMOLED("AMOLED Black"),
-    MATERIAL_YOU("Material You (Android 17)"),
-    DARK("Material Dark"),
-    LIGHT("Material Light")
+    SYSTEM("System Default"),
+    LIGHT("Classic Ivory"),
+    DARK("Atelier Charcoal");
+
+    companion object {
+        fun fromStoredName(name: String?): ThemeStyle {
+            return when (name?.uppercase()) {
+                "LIGHT", "CLASSIC_IVORY" -> LIGHT
+                "DARK", "ATELIER_CHARCOAL", "AMOLED" -> DARK
+                "SYSTEM", "MATERIAL_YOU", null, "" -> SYSTEM
+                else -> runCatching { valueOf(name!!) }.getOrDefault(SYSTEM)
+            }
+        }
+    }
 }
 
 enum class SaveMode(val label: String, val description: String) {
@@ -21,33 +31,34 @@ enum class SaveMode(val label: String, val description: String) {
 data class AccentSwatch(val name: String, val color: Color)
 
 val AppAccentSwatches = listOf(
-    AccentSwatch("Cyan", Color(0xFF00E5FF)),
-    AccentSwatch("Emerald", Color(0xFF00E676)),
-    AccentSwatch("Lavender", Color(0xFFB388FF)),
-    AccentSwatch("Amber", Color(0xFFFFD54F)),
-    AccentSwatch("Electric Blue", Color(0xFF2979FF)),
-    AccentSwatch("Hot Pink", Color(0xFFFF4081)),
-    AccentSwatch("Orange", Color(0xFFFF6D00)),
-    AccentSwatch("Teal", Color(0xFF00F5D4)),
-    AccentSwatch("Ruby", Color(0xFFFF1744))
+    AccentSwatch("Braun Orange", BraunOrange),
+    AccentSwatch("Technical Slate", Color(0xFF5E6572)),
+    AccentSwatch("Cobalt Blue", TechnicalIndicatorBlue),
+    AccentSwatch("Instrument Green", TechnicalIndicatorGreen),
+    AccentSwatch("Amber Indicator", TechnicalIndicatorYellow),
+    AccentSwatch("Signal Red", TechnicalIndicatorRed)
 )
 
 class AppSettings(context: Context) {
-    private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("dpk_settings", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("apparat_settings", Context.MODE_PRIVATE)
 
     var themeStyle: ThemeStyle
         get() {
-            val name = prefs.getString("theme_style", ThemeStyle.AMOLED.name) ?: ThemeStyle.AMOLED.name
-            return runCatching { ThemeStyle.valueOf(name) }.getOrDefault(ThemeStyle.AMOLED)
+            val name = prefs.getString("theme_style", null)
+            return ThemeStyle.fromStoredName(name)
         }
         set(value) = prefs.edit().putString("theme_style", value.name).apply()
+
+    var hasSeenAppearancePrompt: Boolean
+        get() = prefs.getBoolean("has_seen_appearance_prompt", false)
+        set(value) = prefs.edit().putBoolean("has_seen_appearance_prompt", value).apply()
 
     var accentIndex: Int
         get() = prefs.getInt("accent_index", 0).coerceIn(0, AppAccentSwatches.size - 1)
         set(value) = prefs.edit().putInt("accent_index", value).apply()
 
     var isDynamicColorEnabled: Boolean
-        get() = prefs.getBoolean("dynamic_color", true)
+        get() = prefs.getBoolean("dynamic_color", false)
         set(value) = prefs.edit().putBoolean("dynamic_color", value).apply()
 
     var defaultSaveMode: SaveMode
@@ -72,4 +83,3 @@ class AppSettings(context: Context) {
     val currentAccentColor: Color
         get() = AppAccentSwatches[accentIndex].color
 }
-

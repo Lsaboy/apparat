@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,37 +18,294 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.omniforge.app.core.jobs.ToolJobs
 import com.omniforge.app.core.model.ProcessState
 import com.omniforge.app.core.settings.AppSettings
+import com.omniforge.app.core.settings.ThemeStyle
 import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.util.FileUtils
+import kotlinx.coroutines.launch
 import java.io.File
+
+// ==========================================
+// Braun / Dieter Rams Industrial Components
+// ==========================================
+
+@Composable
+fun <T> BraunSegmentedControl(
+    options: List<T>,
+    selectedOption: T,
+    onOptionSelected: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    labelForOption: (T) -> String = { it.toString() }
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp)),
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            options.forEach { option ->
+                val isSelected = option == selectedOption
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                        )
+                        .border(
+                            1.dp,
+                            if (isSelected) BraunOrange.copy(alpha = 0.5f) else Color.Transparent,
+                            RoundedCornerShape(4.dp)
+                        )
+                        .clickable { onOptionSelected(option) }
+                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = labelForOption(option),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 0.5.sp,
+                                textAlign = TextAlign.Center
+                            ),
+                            maxLines = 1
+                        )
+                        if (isSelected) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 16.dp, height = 2.dp)
+                                    .background(BraunOrange, shape = RoundedCornerShape(1.dp))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BraunActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = BraunOrange,
+    contentColor: Color = Color.White,
+    content: @Composable RowScope.() -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(44.dp),
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.4f),
+            disabledContentColor = contentColor.copy(alpha = 0.6f)
+        ),
+        border = BorderStroke(1.dp, containerColor.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun BraunCard(
+    modifier: Modifier = Modifier,
+    border: BorderStroke = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(8.dp),
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.border(border, shape),
+        shape = shape,
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            content = content
+        )
+    }
+}
+
+@Composable
+fun FirstBootAppearanceDialog(
+    appSettings: AppSettings,
+    onDismiss: () -> Unit
+) {
+    var selectedTheme by remember { mutableStateOf(appSettings.themeStyle) }
+
+    AlertDialog(
+        onDismissRequest = {
+            appSettings.hasSeenAppearancePrompt = true
+            onDismiss()
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(BraunOrange, shape = RoundedCornerShape(4.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "APPARAT",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "SELECT APPEARANCE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemeStyle.entries.forEach { style ->
+                    val isSelected = style == selectedTheme
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { selectedTheme = style },
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) BraunOrange else MaterialTheme.colorScheme.outline
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { selectedTheme = style },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = BraunOrange,
+                                    unselectedColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = style.displayName.uppercase(),
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                                Text(
+                                    text = when (style) {
+                                        ThemeStyle.LIGHT -> "Matte warm ivory • High legibility"
+                                        ThemeStyle.DARK -> "Precision charcoal • Low glare"
+                                        ThemeStyle.SYSTEM -> "Match current system appearance"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            BraunActionButton(
+                onClick = {
+                    appSettings.themeStyle = selectedTheme
+                    appSettings.hasSeenAppearancePrompt = true
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "CONFIRM SELECTION",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                )
+            }
+        }
+    )
+}
+
+// ==========================================
+// Core Tool UI Components
+// ==========================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +314,6 @@ fun ToolScaffold(
     categoryName: String,
     accentColor: Color,
     onBack: () -> Unit,
-    /** Route of a tool that runs jobs through ToolJobs; enables keep-running-on-back handling. */
     jobKey: String? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -125,14 +382,42 @@ fun ToolScaffold(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        },
-        content = content
-    )
+        }
+    ) { paddingValues ->
+        content(paddingValues)
+    }
 }
 
-/** Tells ToolJobs when this tool's screen is visible, hidden or closed. */
 @Composable
-private fun ToolJobLifecycle(jobKey: String) {
+fun NotificationPermissionOnFirstJob(isJobRunning: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val appSettings = remember { AppSettings(context) }
+    if (appSettings.hasAskedNotificationPermission) return
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        appSettings.hasAskedNotificationPermission = true
+    }
+
+    LaunchedEffect(isJobRunning) {
+        if (isJobRunning && !appSettings.hasAskedNotificationPermission) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                appSettings.hasAskedNotificationPermission = true
+            }
+        }
+    }
+}
+
+@Composable
+fun ToolJobLifecycle(jobKey: String) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(jobKey, lifecycleOwner) {
@@ -152,41 +437,24 @@ private fun ToolJobLifecycle(jobKey: String) {
     }
 }
 
-/** Asks once per app install/settings, when the first job starts, so progress/done notifications can show. */
-@Composable
-private fun NotificationPermissionOnFirstJob(isRunning: Boolean) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-    val context = LocalContext.current
-    val settings = remember(context) { AppSettings(context.applicationContext) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    LaunchedEffect(isRunning) {
-        if (isRunning && !settings.hasAskedNotificationPermission &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            settings.hasAskedNotificationPermission = true
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-}
-
 @Composable
 fun FileSelectionCard(
     fileName: String?,
     fileSize: Long?,
     placeholderText: String = "Tap to choose a file",
     icon: ImageVector = Icons.Default.Description,
-    accentColor: Color = PrimaryTeal,
+    accentColor: Color = BraunOrange,
     fileDetails: String? = null,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = DarkSurfaceElevated,
-        border = BorderStroke(1.dp, if (fileName != null) accentColor.copy(alpha = 0.5f) else DarkBorder)
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, if (fileName != null) accentColor.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -197,7 +465,7 @@ fun FileSelectionCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(accentColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -217,7 +485,7 @@ fun FileSelectionCard(
                         text = fileName,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1
                     )
@@ -225,14 +493,14 @@ fun FileSelectionCard(
                     if (detailsText != null) {
                         Text(
                             text = detailsText,
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                         )
                     }
                 } else {
                     Text(
                         text = placeholderText,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                     )
@@ -242,7 +510,7 @@ fun FileSelectionCard(
             Icon(
                 imageVector = if (fileName != null) Icons.Default.CheckCircle else Icons.Default.FileUpload,
                 contentDescription = null,
-                tint = if (fileName != null) accentColor else TextSecondary
+                tint = if (fileName != null) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -264,8 +532,8 @@ fun ResultCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp)),
-        color = DarkSurfaceElevated,
+            .clip(RoundedCornerShape(8.dp)),
+        color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.6f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -288,7 +556,6 @@ fun ResultCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Image Preview (if outputFile is an image format)
             val ext = outputFile.extension.lowercase()
             val isImage = ext in setOf("jpg", "jpeg", "png", "webp", "gif")
             if (isImage) {
@@ -296,7 +563,7 @@ fun ResultCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(6.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -324,7 +591,7 @@ fun ResultCard(
                     Text(
                         text = "Output Size: ${FileUtils.formatFileSize(newSize)}",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -343,8 +610,6 @@ fun ResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2-Tier Ergonomic Action Layout
-            // Tier 1: Full-width Save Button
             Button(
                 onClick = {
                     if (isSaving) return@Button
@@ -363,31 +628,30 @@ fun ResultCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                shape = RoundedCornerShape(12.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = BraunOrange),
+                shape = RoundedCornerShape(6.dp)
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = AmoledBlack
+                        color = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving to Downloads…", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    Text("Saving to Downloads…", color = Color.White, fontWeight = FontWeight.Bold)
                 } else {
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = AmoledBlack
+                        tint = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save to Downloads", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    Text("Save to Downloads", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Tier 2: Open and Share side-by-side
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -401,33 +665,33 @@ fun ResultCard(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, TextSecondary)
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                         contentDescription = null,
-                        tint = TextPrimary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Open", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("Open", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 }
 
                 OutlinedButton(
                     onClick = onShare,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, TextSecondary)
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = null,
-                        tint = TextPrimary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("Share", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -437,61 +701,72 @@ fun ResultCard(
 @Composable
 fun ProcessStateView(
     state: ProcessState,
-    accentColor: Color = PrimaryTeal
+    accentColor: Color = BraunOrange
 ) {
     when (state) {
         is ProcessState.Processing -> {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = DarkSurfaceElevated,
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, DarkBorder)
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (state.progress > 0f) {
+                    if (state.progress != null) {
                         LinearProgressIndicator(
                             progress = { state.progress },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
                             color = accentColor,
-                            trackColor = DarkBorder
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "${(state.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = accentColor,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     } else {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
                             color = accentColor,
-                            trackColor = DarkBorder
+                            strokeWidth = 3.dp
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = state.message,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                    )
+
+                    if (state.message != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        )
+                    }
                 }
             }
         }
         is ProcessState.Error -> {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = DarkSurfaceElevated,
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.7f))
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ErrorOutline,
+                        imageVector = Icons.Default.Error,
                         contentDescription = null,
                         tint = ErrorRed,
                         modifier = Modifier.size(24.dp)
@@ -512,7 +787,7 @@ fun ProcessStateView(
 fun SaveModeSelector(
     saveMode: com.omniforge.app.core.settings.SaveMode,
     onSaveModeChange: (com.omniforge.app.core.settings.SaveMode) -> Unit,
-    accentColor: Color = MaterialTheme.colorScheme.primary,
+    accentColor: Color = BraunOrange,
     allowOverwrite: Boolean = true,
     disallowedReason: String? = null
 ) {
@@ -523,15 +798,16 @@ fun SaveModeSelector(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = "Output Save Mode",
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -546,16 +822,16 @@ fun SaveModeSelector(
                         onClick = { onSaveModeChange(mode) },
                         enabled = isEnabled,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (isSelected) accentColor else Color.Transparent,
-                            contentColor = if (isSelected) AmoledBlack else TextPrimary,
+                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
                             disabledContainerColor = Color.Transparent,
-                            disabledContentColor = TextSecondary.copy(alpha = 0.38f)
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) accentColor else DarkBorder
+                            if (isSelected) accentColor else MaterialTheme.colorScheme.outline
                         )
                     ) {
                         Text(
@@ -572,7 +848,7 @@ fun SaveModeSelector(
             Text(
                 text = if (!allowOverwrite && disallowedReason != null) disallowedReason else saveMode.description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (!allowOverwrite && disallowedReason != null) ErrorRed else TextSecondary,
+                    color = if (!allowOverwrite && disallowedReason != null) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
             )
@@ -586,18 +862,19 @@ fun FormatSelectorRow(
     formats: List<String>,
     selectedFormat: String,
     onFormatSelect: (String) -> Unit,
-    accentColor: Color = MaterialTheme.colorScheme.primary
+    accentColor: Color = BraunOrange
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -610,12 +887,12 @@ fun FormatSelectorRow(
                     OutlinedButton(
                         onClick = { onFormatSelect(format) },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (isSelected) accentColor else Color.Transparent,
-                            contentColor = if (isSelected) AmoledBlack else TextPrimary
+                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                         ),
-                        border = BorderStroke(1.dp, if (isSelected) accentColor else DarkBorder)
+                        border = BorderStroke(1.dp, if (isSelected) accentColor else MaterialTheme.colorScheme.outline)
                     ) {
                         Text(
                             text = format.uppercase(),
