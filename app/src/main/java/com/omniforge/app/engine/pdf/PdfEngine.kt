@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.image.BitmapDecoder
+import com.tom_roush.pdfbox.cos.COSBase
 import com.tom_roush.pdfbox.cos.COSName
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
@@ -15,7 +16,9 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
+import com.tom_roush.pdfbox.pdmodel.PDResources
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
+import com.tom_roush.pdfbox.pdmodel.graphics.form.PDFormXObject
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
@@ -70,6 +73,50 @@ internal fun calculateA4Fit(
     val y = (pageHeight - drawHeight) / 2f
 
     return A4Fit(pageWidth, pageHeight, drawWidth, drawHeight, x, y)
+}
+
+/** How one embedded PDF image gets re-encoded: decode with [subsampling], then scale to target. */
+data class ImageRecompressPlan(val targetWidth: Int, val targetHeight: Int, val subsampling: Int)
+
+internal const val TARGET_DPI = 150f
+private const val MAX_DECODE_PIXELS = 16_000_000L
+private const val MIN_RECOMPRESS_PIXELS = 100L * 100L
+
+/**
+ * Decides whether and how to re-encode an embedded image, or returns null to keep it as is:
+ * - 1-bit images (CCITT/JBIG2 scans) are already tiny; JPEG would be bigger and blurrier,
+ * - stencil masks and images with a soft/colour-key mask would lose their transparency,
+ * - tiny images (icons, logos) aren't worth it.
+ * Otherwise the image is fitted to the page at [TARGET_DPI] (never upscaled), and [subsampling]
+ * keeps the decoded bitmap at or above the target but under [MAX_DECODE_PIXELS].
+ */
+internal fun planImageRecompression(
+    width: Int,
+    height: Int,
+    bitsPerComponent: Int,
+    isStencil: Boolean,
+    hasMask: Boolean,
+    pageWidthPt: Float,
+    pageHeightPt: Float,
+    targetDpi: Float = TARGET_DPI
+): ImageRecompressPlan? {
+    if (width <= 0 || height <= 0) return null
+    if (isStencil || hasMask || bitsPerComponent == 1) return null
+    if (width.toLong() * height < MIN_RECOMPRESS_PIXELS) return null
+
+    val maxW = max(600f, pageWidthPt / 72f * targetDpi)
+    val maxH = max(600f, pageHeightPt / 72f * targetDpi)
+    val scale = min(1f, min(maxW / width, maxH / height))
+    val targetW = max(1, (width * scale).toInt())
+    val targetH = max(1, (height * scale).toInt())
+
+    // Largest integer step that still decodes at least the target size...
+    var subsampling = max(1, min(width / targetW, height / targetH))
+    // ...but never decode more than the memory budget.
+    while ((width.toLong() / subsampling) * (height.toLong() / subsampling) > MAX_DECODE_PIXELS) subsampling++
+    val decodedW = (width + subsampling - 1) / subsampling
+    val decodedH = (height + subsampling - 1) / subsampling
+    return ImageRecompressPlan(min(targetW, decodedW), min(targetH, decodedH), subsampling)
 }
 
 object PdfEngine {
@@ -188,78 +235,8 @@ object PdfEngine {
             try {
                 val document = openDocument(context, cachedInput, password)
                 try {
-                    val quality = imageQuality.coerceIn(0.1f, 0.95f)
-                    val processedImageKeys = mutableSetOf<String>()
-
-                    for (page in document.pages) {
-                        val resources = page.resources ?: continue
-                        val xObjectNames = resources.xObjectNames ?: continue
-
-                        for (cosName in xObjectNames) {
-                            if (!resources.isImageXObject(cosName)) continue
-
-                            val xObject = try {
-                                resources.getXObject(cosName)
-                            } catch (e: Exception) {
-                                null
-                            }
-                            if (xObject !is PDImageXObject) continue
-
-                            val key = "${cosName.name}_${xObject.width}x${xObject.height}"
-                            if (!processedImageKeys.add(key)) continue
-
-                            val originalBitmap = try {
-                                xObject.image
-                            } catch (e: Exception) {
-                                null
-                            } ?: continue
-
-                            try {
-                                // Calculate target dimensions based on page size and target DPI (~150 DPI)
-                                val pageMediaBox = page.mediaBox ?: page.cropBox
-                                val pageWidthInches = (pageMediaBox?.width ?: 595f) / 72f
-                                val pageHeightInches = (pageMediaBox?.height ?: 842f) / 72f
-                                val maxW = maxOf(600, (pageWidthInches * 150f).toInt())
-                                val maxH = maxOf(600, (pageHeightInches * 150f).toInt())
-
-                                val needsDownscale = originalBitmap.width > maxW || originalBitmap.height > maxH
-                                val scaledBitmap = if (needsDownscale) {
-                                    val scale = minOf(maxW.toFloat() / originalBitmap.width, maxH.toFloat() / originalBitmap.height)
-                                    val newW = maxOf(100, (originalBitmap.width * scale).toInt())
-                                    val newH = maxOf(100, (originalBitmap.height * scale).toInt())
-                                    Bitmap.createScaledBitmap(originalBitmap, newW, newH, true)
-                                } else {
-                                    originalBitmap
-                                }
-
-                                var compositedBitmap: Bitmap? = null
-                                val bitmapToCompress = if (scaledBitmap.hasAlpha()) {
-                                    compositedBitmap = Bitmap.createBitmap(scaledBitmap.width, scaledBitmap.height, Bitmap.Config.ARGB_8888)
-                                    val canvas = Canvas(compositedBitmap)
-                                    canvas.drawColor(Color.WHITE)
-                                    canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
-                                    compositedBitmap
-                                } else {
-                                    scaledBitmap
-                                }
-
-                                try {
-                                    val newImageXObject = JPEGFactory.createFromImage(document, bitmapToCompress, quality)
-                                    resources.put(cosName, newImageXObject)
-                                } finally {
-                                    if (scaledBitmap !== originalBitmap) {
-                                        scaledBitmap.recycle()
-                                    }
-                                    compositedBitmap?.recycle()
-                                }
-                            } finally {
-                                if (!originalBitmap.isRecycled) {
-                                    originalBitmap.recycle()
-                                }
-                            }
-                        }
-                    }
-
+                    val stats = recompressImages(document, imageQuality.coerceIn(0.1f, 0.95f))
+                    Log.i(TAG, "compressPdf: $stats")
                     document.save(outputFile)
                     outputFile
                 } finally {
@@ -538,6 +515,109 @@ object PdfEngine {
             }
 
             renderedFiles
+        }
+    }
+
+    // ------------------------------------------------------------ image re-compression
+
+    data class RecompressStats(var replaced: Int = 0, var keptLarger: Int = 0, var skipped: Int = 0, var failed: Int = 0)
+
+    /**
+     * Re-encodes the embedded images of [document] as JPEG at about [TARGET_DPI], walking page
+     * resources and nested form XObjects. Each image stream is handled once (by object identity),
+     * and the original is kept whenever the new stream isn't smaller.
+     */
+    private fun recompressImages(document: PDDocument, quality: Float): RecompressStats {
+        val stats = RecompressStats()
+        // original image stream -> replacement (null = keep the original)
+        val done = java.util.IdentityHashMap<COSBase, PDImageXObject?>()
+        val visitedResources = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<COSBase, Boolean>())
+
+        fun walk(resources: PDResources, pageWidthPt: Float, pageHeightPt: Float) {
+            if (!visitedResources.add(resources.cosObject)) return
+            for (name in resources.xObjectNames.toList()) {
+                val xObject = try { resources.getXObject(name) } catch (e: Exception) { null } ?: continue
+                when (xObject) {
+                    is PDFormXObject -> xObject.resources?.let { walk(it, pageWidthPt, pageHeightPt) }
+                    is PDImageXObject -> {
+                        val key = xObject.cosObject
+                        val replacement = if (done.containsKey(key)) {
+                            done[key]
+                        } else {
+                            recompressImage(document, xObject, quality, pageWidthPt, pageHeightPt, stats)
+                                .also { done[key] = it }
+                        }
+                        if (replacement != null) resources.put(name, replacement)
+                    }
+                }
+            }
+        }
+
+        for (page in document.pages) {
+            val box = page.cropBox ?: page.mediaBox
+            val resources = page.resources ?: continue
+            walk(resources, box?.width ?: PDRectangle.A4.width, box?.height ?: PDRectangle.A4.height)
+        }
+        return stats
+    }
+
+    private fun recompressImage(
+        document: PDDocument,
+        image: PDImageXObject,
+        quality: Float,
+        pageWidthPt: Float,
+        pageHeightPt: Float,
+        stats: RecompressStats
+    ): PDImageXObject? {
+        val dict = image.cosObject
+        val plan = planImageRecompression(
+            width = image.width,
+            height = image.height,
+            bitsPerComponent = image.bitsPerComponent,
+            isStencil = image.isStencil,
+            hasMask = dict.containsKey(COSName.SMASK) || dict.containsKey(COSName.MASK),
+            pageWidthPt = pageWidthPt,
+            pageHeightPt = pageHeightPt
+        )
+        if (plan == null) {
+            stats.skipped++
+            return null
+        }
+        var decoded: Bitmap? = null
+        var scaled: Bitmap? = null
+        var flattened: Bitmap? = null
+        return try {
+            decoded = image.getImage(null, plan.subsampling) ?: run { stats.failed++; return null }
+            scaled = if (decoded.width != plan.targetWidth || decoded.height != plan.targetHeight) {
+                Bitmap.createScaledBitmap(decoded, plan.targetWidth, plan.targetHeight, true)
+            } else decoded
+            // Masked images are skipped above, so any alpha here is incidental: flatten onto white.
+            val opaque = if (scaled.hasAlpha()) {
+                Bitmap.createBitmap(scaled.width, scaled.height, Bitmap.Config.ARGB_8888).also {
+                    flattened = it
+                    Canvas(it).apply { drawColor(Color.WHITE); drawBitmap(scaled, 0f, 0f, null) }
+                }
+            } else scaled
+            val candidate = JPEGFactory.createFromImage(document, opaque, quality)
+            if (candidate.cosObject.length >= dict.length) {
+                stats.keptLarger++
+                null // re-encoding didn't help (e.g. already a small JPEG); keep the original
+            } else {
+                stats.replaced++
+                candidate
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "compressPdf: kept an image that couldn't be re-encoded", e)
+            stats.failed++
+            null
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "compressPdf: image too large to re-encode, kept original", e)
+            stats.failed++
+            null
+        } finally {
+            flattened?.recycle()
+            if (scaled != null && scaled !== decoded) scaled.recycle()
+            decoded?.recycle()
         }
     }
 }
