@@ -5,7 +5,7 @@ description of the app and its roadmap is `docs/PROJECT_GUIDE.md`.
 
 Old names appear throughout: the app was called "Digital Pocket Knife", the package was
 `com.omniforge.app` and launcher shortcuts used `dpk://`. Since v1.1.0 they are "Apparat",
-`com.vedant.apparat` and `apparat://`.
+`com.omniforge.apparat` and `apparat://`.
 
 | File | What it is |
 |---|---|

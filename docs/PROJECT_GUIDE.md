@@ -1,7 +1,7 @@
 # Apparat — Project Guide
 
 How the app is built, the rules that keep it working, and what to build next and how.
-Version covered: **1.1.0 (code 3)**, package `com.vedant.apparat`, minSdk 29, target/compile SDK 36.
+Version covered: **1.1.0 (code 3)**, package `com.omniforge.apparat`, minSdk 29, target/compile SDK 36.
 
 Older plans and audits are in `docs/archive/` (see its README). This file replaces them as the
 day-to-day reference.
@@ -37,7 +37,7 @@ shortcuts, and "Continue with…" chaining from one tool's result into another.
 │       ├── main/
 │       │   ├── AndroidManifest.xml     activity, intent filters, text-action aliases, service, FileProvider
 │       │   ├── res/                    launcher icon, notification icon, file_paths.xml, app name
-│       │   └── java/com/vedant/apparat/
+│       │   └── java/com/omniforge/apparat/
 │       │       ├── ApparatApp.kt       PDFBox init, cache cleanup, launcher shortcuts
 │       │       ├── MainActivity.kt     NavHost (all routes), incoming intents, shared-file hand-off
 │       │       ├── core/

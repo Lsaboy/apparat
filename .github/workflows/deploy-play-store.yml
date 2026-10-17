@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PACKAGE_NAME: com.vedant.apparat
+      PACKAGE_NAME: com.omniforge.apparat
       PLAY_KEYSTORE_BASE64: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
       PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
 

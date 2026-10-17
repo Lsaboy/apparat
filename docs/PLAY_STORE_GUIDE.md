@@ -1,7 +1,7 @@
 # Google Play Store Publishing & Automation Playbook
 **Apps Covered:**
 1. **Lumen Android** (`com.vedant.lumen`) — Media Player
-2. **Apparat** (`com.vedant.apparat`) — Offline Swiss-Army Utility Toolkit
+2. **Apparat** (`com.omniforge.apparat`) — Offline Swiss-Army Utility Toolkit
 
 ---
 
@@ -68,7 +68,7 @@ For each app:
      - App name: `Apparat`
      - Default language: English (United States)
      - Type: App | Free
-     - Package Name: will automatically bind to `com.vedant.apparat` upon first upload.
+     - Package Name: will automatically bind to `com.omniforge.apparat` upon first upload.
 4. Accept Declarations and click **Create app**.
 
 ---

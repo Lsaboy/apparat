@@ -2,7 +2,7 @@
 
 _Last updated: 17 October 2026_
 
-Apparat (package `com.vedant.apparat`) is a toolkit for working with PDFs, photos, video, audio and
+Apparat (package `com.omniforge.apparat`) is a toolkit for working with PDFs, photos, video, audio and
 text on your Android device.
 
 ## What the app collects
