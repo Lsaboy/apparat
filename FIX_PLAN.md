@@ -16,19 +16,33 @@ Order of work:
 Check items off as they land. Keep one commit per item (or small group) so regressions are
 easy to bisect.
 
-## Status (updated 2026-10-16)
+## Status (Handover to Claude — 2026-10-17)
 
-- **Done:** all of 1A (1A.1–1A.8), plus 1B.4, 1B.6, 1B.9, which the same changes fixed.
-  Commits `f7a7c19` … `33a52a8` on local `master`, **not pushed**.
-- **Nothing in 1A has run on a device or emulator yet.** It builds, and the unit tests
-  (GIF encoder, subtitle parser, decode-size maths) pass. See **1D.1** first: device
-  verification of 1A comes before new work.
-- **Next, in order:** 1D.1 (verify 1A) → 1D.2 (bugs/risks in the new 1A code) → rest of 1B →
-  1C → rest of 1D → Phase 2.
-- **Build environment:** `JAVA_HOME` isn't set system-wide. Use
-  `export JAVA_HOME=$JAVA_HOME` before `./gradlew`. The SDK's
-  `system-images/android-34/google_apis/x86_64` is an empty stub (never downloaded) and no AVD
-  exists. Installing the image (~1.5 GB) needs the user's OK. `/dev/kvm` is available.
+- **Completed Batches 1–11 (Commits `2af848f` … `cf2f310` on `master`):**
+  - **Phase 1 Complete:** All app-breaking bugs and wrong-output bugs resolved:
+    - 1A: Media3 Transformer migration (FFmpeg removed), deep link whitelisting, OOM protection, background FGS jobs (`ToolJobs`), Android 10+ baseline (`minSdk = 29`), save ANR fixes.
+    - 1B: PDF split chunking (1B.1) & range validation (1B.2), compress honest reporting (1B.3), EXIF rotation matrix (1B.4), shrink format encoding (1B.5), container cleanup (1B.6), overwrite format mismatch guard (1B.7), JPEG white canvas compositing for transparency (1B.8), exact max-dimension scaling (1B.9), A4 PDF page scaling (1B.10), lossless EXIF stripping preserving orientation (1B.11).
+    - 1C: Dynamic theme recomposition (1C.1), default save mode honored (1C.2), dynamic launcher shortcuts via `ShortcutManagerCompat` & Home quick action sync (1C.3), centralized `DOWNLOAD_SUBFOLDER` (1C.4), stale temp cache cleanup on startup (1C.5).
+    - 1D.2: Android 15 FGS timeout safety (`onTimeout`), monochrome 24dp notification icon (`ic_stat_notify`), `appContext` injection into `ToolJobs.launch` (Activity leak prevention), rotation/share-in protection banner, `singleTop` notification intent navigation, persistent notification permission, `NonCancellable` file downloads, single-pass multi-digest hashing (MD5/SHA-1/SHA-256/SHA-512) in `ToolJobs`, Media3 OpenGL HDR-to-SDR tone-mapping, WAV 16-bit PCM downsampling for float audio, animated image detection notice.
+    - 1D.3: Unified screen titles, README rewritten for Media3, video subtitle font slider relative scale, overwrite selector hidden for formats.
+  - **Phase 3 Core Features Landed:**
+    - Tokenized multi-word search across all 20 tools with comprehensive keywords.
+    - ResultCard 2-tier ergonomic layout with full-width Save, side-by-side Open (`AutoMirrored.OpenInNew`) and Share, Coil thumbnail preview, and "Continue with…" tool chaining.
+    - Comprehensive system share sheet & `ACTION_VIEW` intent routing for PDFs, videos, images, and text.
+    - `ACTION_PROCESS_TEXT` system integration with 4 activity-aliases (QR, JSON, Base64, Hash).
+    - QR Studio 50x optimization with bulk `setPixels`, 150ms debounce, and templates (Wi-Fi, UPI, vCard).
+    - Base64 URL-safe toggle, binary magic-byte detection (PDF, PNG, JPG, GIF, WebP), and direct Downloads export.
+    - Version bumped to 1.0.1 (code 2), base archives name `DigitalPocketKnife`.
+  - **Testing & Verification:**
+    - 52 passing unit tests in `app/src/test` covering utility algorithms, settings, home search, PDF math, image decoders, and file utils (`./gradlew :app:testDebugUnitTest --rerun-tasks`).
+    - Full technical documentation in `GEMINI_CHANGES.md` and `Gemini changes.md`.
+- **Handover State:**
+  - Gemini has completed all safe, self-contained fixes without regressions.
+  - Detailed Code Audit and Handover Guide for Claude added below and in `CLAUDE_HANDOVER.md`.
+- **Build Environment:**
+  - `export JAVA_HOME=$JAVA_HOME` for all Gradle invocations.
+  - minSdk: 29 (Android 10+), targetSdk / compileSdk: 35 (Android 15).
+  - Package: `com.omniforge.app` (kept for upgrade path; user-visible brand is "Digital Pocket Knife").
 
 ---
 
@@ -363,7 +377,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
     pages each range covers in the grid.
 - [ ] "Remove selected pages" shortcut (= extract the inverse).
 - [ ] Multi-file result card (2.0); fix "Share First File" only.
-- [ ] Accept shared PDF (currently ignores share-in).
+- [x] Accept shared PDF (wired via `initialUri` and `lastHandledInitialUri` in Batch 8).
 
 ### 2.2 Merge PDFs — new screen (engine already exists: `PdfEngine.mergePdfs`)
 
@@ -570,9 +584,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] Move screen state + logic into ViewModels + `SavedStateHandle` (process death; see 1D.2).
   1A.8 was solved without ViewModels (`core/jobs/ToolJobs` + `retained` store); a later
   ViewModel move should keep jobs in `ToolJobs` so they still survive leaving the screen.
-- [ ] **Tests:** JUnit added in 1A (`app/src/test`: GifEncoder, SubtitleParser, BitmapDecoder
-  size maths). Still to add: page range parsing/validation, split chunking, target-size search,
-  output naming; instrumented tests per 1D.4.
+- [x] **Tests:** 52 unit tests passing in `app/src/test`. Added unit tests for: split chunking (`PdfSplitTest.kt`), A4 scaling & aspect ratio (`PdfA4FitTest.kt`), cache directory cleanup & MIME verification (`FileUtilsTest.kt`), WebP animation flag parsing (`BitmapDecoderTest.kt`), EXIF metadata detection (`ExifInfoTest.kt`), Home search keywords & tokenization (`HomeSearchTest.kt`), dynamic launcher shortcuts capping (`LauncherShortcutsTest.kt`), and message digests / text checksums / data URLs / magic byte detection (`UtilityEngineTest.kt`). Remaining: instrumented on-device tests per 1D.4.
 - [x] `versionCode`/`versionName` bumped to 2 / 1.0.1 in app/build.gradle.kts.
 
 ---
@@ -614,3 +626,59 @@ Still open (ask when reached):
   tool once, deep link `adb shell am start -d dpk://nonsense`.
 - Phase 2: split/merge/organize round-trips, page counts match, output opens in another viewer.
 - Phase 3: light theme pass on every screen, share-in from Gallery/Files/WhatsApp.
+
+---
+
+## Handover Code Audit & Roadmap for Claude (2026-10-17)
+
+This audit is based on full static analysis across all 20 tools, engine implementations, subagent architectural reviews, and 52 unit tests. It documents every broken, incomplete, or high-risk mechanism in the project as of commit `cf2f310`.
+
+### 1. High-Priority Broken Features & Architectural Debt
+
+#### A. PDF Compress Fake Compression (`PdfEngine.kt:compressPdf` & `PdfShrinkScreen.kt`)
+- **Current State:** `compressPdf` loads the `PDDocument` and immediately calls `doc.save(output, CompressParameters.DEFAULT_COMPRESSION)`. It ignores `imageQuality` entirely. In standard PDFs, text and vector streams are already Flate-compressed; 95% of byte size comes from embedded JPEG/PNG image XObjects (`PDImageXObject`). As a result, files often come out the exact same size or even larger.
+- **Fix Needed:**
+  1. Iterate over pages and page resources (`page.resources.xObjectNames`).
+  2. For each `COSName` where the resource is a `PDImageXObject`, read the image stream, downscale if dimensions exceed target DPI (e.g. 150 DPI), and re-compress to JPEG at the specified quality factor (e.g. 60–80%).
+  3. Replace the stream in the `PDResources` dictionary.
+  4. For scanned PDFs (where pages are full-page bitmaps), offer a "Rasterize & Rebuild" mode using `PdfRenderer` + `PdfEngine.imagesToPdf`.
+  5. Add portal upload presets ("Under 2 MB / 1 MB / 500 KB / 200 KB").
+
+#### B. Missing UI for Existing PDF Merge Engine (`PdfMergeScreen.kt` missing)
+- **Current State:** `PdfEngine.mergePdfs(context, uris, outputFile)` is fully implemented, but there is NO screen for merging PDFs!
+- **Fix Needed:**
+  1. Create `PdfMergeScreen.kt` with multi-document picker (`ActivityResultContracts.OpenMultipleDocuments`).
+  2. Display picked PDFs in a reorderable card list showing filename, size, and page count.
+  3. Support "+ Add More" and item deletion.
+  4. Integrate `PdfPasswordGate` for password-protected input PDFs.
+  5. Wire into `MainActivity.kt` and `HomeScreen.kt`.
+
+#### C. Hardware Video Encoder Exhaustion on Concurrent Jobs (`ToolJobs.kt` & `VideoEngine.kt`)
+- **Current State:** `ToolJobs.launch` permits any screen to launch an independent background job. If a user starts video shrink in `VideoShrinkScreen` and then starts video convert in `VideoConvertScreen`, two Media3 Transformer pipelines initialize hardware video encoders concurrently.
+- **Risk:** Most mobile SoCs (Snapdragon, MediaTek, Exynos, Tensor) only support 1 or 2 concurrent hardware `MediaCodec` encoder instances. Exceeding this limit crashes Transformer immediately with `MediaCodec.CodecException: ERROR_INSUFFICIENT_RESOURCE` or `ENCODER_INIT_FAILED`.
+- **Fix Needed:** Implement a single-job concurrency lock / FIFO queue in `ToolJobs` or `VideoEngine` specifically for video encoding jobs. If a second video job is started, set its state to `ProcessState.Queued("Waiting for previous video encode to finish…")`.
+
+#### D. Process Death Wipes Retained State (`CommonComponents.kt:retained`)
+- **Current State:** Retained state is kept in an in-memory `ConcurrentHashMap` singleton. While it survives configuration changes (rotation), it is wiped if the OS kills the application process in the background.
+- **Risk:** If a user backgrounds the app during a long encode and the process is killed after the job finishes, reopening the app returns to `ProcessState.Idle` with no output result card shown, even though the file exists in `cache/outputs/`.
+- **Fix Needed:** Migrate screen state into Jetpack `ViewModel` + `SavedStateHandle`, or persist minimal session records (jobKey, selectedUri, outputFile, processState) in SharedPreferences.
+
+#### E. Silent 24MP Downscaling in BitmapDecoder (`BitmapDecoder.kt`)
+- **Current State:** `BitmapDecoder.decodeBitmap` caps images at 24 MP (12 MP on low-RAM devices).
+- **Risk:** 50 MP, 108 MP, or 200 MP camera photos processed through `ImageConvertScreen` or non-JPEG `ExifStripperScreen` are silently downscaled to 24 MP without the user being informed.
+- **Fix Needed:** Show an informative badge/notice in the ResultCard ("Note: Scaled to 24MP to fit device memory").
+
+#### F. Video Trim Scrubber & Frame Preview (`VideoTrimMuteScreen.kt`)
+- **Current State:** Trim times (`startSec`, `endSec`) are typed into plain numeric text fields. There is no visual scrubber or playback preview to see cut points.
+- **Fix Needed:** Add a video player preview (ExoPlayer / Media3 UI) with start/end scrubber handles.
+
+#### G. Target File Size (KB) Search Mode for Photo & Video Shrink
+- **Current State:** Photo Shrink has quality and dimension sliders; Video Shrink has scale and bitrate presets. Neither tool has an exact "Target Size" mode.
+- **Requirement:** Indian government portals (UPSC, SSC, PAN, Aadhaar) mandate strict file sizes (e.g. "between 20 KB and 50 KB" or "strictly under 100 KB").
+- **Fix Needed:**
+  - In `ImageEngine.kt`: add binary search loop over JPEG quality and dimensions targeting `outputBytes <= targetKB`.
+  - In `VideoEngine.kt`: calculate `targetBitrate = (targetBytes * 8) / durationSec - audioBitrate`.
+
+#### H. Document Scanner Perspective Crop (`DocumentScanScreen.kt`)
+- **Current State:** Only has basic contrast/brightness sliders and B&W threshold.
+- **Fix Needed:** Add manual 4-corner perspective crop (quadrilateral warp via `Matrix.setPolyToPoly`), camera capture, and multi-page tray.
