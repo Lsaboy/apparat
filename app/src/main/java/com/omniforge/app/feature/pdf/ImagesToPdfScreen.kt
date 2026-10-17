@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +35,10 @@ import kotlinx.coroutines.launch
 private const val JOB_KEY = "images_to_pdf"
 
 @Composable
-fun ImagesToPdfScreen(onBack: () -> Unit) {
+fun ImagesToPdfScreen(
+    onNavigateToTool: ((route: String, uri: Uri) -> Unit)? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -154,7 +158,19 @@ fun ImagesToPdfScreen(onBack: () -> Unit) {
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, "application/pdf")
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Compress PDF",
+                                icon = Icons.Default.Compress,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("pdf_shrink", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

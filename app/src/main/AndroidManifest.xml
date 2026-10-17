@@ -90,6 +90,55 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Contextual Text Selection Actions in Any App -->
+        <activity-alias
+            android:name=".ProcessTextQrActivity"
+            android:targetActivity=".MainActivity"
+            android:label="Make QR Code"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ProcessTextJsonActivity"
+            android:targetActivity=".MainActivity"
+            android:label="Format JSON"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ProcessTextBase64Activity"
+            android:targetActivity=".MainActivity"
+            android:label="Base64 Studio"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ProcessTextHashActivity"
+            android:targetActivity=".MainActivity"
+            android:label="Calculate Hash"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+
         <service
             android:name=".core.jobs.ToolJobService"
             android:exported="false"

@@ -450,7 +450,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
   result showing new dimensions.
 - [ ] Live size estimate while moving sliders (debounced in-memory encode of a downscaled copy,
   no disk write): "4.2 MB → ~780 KB".
-- [ ] Presets as chips: "Govt / portal upload", "WhatsApp", "Email", "Print".
+- [x] Presets as chips: "Portal / ID (<100KB)", "WhatsApp / Chat (1600px, 80%)", "Email / Social (1920px, 85%)", "Max Quality (3840px, 95%)" with continuous slider.
 - [ ] **Batch:** pick many → same settings → save all/share all.
 - [ ] Replace abstract "Quality %" / "Max dimension" sliders with the above (keep as "Advanced").
 
@@ -493,7 +493,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **File card thumbnails** (images, PDF first page, video frame) — Coil is already a
   dependency and unused.
 - [x] **Result card upgrade:** preview image output (AsyncImage), Open button (via FileProvider and Intent.createChooser), 2-tier ergonomic action layout with full-width Save.
-- [ ] **"Continue with…"** chaining: Split→Compress, Photos→PDF→Compress, Shrink→Share.
+- [x] **"Continue with…"** chaining: Photos→PDF→Compress, Image Convert→Shrink, Trim Video→Make GIF via ResultCard ToolChainAction assist chips and FileProvider content URIs.
 - [ ] **Real progress + Cancel** everywhere. Video tools have real progress and cancel (via
   back → Stop) since 1A. PDF and image tools still use fixed 0.3/0.5 values and have no
   visible Cancel button.
@@ -530,8 +530,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [x] Real progress from encoder callbacks — done in 1A.1 (`Transformer.getProgress`, per-frame for
   GIF, per-buffer for WAV).
 - [x] Media3 only (no FFmpeg) — done in 1A.1.
-- [ ] Convert: show input codec/resolution (MediaExtractor/MediaMetadataRetriever); say
-  "instant, no quality loss" when it will only remux.
+- [x] Convert & Shrink: show input resolution, duration, and size formatted in FileSelectionCard (via `VideoEngine.getVideoMetadata` with rotation correction and fallback).
 - [ ] Audio Extract: AAC → M4A without re-encoding; optional start/end range.
 - [ ] Shrink: optional HEVC (smaller) with compatibility warning; keep-original-audio switch.
 - [ ] Captions: preview of subtitle on a frame, position (top/bottom), sync offset ±s,
@@ -554,7 +553,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 
 ### 3F. OS integration (low priority, after core tools are solid)
 
-- [ ] `ACTION_PROCESS_TEXT` (select text in any app → "Make QR / Format JSON / Base64 / Hash").
+- [x] `ACTION_PROCESS_TEXT` (select text in any app → "Make QR", "Format JSON", "Base64 Studio", "Calculate Hash" registered via 4 activity-aliases to MainActivity).
 - [x] `text/plain` share routing (JSON → JSON tool, URL/text → QR Studio) and `*/*` → Hash Verifier, with reactive `SharedPayload` updating across `onNewIntent`.
 - [ ] Quick Settings tile for "Scan QR" / "Shrink last photo" (optional).
 - [ ] Drag-and-drop onto file cards (tablets / split-screen).
@@ -576,7 +575,7 @@ continuing with 1B/1C. The rest can be slotted in where noted.
 - [ ] **Tests:** JUnit added in 1A (`app/src/test`: GifEncoder, SubtitleParser, BitmapDecoder
   size maths). Still to add: page range parsing/validation, split chunking, target-size search,
   output naming; instrumented tests per 1D.4.
-- [ ] `versionCode`/`versionName` still 1 / 1.0.0 — bump per release.
+- [x] `versionCode`/`versionName` bumped to 2 / 1.0.1 in app/build.gradle.kts.
 
 ---
 

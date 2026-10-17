@@ -35,23 +35,38 @@ import com.omniforge.app.core.ui.ToolScaffold
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.common.UtilityEngine
 
+enum class HashInputMode {
+    FILE, TEXT
+}
+
 private const val JOB_KEY = "hash_verifier"
 
 @Composable
 fun HashVerifierScreen(
     initialUri: Uri? = null,
+    initialText: String? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
 
     var lastHandledInitialUri by retained(JOB_KEY, "lastHandledInitialUri") { mutableStateOf<Uri?>(initialUri) }
+    var lastHandledInitialText by retained(JOB_KEY, "lastHandledInitialText") { mutableStateOf<String?>(initialText) }
     var pendingShareUri by retained(JOB_KEY, "pendingShareUri") { mutableStateOf<Uri?>(null) }
+
+    var inputMode by retained(JOB_KEY, "inputMode") {
+        mutableStateOf(if (initialText != null) HashInputMode.TEXT else HashInputMode.FILE)
+    }
+    var textInput by retained(JOB_KEY, "textInput") { mutableStateOf(initialText ?: "") }
 
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf<Uri?>(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf<String?>(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf<Long?>(initialUri?.let { FileUtils.getFileSize(context, it) }) }
 
-    var calculatedHashes by retained(JOB_KEY, "calculatedHashes") { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var calculatedHashes by retained(JOB_KEY, "calculatedHashes") {
+        mutableStateOf<Map<String, String>>(
+            if (!initialText.isNullOrBlank()) UtilityEngine.calculateTextChecksums(initialText) else emptyMap()
+        )
+    }
     var compareHash by retained(JOB_KEY, "compareHash") { mutableStateOf("") }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -80,8 +95,19 @@ fun HashVerifierScreen(
         }
     }
 
+    LaunchedEffect(initialText) {
+        if (!initialText.isNullOrBlank() && initialText != lastHandledInitialText) {
+            lastHandledInitialText = initialText
+            inputMode = HashInputMode.TEXT
+            textInput = initialText
+            calculatedHashes = UtilityEngine.calculateTextChecksums(initialText)
+            processState = ProcessState.Idle
+        }
+    }
+
     LaunchedEffect(initialUri) {
         if (initialUri != null && initialUri != lastHandledInitialUri) {
+            inputMode = HashInputMode.FILE
             if (ToolJobs.isRunning(JOB_KEY)) {
                 pendingShareUri = initialUri
             } else {
@@ -126,78 +152,180 @@ fun HashVerifierScreen(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Pending share-in warning card
-            if (pendingShareUri != null) {
-                val pendingUri = pendingShareUri!!
-                val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Incoming shared file: $pendingName",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "A job is currently running on another file. Switch to this new file or dismiss it.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = {
-                                    ToolJobs.cancel(JOB_KEY)
-                                    selectedUri = pendingUri
-                                    fileName = pendingName
-                                    fileSize = FileUtils.getFileSize(context, pendingUri)
-                                    lastHandledInitialUri = pendingUri
-                                    pendingShareUri = null
-                                    calculatedHashes = emptyMap()
-                                    startCalculation(pendingUri)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
-                            ) {
-                                Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
+            // Mode Selector: Verify File vs Hash Text
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = inputMode == HashInputMode.FILE,
+                    onClick = {
+                        if (inputMode != HashInputMode.FILE) {
+                            inputMode = HashInputMode.FILE
+                            calculatedHashes = emptyMap()
+                            compareHash = ""
+                            processState = ProcessState.Idle
+                            selectedUri?.let { startCalculation(it) }
+                        }
+                    },
+                    label = { Text("Verify File") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentUtility,
+                        selectedLabelColor = AmoledBlack
+                    )
+                )
+                FilterChip(
+                    selected = inputMode == HashInputMode.TEXT,
+                    onClick = {
+                        if (inputMode != HashInputMode.TEXT) {
+                            inputMode = HashInputMode.TEXT
+                            compareHash = ""
+                            processState = ProcessState.Idle
+                            calculatedHashes = if (textInput.isNotBlank()) {
+                                UtilityEngine.calculateTextChecksums(textInput)
+                            } else {
+                                emptyMap()
                             }
-                            OutlinedButton(
-                                onClick = {
-                                    lastHandledInitialUri = pendingUri
-                                    pendingShareUri = null
+                        }
+                    },
+                    label = { Text("Hash Text") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentUtility,
+                        selectedLabelColor = AmoledBlack
+                    )
+                )
+            }
+
+            if (inputMode == HashInputMode.FILE) {
+                // Pending share-in warning card
+                if (pendingShareUri != null) {
+                    val pendingUri = pendingShareUri!!
+                    val pendingName = remember(pendingUri) { FileUtils.getFileName(context, pendingUri) }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Incoming shared file: $pendingName",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "A job is currently running on another file. Switch to this new file or dismiss it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        ToolJobs.cancel(JOB_KEY)
+                                        selectedUri = pendingUri
+                                        fileName = pendingName
+                                        fileSize = FileUtils.getFileSize(context, pendingUri)
+                                        lastHandledInitialUri = pendingUri
+                                        pendingShareUri = null
+                                        calculatedHashes = emptyMap()
+                                        startCalculation(pendingUri)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                                ) {
+                                    Text("Switch to New File", color = AmoledBlack, fontSize = 12.sp)
                                 }
-                            ) {
-                                Text("Dismiss", fontSize = 12.sp)
+                                OutlinedButton(
+                                    onClick = {
+                                        lastHandledInitialUri = pendingUri
+                                        pendingShareUri = null
+                                    }
+                                ) {
+                                    Text("Dismiss", fontSize = 12.sp)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            FileSelectionCard(
-                fileName = fileName,
-                fileSize = fileSize,
-                placeholderText = "Select Any File to Calculate Hash",
-                icon = Icons.Default.Fingerprint,
-                accentColor = AccentUtility,
-                onClick = { picker.launch(arrayOf("*/*")) }
-            )
+                FileSelectionCard(
+                    fileName = fileName,
+                    fileSize = fileSize,
+                    placeholderText = "Select Any File to Calculate Hash",
+                    icon = Icons.Default.Fingerprint,
+                    accentColor = AccentUtility,
+                    onClick = { picker.launch(arrayOf("*/*")) }
+                )
 
-            ProcessStateView(state = processState, accentColor = AccentUtility)
+                ProcessStateView(state = processState, accentColor = AccentUtility)
 
-            if (selectedUri != null && calculatedHashes.isEmpty() && processState !is ProcessState.Processing) {
-                Button(
-                    onClick = { selectedUri?.let { startCalculation(it) } },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
-                ) {
-                    Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = AmoledBlack)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Calculate Checksums", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                if (selectedUri != null && calculatedHashes.isEmpty() && processState !is ProcessState.Processing) {
+                    Button(
+                        onClick = { selectedUri?.let { startCalculation(it) } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentUtility)
+                    ) {
+                        Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = AmoledBlack)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Calculate Checksums", color = AmoledBlack, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                // Text Mode
+                OutlinedTextField(
+                    value = textInput,
+                    onValueChange = {
+                        textInput = it
+                        calculatedHashes = if (it.isNotBlank()) {
+                            UtilityEngine.calculateTextChecksums(it)
+                        } else {
+                            emptyMap()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Enter or paste text to hash", color = TextSecondary) },
+                    minLines = 3,
+                    maxLines = 8,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentUtility,
+                        unfocusedBorderColor = DarkBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    trailingIcon = {
+                        if (textInput.isNotEmpty()) {
+                            IconButton(onClick = {
+                                textInput = ""
+                                calculatedHashes = emptyMap()
+                            }) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                                if (!clip.isNullOrBlank()) {
+                                    textInput = clip
+                                    calculatedHashes = UtilityEngine.calculateTextChecksums(clip)
+                                } else {
+                                    Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Paste", tint = AccentUtility)
+                            }
+                        }
+                    }
+                )
+
+                if (textInput.isNotEmpty()) {
+                    val byteCount = remember(textInput) { textInput.toByteArray(Charsets.UTF_8).size }
+                    Text(
+                        text = "${textInput.length} characters • $byteCount UTF-8 bytes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
                 }
             }
 

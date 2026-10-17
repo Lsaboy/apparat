@@ -97,6 +97,17 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val navigateToToolWithFile: (String, Uri) -> Unit = { route, uri ->
+                    val mime = contentResolver.getType(uri) ?: when (route) {
+                        "pdf_shrink" -> "application/pdf"
+                        "image_shrink" -> "image/jpeg"
+                        "video_to_gif" -> "video/mp4"
+                        else -> null
+                    }
+                    currentSharedPayload = SharedPayload(uri = uri, mimeType = mime)
+                    navController.navigate(route)
+                }
+
                 NavHost(
                     navController = navController,
                     startDestination = "home",
@@ -150,7 +161,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("images_to_pdf") {
-                        ImagesToPdfScreen(onBack = { navController.popBackStack() })
+                        ImagesToPdfScreen(
+                            onNavigateToTool = navigateToToolWithFile,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
 
                     // Video Tools
@@ -163,6 +177,7 @@ class MainActivity : ComponentActivity() {
                     composable("video_trim") {
                         VideoTrimMuteScreen(
                             initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("video/") == true },
+                            onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -207,6 +222,7 @@ class MainActivity : ComponentActivity() {
                     composable("image_convert") {
                         ImageConvertScreen(
                             initialUri = incomingUri?.takeIf { incomingMimeType?.startsWith("image/") == true },
+                            onNavigateToTool = navigateToToolWithFile,
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -227,17 +243,21 @@ class MainActivity : ComponentActivity() {
                     composable("hash_verifier") {
                         HashVerifierScreen(
                             initialUri = incomingUri,
+                            initialText = incomingText,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("json_tool") {
                         JsonToolScreen(
-                            initialText = incomingText?.takeIf { it.trim().startsWith("{") || it.trim().startsWith("[") },
+                            initialText = incomingText,
                             onBack = { navController.popBackStack() }
                         )
                     }
                     composable("base64_studio") {
-                        Base64StudioScreen(onBack = { navController.popBackStack() })
+                        Base64StudioScreen(
+                            initialText = incomingText,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }
@@ -284,6 +304,21 @@ class MainActivity : ComponentActivity() {
                     } else {
                         navEvents.trySend("qr_studio")
                     }
+                }
+            }
+            Intent.ACTION_PROCESS_TEXT -> {
+                val processText = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+                if (!processText.isNullOrBlank()) {
+                    currentSharedPayload = SharedPayload(text = processText, mimeType = "text/plain")
+                    val className = intent.component?.className ?: ""
+                    val targetRoute = when {
+                        className.endsWith("ProcessTextQrActivity") -> "qr_studio"
+                        className.endsWith("ProcessTextJsonActivity") -> "json_tool"
+                        className.endsWith("ProcessTextBase64Activity") -> "base64_studio"
+                        className.endsWith("ProcessTextHashActivity") -> "hash_verifier"
+                        else -> "qr_studio"
+                    }
+                    navEvents.trySend(targetRoute)
                 }
             }
         }

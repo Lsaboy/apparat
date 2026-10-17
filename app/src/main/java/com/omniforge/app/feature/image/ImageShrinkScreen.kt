@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -196,6 +197,50 @@ fun ImageShrinkScreen(
                 }
             }
 
+            // Quick Presets
+            val presets = remember {
+                listOf(
+                    Triple("Portal / ID (<100KB)", 1000f, Pair(70f, ImageOutputFormat.JPEG)),
+                    Triple("WhatsApp / Chat", 1600f, Pair(80f, ImageOutputFormat.WEBP)),
+                    Triple("Email / Social", 1920f, Pair(85f, ImageOutputFormat.JPEG)),
+                    Triple("Max Quality", 3840f, Pair(95f, ImageOutputFormat.JPEG))
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Quick Presets",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = TextSecondary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    presets.forEach { (name, dim, settings) ->
+                        val (q, fmt) = settings
+                        val isSelected = maxDimension == dim && quality == q && outputFormat == fmt
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                maxDimension = dim
+                                quality = q
+                                outputFormat = fmt
+                            },
+                            label = { Text(name, fontSize = 12.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AccentImage,
+                                selectedLabelColor = AmoledBlack
+                            )
+                        )
+                    }
+                }
+            }
+
             // Format Selection Row
             FormatSelectorRow(
                 title = "Output Format",
@@ -266,7 +311,7 @@ fun ImageShrinkScreen(
                         value = maxDimension,
                         onValueChange = { maxDimension = it },
                         valueRange = 720f..3840f,
-                        steps = 4,
+                        steps = 0,
                         colors = SliderDefaults.colors(
                             thumbColor = AccentImage,
                             activeTrackColor = AccentImage,

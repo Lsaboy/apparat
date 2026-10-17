@@ -86,6 +86,11 @@ object FileUtils {
         return File(dir, "${prefix}_${System.currentTimeMillis()}$extensionWithDot")
     }
 
+    fun getContentUri(context: Context, file: File): Uri {
+        val authority = "${context.packageName}.fileprovider"
+        return FileProvider.getUriForFile(context, authority, file)
+    }
+
     fun shareFile(context: Context, file: File, mimeType: String = "*/*") {
         if (!file.exists() || file.length() == 0L) {
             Toast.makeText(context, "Output file does not exist", Toast.LENGTH_SHORT).show()

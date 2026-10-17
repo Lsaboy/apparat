@@ -10,7 +10,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -248,6 +250,12 @@ fun FileSelectionCard(
     }
 }
 
+data class ToolChainAction(
+    val label: String,
+    val icon: ImageVector? = null,
+    val onClick: () -> Unit
+)
+
 @Composable
 fun ResultCard(
     outputFile: File,
@@ -255,7 +263,8 @@ fun ResultCard(
     message: String = "Processed successfully!",
     onSaveToDownloads: suspend () -> Unit,
     onShare: () -> Unit,
-    onOpenFile: (() -> Unit)? = null
+    onOpenFile: (() -> Unit)? = null,
+    chainActions: List<ToolChainAction> = emptyList()
 ) {
     val scope = rememberCoroutineScope()
     var isSaving by remember { mutableStateOf(false) }
@@ -428,6 +437,43 @@ fun ResultCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            if (chainActions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = DarkBorder.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Continue with…",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = TextSecondary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    chainActions.forEach { action ->
+                        AssistChip(
+                            onClick = action.onClick,
+                            label = { Text(action.label, fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = action.icon?.let { icon ->
+                                {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
                 }
             }
         }

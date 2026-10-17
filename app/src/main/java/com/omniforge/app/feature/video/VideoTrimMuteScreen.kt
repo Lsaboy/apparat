@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material3.*
@@ -41,6 +42,7 @@ private const val JOB_KEY = "video_trim"
 @Composable
 fun VideoTrimMuteScreen(
     initialUri: Uri? = null,
+    onNavigateToTool: ((route: String, uri: Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -357,7 +359,19 @@ fun VideoTrimMuteScreen(
                     },
                     onShare = {
                         FileUtils.shareFile(context.applicationContext, success.outputFile, "video/mp4")
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Make GIF",
+                                icon = Icons.Default.Gif,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("video_to_gif", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

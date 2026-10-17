@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.*
@@ -40,6 +41,7 @@ private const val JOB_KEY = "image_convert"
 @Composable
 fun ImageConvertScreen(
     initialUri: Uri? = null,
+    onNavigateToTool: ((route: String, uri: Uri) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -317,7 +319,19 @@ fun ImageConvertScreen(
                     },
                     onShare = {
                         FileUtils.shareFile(context, success.outputFile, targetFormat.mimeType)
-                    }
+                    },
+                    chainActions = if (onNavigateToTool != null) {
+                        listOf(
+                            ToolChainAction(
+                                label = "Shrink Photo",
+                                icon = Icons.Default.Compress,
+                                onClick = {
+                                    val uri = FileUtils.getContentUri(context, success.outputFile)
+                                    onNavigateToTool("image_shrink", uri)
+                                }
+                            )
+                        )
+                    } else emptyList()
                 )
             }
 

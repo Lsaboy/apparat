@@ -519,4 +519,66 @@ object VideoEngine {
     } catch (t: Throwable) {
         Result.failure(t)
     }
+
+    /**
+     * Extracts rotation-corrected video dimensions, duration, and format.
+     * Uses file-descriptor fallback and safely releases retriever.
+     */
+    suspend fun getVideoMetadata(context: Context, uri: Uri): VideoMetadata? = withContext(Dispatchers.IO) {
+        val retriever = MediaMetadataRetriever()
+        try {
+            try {
+                retriever.setDataSource(context, uri)
+            } catch (_: Exception) {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    retriever.setDataSource(pfd.fileDescriptor)
+                } ?: return@withContext null
+            }
+
+            val rawWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val rawHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+
+            val mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+
+            val isRotated = (rotation == 90 || rotation == 270)
+            val displayWidth = if (isRotated) rawHeight else rawWidth
+            val displayHeight = if (isRotated) rawWidth else rawHeight
+
+            if (displayWidth <= 0 || displayHeight <= 0) return@withContext null
+
+            VideoMetadata(
+                width = displayWidth,
+                height = displayHeight,
+                durationMs = durationMs,
+                rotation = rotation,
+                mimeType = mimeType
+            )
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+    }
 }
+
+data class VideoMetadata(
+    val width: Int,
+    val height: Int,
+    val durationMs: Long,
+    val rotation: Int = 0,
+    val mimeType: String? = null
+) {
+    val durationFormatted: String
+        get() {
+            val totalSec = durationMs / 1000
+            val min = totalSec / 60
+            val sec = totalSec % 60
+            return "%d:%02d".format(min, sec)
+        }
+
+    val resolutionFormatted: String
+        get() = "${width}x${height}"
+}
+

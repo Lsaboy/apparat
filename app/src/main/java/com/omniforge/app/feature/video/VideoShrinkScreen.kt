@@ -27,6 +27,7 @@ import com.omniforge.app.core.theme.*
 import com.omniforge.app.core.ui.*
 import com.omniforge.app.core.util.FileUtils
 import com.omniforge.app.engine.video.VideoEngine
+import com.omniforge.app.engine.video.VideoMetadata
 import com.omniforge.app.engine.video.VideoShrinkPreset
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -48,10 +49,16 @@ fun VideoShrinkScreen(
     var selectedUri by retained(JOB_KEY, "selectedUri") { mutableStateOf(initialUri) }
     var fileName by retained(JOB_KEY, "fileName") { mutableStateOf(initialUri?.let { FileUtils.getFileName(context, it) }) }
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
+    var videoMetadata by retained(JOB_KEY, "videoMetadata") { mutableStateOf<VideoMetadata?>(null) }
 
     var selectedPreset by retained(JOB_KEY, "selectedPreset") { mutableStateOf(VideoShrinkPreset.DISCORD_FAST) }
     var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+
+    LaunchedEffect(selectedUri) {
+        val uri = selectedUri
+        videoMetadata = if (uri != null) VideoEngine.getVideoMetadata(context, uri) else null
+    }
 
     LaunchedEffect(initialUri) {
         if (initialUri != null && initialUri != lastHandledInitialUri) {
@@ -78,6 +85,19 @@ fun VideoShrinkScreen(
             pendingShareUri = null
             processState = ProcessState.Idle
         }
+    }
+
+    val currentFileSize = fileSize
+    val fileDetails = remember(currentFileSize, videoMetadata) {
+        buildList {
+            videoMetadata?.let {
+                add(it.resolutionFormatted)
+                if (it.durationMs > 0) add(it.durationFormatted)
+            }
+            if (currentFileSize != null && currentFileSize > 0) {
+                add(FileUtils.formatFileSize(currentFileSize))
+            }
+        }.joinToString(" • ").takeIf { it.isNotEmpty() }
     }
 
     val isFormatMismatch = selectedUri != null && !FileUtils.isVideoMp4(context, selectedUri!!)
@@ -153,6 +173,7 @@ fun VideoShrinkScreen(
             FileSelectionCard(
                 fileName = fileName,
                 fileSize = fileSize,
+                fileDetails = fileDetails,
                 placeholderText = "Select Video to Compress",
                 icon = Icons.Default.VideoFile,
                 accentColor = AccentVideo,

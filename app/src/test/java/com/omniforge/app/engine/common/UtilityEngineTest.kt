@@ -128,5 +128,24 @@ class UtilityEngineTest {
         assertTrue(vcard.contains("EMAIL;TYPE=INTERNET:jane@example.com"))
         assertTrue(vcard.endsWith("END:VCARD"))
     }
+
+    @Test
+    fun testCalculateTextChecksums() {
+        val input = "The quick brown fox jumps over the lazy dog"
+        val checksums = UtilityEngine.calculateTextChecksums(input)
+
+        assertEquals("d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592", checksums["SHA-256"])
+        assertEquals("9e107d9d372bb6826bd81d3542a419d6", checksums["MD5"])
+        assertEquals("2fd4e1c67a2d28fced849ee1bb76e7391b93eb12", checksums["SHA-1"])
+        assertEquals(
+            "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6",
+            checksums["SHA-512"]
+        )
+
+        // Empty string test vector
+        val emptyChecksums = UtilityEngine.calculateTextChecksums("")
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", emptyChecksums["SHA-256"])
+        assertEquals("d41d8cd98f00b204e9800998ecf8427e", emptyChecksums["MD5"])
+    }
 }
 

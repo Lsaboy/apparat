@@ -110,6 +110,20 @@ object UtilityEngine {
     }
 
     /**
+     * Calculates MD5, SHA-1, SHA-256, and SHA-512 checksums directly from a string (UTF-8).
+     */
+    fun calculateTextChecksums(
+        text: String,
+        algorithms: List<String> = listOf("SHA-256", "SHA-512", "SHA-1", "MD5")
+    ): Map<String, String> {
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        return algorithms.associateWith { algo ->
+            val md = MessageDigest.getInstance(algo)
+            md.digest(bytes).joinToString("") { "%02x".format(it) }
+        }
+    }
+
+    /**
      * Strips data URL prefix if present (e.g. data:image/png;base64,....).
      */
     fun stripDataUrlPrefix(input: String): String {

@@ -42,11 +42,15 @@ import java.util.Locale
 private const val JOB_KEY = "base64_studio"
 
 @Composable
-fun Base64StudioScreen(onBack: () -> Unit) {
+fun Base64StudioScreen(
+    initialText: String? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var inputText by retained(JOB_KEY, "inputText") { mutableStateOf("") }
+    var lastHandledInitialText by retained(JOB_KEY, "lastHandledInitialText") { mutableStateOf<String?>(null) }
+    var inputText by retained(JOB_KEY, "inputText") { mutableStateOf(initialText ?: "") }
     var outputText by retained(JOB_KEY, "outputText") { mutableStateOf("") }
     var isEncoding by retained(JOB_KEY, "isEncoding") { mutableStateOf(true) }
     var urlSafe by retained(JOB_KEY, "urlSafe") { mutableStateOf(false) }
@@ -54,6 +58,39 @@ fun Base64StudioScreen(onBack: () -> Unit) {
     var detectedBinaryType by remember { mutableStateOf<Pair<String, String>?>(null) }
     var decodedBinaryBytes by remember { mutableStateOf<ByteArray?>(null) }
     var isSavingBinary by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialText) {
+        if (!initialText.isNullOrBlank() && initialText != lastHandledInitialText) {
+            lastHandledInitialText = initialText
+            inputText = initialText
+            if (isEncoding) {
+                outputText = UtilityEngine.encodeBase64(initialText, urlSafe)
+            } else {
+                val clean = UtilityEngine.stripDataUrlPrefix(initialText)
+                val byteResult = UtilityEngine.decodeBase64ToBytes(clean, urlSafe)
+                byteResult.fold(
+                    onSuccess = { bytes ->
+                        val detected = UtilityEngine.detectBinaryType(bytes)
+                        if (detected != null) {
+                            detectedBinaryType = detected
+                            decodedBinaryBytes = bytes
+                            outputText = ""
+                        } else {
+                            val textResult = UtilityEngine.decodeBase64(clean, urlSafe)
+                            outputText = textResult.getOrElse { "Decoding error: ${it.localizedMessage}" }
+                            detectedBinaryType = null
+                            decodedBinaryBytes = null
+                        }
+                    },
+                    onFailure = {
+                        outputText = "Decoding error: ${it.localizedMessage}"
+                        detectedBinaryType = null
+                        decodedBinaryBytes = null
+                    }
+                )
+            }
+        }
+    }
 
     ToolScaffold(
         title = "Base64 Studio",
