@@ -1,6 +1,6 @@
 # Apparat — Privacy Policy
 
-_Last updated: 17 October 2026_
+_Last updated: 20 October 2026_
 
 Apparat (package `com.omniforge.apparat`) is a toolkit for working with PDFs, photos, video, audio and
 text on your Android device.
@@ -33,4 +33,4 @@ backup. Your files are not part of that backup.
 Apparat is a general-purpose tool and is not directed at children.
 
 ## Contact
-Questions about this policy: <YOUR SUPPORT EMAIL — fill in before publishing>
+Questions about this policy: dev.support@varahventures.com
