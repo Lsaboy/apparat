@@ -19,7 +19,7 @@ base {
 
 android {
     namespace = "com.omniforge.apparat"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.omniforge.apparat"
