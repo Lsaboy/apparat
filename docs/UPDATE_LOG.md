@@ -33,7 +33,7 @@ pre-alpha with no users, is cheap. Later it gets harder.
 - [x] **Step 3: Media3 1.4.1 → 1.11.x**
 - [x] **Step 4: Coil 2.7.0 → 3.x**
 - [x] **Step 5: Remaining libraries + R8 rules review**
-- [ ] *(Optional)* Drop x86 / x86_64 from `abiFilters`
+- [x] *(Optional)* Drop x86 / x86_64 from `abiFilters`
 
 ### Step 0: Version catalog
 

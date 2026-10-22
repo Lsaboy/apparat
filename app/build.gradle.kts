@@ -33,7 +33,7 @@ android {
             useSupportLibrary = true
         }
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
     }
 
@@ -58,6 +58,12 @@ android {
     }
 
     buildTypes {
+        // Debug keeps the x86 ABIs so the emulator still works; release and preview ship ARM only.
+        debug {
+            ndk {
+                abiFilters.addAll(listOf("x86_64", "x86"))
+            }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
