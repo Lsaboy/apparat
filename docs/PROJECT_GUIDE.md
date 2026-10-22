@@ -191,6 +191,8 @@ features), both in `app/build.gradle.kts`.
 
 ## 7. Roadmap — what to build next, and how
 
+> **First, before anything below:** the dependency update in [UPDATE_LOG.md](UPDATE_LOG.md).
+
 Ordered by value for the main use (PDFs and photos for Indian portals and business paperwork).
 Effort: S ≈ hours, M ≈ a day, L ≈ several days. "Who" follows the cost plan: Gemini Flash for
 mechanical work, Sonnet for normal features and reviews, Opus for risky engine work.
