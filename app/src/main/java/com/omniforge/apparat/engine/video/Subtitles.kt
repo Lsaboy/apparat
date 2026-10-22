@@ -9,10 +9,11 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.annotation.OptIn
+import androidx.media3.common.OverlaySettings
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
-import androidx.media3.effect.OverlaySettings
+import androidx.media3.effect.StaticOverlaySettings
 import kotlin.math.ceil
 import kotlin.math.max
 
@@ -71,11 +72,11 @@ class SubtitleOverlay(
     private var cachedCue: SubtitleCue? = null
     private var cachedBitmap: Bitmap? = null
 
-    private val visible = OverlaySettings.Builder()
+    private val visible = StaticOverlaySettings.Builder()
         .setBackgroundFrameAnchor(0f, -0.92f)
         .setOverlayFrameAnchor(0f, -1f)
         .build()
-    private val hidden = OverlaySettings.Builder().setAlphaScale(0f).build()
+    private val hidden = StaticOverlaySettings.Builder().setAlphaScale(0f).build()
 
     override fun configure(videoSize: Size) {
         super.configure(videoSize)

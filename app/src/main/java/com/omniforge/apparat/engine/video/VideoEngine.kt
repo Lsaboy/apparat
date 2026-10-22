@@ -16,6 +16,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
@@ -190,7 +191,7 @@ object VideoEngine {
         val output = FileUtils.createTempOutputFile(context, "captioned", ".mp4")
         val overlay = SubtitleOverlay(cues, fontSize)
         val item = EditedMediaItem.Builder(MediaItem.fromUri(videoUri))
-            .setEffects(Effects(emptyList(), listOf(OverlayEffect(ImmutableList.of(overlay)))))
+            .setEffects(Effects(emptyList(), listOf(OverlayEffect(ImmutableList.of<TextureOverlay>(overlay)))))
             .build()
         onProgress(0f, "Burning subtitles...")
         runTransformer(context, item, output, forceVideoEncode = true) { p ->
@@ -412,7 +413,7 @@ object VideoEngine {
                 }
             }
             val shouldToneMap = (forceVideoEncode || videoMimeType != null || item.effects.videoEffects.isNotEmpty()) && !item.removeVideo
-            val composition = Composition.Builder(EditedMediaItemSequence(item)).apply {
+            val composition = Composition.Builder(EditedMediaItemSequence.withAudioAndVideoFrom(listOf(item))).apply {
                 if (shouldToneMap) {
                     setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
                 }
