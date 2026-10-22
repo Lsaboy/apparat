@@ -413,7 +413,12 @@ object VideoEngine {
                 }
             }
             val shouldToneMap = (forceVideoEncode || videoMimeType != null || item.effects.videoEffects.isNotEmpty()) && !item.removeVideo
-            val composition = Composition.Builder(EditedMediaItemSequence.withAudioAndVideoFrom(listOf(item))).apply {
+            // Deprecated on purpose: this builder takes the output tracks from the input. The
+            // replacements (withAudioAndVideoFrom etc.) force both tracks, which adds a black
+            // video track to audio extracts and a silent track to mutes and audio-less clips.
+            @Suppress("DEPRECATION")
+            val sequence = EditedMediaItemSequence.Builder(listOf(item)).build()
+            val composition = Composition.Builder(sequence).apply {
                 if (shouldToneMap) {
                     setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
                 }
