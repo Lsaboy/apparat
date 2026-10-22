@@ -31,7 +31,7 @@ pre-alpha with no users, is cheap. Later it gets harder.
 - [x] **Step 1: AndroidX libraries** (done after Step 2; needed compileSdk 36 → 37, targetSdk stays 36)
 - [x] **Step 2: Toolchain: Kotlin 2.4.21, Gradle 9.8.2, AGP 9.4.1** (done before Step 1; Step 1 is deferred until after it)
 - [x] **Step 3: Media3 1.4.1 → 1.11.x**
-- [ ] **Step 4: Coil 2.7.0 → 3.x**
+- [x] **Step 4: Coil 2.7.0 → 3.x**
 - [ ] **Step 5: Remaining libraries + R8 rules review**
 - [ ] *(Optional)* Drop x86 / x86_64 from `abiFilters`
 

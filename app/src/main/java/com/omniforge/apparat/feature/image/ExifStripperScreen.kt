@@ -23,8 +23,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.omniforge.apparat.core.jobs.ToolJobs
 import com.omniforge.apparat.core.jobs.retained
 import com.omniforge.apparat.core.model.ProcessState
@@ -191,7 +192,7 @@ fun ExifStripperScreen(
                         model = ImageRequest.Builder(context)
                             .data(selectedUri)
                             .crossfade(true)
-                            .size(coil.size.Size(512, 512))
+                            .size(coil3.size.Size(512, 512))
                             .build(),
                         contentDescription = "Selected photo preview",
                         contentScale = ContentScale.Fit,

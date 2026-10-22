@@ -38,8 +38,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.omniforge.apparat.core.jobs.ToolJobs
 import com.omniforge.apparat.core.model.ProcessState
 import com.omniforge.apparat.core.settings.AppSettings
@@ -696,7 +697,7 @@ fun ResultCard(
                         model = ImageRequest.Builder(context)
                             .data(outputFile)
                             .crossfade(true)
-                            .size(coil.size.Size(512, 512))
+                            .size(coil3.size.Size(512, 512))
                             .build(),
                         contentDescription = "Output image preview",
                         contentScale = ContentScale.Fit,
