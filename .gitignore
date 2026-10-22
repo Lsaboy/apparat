@@ -23,3 +23,6 @@ service-account*.json
 test-media/
 dist/
 .kotlin/
+
+# Release bundles (signed binaries); the notes are tracked
+update/*.aab

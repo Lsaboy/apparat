@@ -8,7 +8,7 @@ upkeep (dependencies, toolchain, platform changes).
 
 ## 2026-10-22 — Dependency update (focus #1)
 
-**Status:** in progress (Step 0 done). This is the first thing to work on, before any §7 roadmap item.
+**Status:** done (Steps 0–5 and the ABI trim), shipped as 1.5.0.
 
 **Why:** the build is pinned to late-2024 versions (AGP 8.7.2, Kotlin 2.0.21, Compose BOM
 2024.10.00, Media3 1.4.1, Coil 2.7.0). Media3 has had ~7 minor releases of codec and Transformer
@@ -18,7 +18,7 @@ pre-alpha with no users, is cheap. Later it gets harder.
 **Ground rules**
 - Do one step per commit, and keep the app building and green after each one. Don't bundle steps.
 - After every step, run all of these:
-  - `./gradlew :app:testDebugUnitTest` (all 99 tests pass)
+  - `./gradlew :app:testDebugUnitTest` (all 111 tests pass)
   - `./gradlew assemblePreview` (R8 build, which catches missing keep rules)
   - Install the preview build on the phone and smoke-test the tools the step touches.
 - Release flow: `./build-release.sh` → closed testing → promote only after a day of use.
