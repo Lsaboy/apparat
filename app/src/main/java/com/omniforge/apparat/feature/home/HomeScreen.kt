@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -776,7 +777,7 @@ fun getCategoryIcon(id: String, category: ToolCategory): ImageVector = when {
     id.contains("qr") -> Icons.Default.QrCode
     id.contains("hash") -> Icons.Default.Fingerprint
     id.contains("split") -> Icons.AutoMirrored.Filled.CallSplit
-    id.contains("merge") -> Icons.Default.MergeType
+    id.contains("merge") -> Icons.AutoMirrored.Filled.MergeType
     id.contains("to_images") -> Icons.Default.Collections
     id.contains("json") -> Icons.Default.DataObject
     id.contains("base64") -> Icons.Default.Code

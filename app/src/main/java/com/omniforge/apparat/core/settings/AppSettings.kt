@@ -18,7 +18,7 @@ enum class ThemeStyle(val displayName: String) {
                 "LIGHT", "CLASSIC_IVORY" -> LIGHT
                 "DARK", "ATELIER_CHARCOAL", "AMOLED" -> DARK
                 "SYSTEM", "MATERIAL_YOU", null, "" -> SYSTEM
-                else -> runCatching { valueOf(name!!) }.getOrDefault(SYSTEM)
+                else -> runCatching { valueOf(name) }.getOrDefault(SYSTEM)
             }
         }
     }

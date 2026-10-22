@@ -15,7 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.VideoFile
-import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -363,7 +363,7 @@ fun VideoTrimMuteScreen(
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(
-                    imageVector = if (isMuteOnly) Icons.Default.VolumeOff else Icons.Default.ContentCut,
+                    imageVector = if (isMuteOnly) Icons.AutoMirrored.Filled.VolumeOff else Icons.Default.ContentCut,
                     contentDescription = null,
                     tint = LocalContentColor.current
                 )

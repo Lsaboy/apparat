@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MergeType
+import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -277,7 +277,7 @@ fun PdfMergeScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPdf, contentColor = onPrimaryForAccent(AccentPdf)),
                 enabled = entries.size >= 2 && !busy
             ) {
-                Icon(imageVector = Icons.Default.MergeType, contentDescription = null, tint = LocalContentColor.current)
+                Icon(imageVector = Icons.AutoMirrored.Filled.MergeType, contentDescription = null, tint = LocalContentColor.current)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (entries.size >= 2) "Merge ${entries.size} PDFs" else "Merge PDFs",

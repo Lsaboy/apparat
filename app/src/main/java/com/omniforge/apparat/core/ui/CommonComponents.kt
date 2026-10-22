@@ -457,7 +457,7 @@ fun ToolScaffold(
             dismissButton = {
                 TextButton(onClick = {
                     confirmLeave = false
-                    ToolJobs.cancel(jobKey!!)
+                    ToolJobs.cancel(jobKey)
                     onBack()
                 }) { Text("Stop", color = ErrorRed) }
             }
@@ -839,42 +839,32 @@ fun ProcessStateView(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (state.progress != null) {
-                        LinearProgressIndicator(
-                            progress = { state.progress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
-                            color = accentColor,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    LinearProgressIndicator(
+                        progress = { state.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = accentColor,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${(state.progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = accentText(accentColor),
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "${(state.progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = accentText(accentColor),
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    } else {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(36.dp),
-                            color = accentColor,
-                            strokeWidth = 3.dp
-                        )
-                    }
+                    )
 
-                    if (state.message != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
-                    }
+                    )
                 }
             }
         }
