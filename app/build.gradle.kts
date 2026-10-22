@@ -130,6 +130,7 @@ dependencies {
 
     // EXIF metadata tools
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.heifwriter:heifwriter:1.0.0")
 
     // QR & Barcode generation/processing
     implementation("com.google.zxing:core:3.5.3")

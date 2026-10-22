@@ -82,4 +82,15 @@ class FileUtilsTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun heicFormatMatching() {
+        assertTrue(FileUtils.isImageFormatMatching("image/heic", "IMG_1.HEIC", ImageOutputFormat.HEIC))
+        assertTrue(FileUtils.isImageFormatMatching("image/heif-sequence", "burst", ImageOutputFormat.HEIC))
+        assertTrue(FileUtils.isImageFormatMatching(null, "a.heic", ImageOutputFormat.HEIC))
+        assertTrue(FileUtils.isImageFormatMatching(null, "a.HEIF", ImageOutputFormat.HEIC))
+        assertFalse(FileUtils.isImageFormatMatching("image/jpeg", "a.jpg", ImageOutputFormat.HEIC))
+        assertFalse(FileUtils.isImageFormatMatching("image/avif", "a.avif", ImageOutputFormat.HEIC))
+        assertFalse(FileUtils.isImageFormatMatching("image/heic", "a.heic", ImageOutputFormat.JPEG))
+    }
 }

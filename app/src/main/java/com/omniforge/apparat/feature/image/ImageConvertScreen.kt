@@ -199,15 +199,12 @@ fun ImageConvertScreen(
             // Format Selection
             FormatSelectorRow(
                 title = "Target Format",
-                formats = listOf("png", "jpg", "webp"),
+                // HEIC is listed only on phones that can encode it (CodecSupport); AVIF has no Android encoder.
+                formats = listOf(ImageOutputFormat.PNG, ImageOutputFormat.JPEG, ImageOutputFormat.WEBP, ImageOutputFormat.HEIC)
+                    .filter { it in ImageOutputFormat.available() }
+                    .map { it.extension.removePrefix(".") },
                 selectedFormat = targetFormat.extension.removePrefix("."),
-                onFormatSelect = { ext ->
-                    targetFormat = when (ext.lowercase()) {
-                        "png" -> ImageOutputFormat.PNG
-                        "webp" -> ImageOutputFormat.WEBP
-                        else -> ImageOutputFormat.JPEG
-                    }
-                },
+                onFormatSelect = { ext -> targetFormat = ImageOutputFormat.fromExtension(ext) },
                 accentColor = AccentImage
             )
 

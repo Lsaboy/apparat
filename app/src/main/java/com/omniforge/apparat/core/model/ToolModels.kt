@@ -81,15 +81,6 @@ val ALL_TOOLS = listOf(
         route = "pdf_to_images",
         keywords = listOf("convert", "export", "render", "extract", "png", "jpg", "jpeg", "pages", "photo", "picture")
     ),
-    ToolItem(
-        id = "images_to_pdf",
-        shortTitle = "Photos to PDF",
-        title = "Photos to PDF",
-        description = "Combine photos into one A4 PDF, in the order you choose.",
-        category = ToolCategory.PDF,
-        route = "images_to_pdf",
-        keywords = listOf("combine", "merge", "join", "photos", "pictures", "images", "scan", "jpg", "png", "convert")
-    ),
 
     // Video Tools
     ToolItem(
@@ -150,6 +141,15 @@ val ALL_TOOLS = listOf(
 
     // Image Tools
     ToolItem(
+        id = "images_to_pdf",
+        shortTitle = "Photos to PDF",
+        title = "Photos to PDF",
+        description = "Combine photos into one A4 PDF, in the order you choose.",
+        category = ToolCategory.IMAGE,
+        route = "images_to_pdf",
+        keywords = listOf("combine", "merge", "join", "photos", "pictures", "images", "scan", "jpg", "png", "convert")
+    ),
+    ToolItem(
         id = "image_shrink",
         shortTitle = "Shrink Photo",
         title = "Shrink Image",
@@ -182,10 +182,10 @@ val ALL_TOOLS = listOf(
         id = "image_convert",
         shortTitle = "Convert Photo",
         title = "Convert Image",
-        description = "Convert photos between JPEG, PNG and WEBP (HEIC photos too).",
+        description = "Convert photos between JPEG, PNG and WEBP, plus HEIC where your phone supports it. Opens AVIF and HEIC photos.",
         category = ToolCategory.IMAGE,
         route = "image_convert",
-        keywords = listOf("convert", "format", "jpg", "jpeg", "png", "webp", "extension", "transcode")
+        keywords = listOf("convert", "format", "jpg", "jpeg", "png", "webp", "heic", "avif", "extension", "transcode")
     ),
     ToolItem(
         id = "exif_strip",

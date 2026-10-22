@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
+import com.omniforge.apparat.core.util.CodecSupport
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -14,7 +15,7 @@ import kotlin.math.sqrt
  * The one place images are decoded. Uses [ImageDecoder], which
  * - decodes straight to the requested size (no full-resolution bitmap for a 200 MP photo),
  * - applies the EXIF orientation, so portrait photos come out upright,
- * - reads HEIC/HEIF and WEBP as well as JPEG/PNG.
+ * - reads HEIC/HEIF (API 28+), AVIF (API 31+) and WEBP as well as JPEG/PNG.
  */
 object BitmapDecoder {
 
@@ -42,10 +43,25 @@ object BitmapDecoder {
                 if (w != info.size.width || h != info.size.height) decoder.setTargetSize(w, h)
             }
         } catch (e: ImageDecoder.DecodeException) {
+            if (!CodecSupport.canDecodeAvif && isAvif(context, uri)) {
+                throw IllegalArgumentException("AVIF photos need Android 12 or newer. Convert it to JPEG on another device first.", e)
+            }
             throw IllegalArgumentException("Could not read this image. The file may be damaged or in an unsupported format.", e)
         } catch (e: java.io.IOException) {
             throw IllegalStateException("Could not open the selected image. Pick it again.", e)
         }
+    }
+
+    private fun isAvif(context: Context, uri: Uri): Boolean {
+        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+        return isAvifType(mime, uri.lastPathSegment)
+    }
+
+    /** True when [mime] or the name's extension says AVIF. */
+    fun isAvifType(mime: String?, name: String?): Boolean {
+        val lowerMime = mime?.lowercase()
+        return lowerMime == "image/avif" || lowerMime == "image/avif-sequence" ||
+            name?.substringAfterLast('.', "")?.lowercase() == "avif"
     }
 
     /** Largest size ≤ the source that fits both limits, keeping aspect ratio. */
@@ -72,7 +88,29 @@ object BitmapDecoder {
             android.graphics.BitmapFactory.decodeStream(stream, null, bounds)
             if (bounds.outWidth > 0 && bounds.outHeight > 0) bounds.outWidth.toLong() * bounds.outHeight else null
         }
-    }.getOrNull()
+    }.getOrNull() ?: headerPixelCount(context, uri)
+
+    private class HeaderRead : RuntimeException()
+
+    /**
+     * Fallback for formats BitmapFactory can't size on some phones (HEIC, AVIF): ImageDecoder reads the
+     * header, and the listener aborts before any pixels are decoded.
+     */
+    private fun headerPixelCount(context: Context, uri: Uri): Long? {
+        var pixels: Long? = null
+        try {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { _, info, _ ->
+                if (info.size.width > 0 && info.size.height > 0) {
+                    pixels = info.size.width.toLong() * info.size.height
+                }
+                throw HeaderRead()
+            }.recycle()
+        } catch (_: Throwable) {
+            // HeaderRead is the expected way out; anything else means unreadable.
+        }
+        return pixels
+    }
 
     private fun isLowRam(context: Context): Boolean =
         (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.isLowRamDevice == true
@@ -85,6 +123,7 @@ object BitmapDecoder {
         val mime = context.contentResolver.getType(uri)?.lowercase()
         val path = uri.path?.lowercase() ?: ""
         if (mime == "image/gif" || path.endsWith(".gif")) return true
+        if (mime == "image/heic-sequence" || mime == "image/heif-sequence" || mime == "image/avif-sequence") return true
         if (mime == "image/jpeg" || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
             mime == "image/bmp" || path.endsWith(".bmp")) {
             return false

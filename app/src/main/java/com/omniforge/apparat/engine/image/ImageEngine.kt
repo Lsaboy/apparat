@@ -4,7 +4,10 @@ import android.content.Context
 import android.graphics.*
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.exifinterface.media.ExifInterface
+import androidx.heifwriter.HeifWriter
+import com.omniforge.apparat.core.util.CodecSupport
 import com.omniforge.apparat.core.util.FileUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,7 +18,21 @@ import java.io.FileOutputStream
 enum class ImageOutputFormat(val extension: String, val mimeType: String) {
     JPEG(".jpg", "image/jpeg"),
     PNG(".png", "image/png"),
-    WEBP(".webp", "image/webp")
+    WEBP(".webp", "image/webp"),
+    /** Written with HeifWriter; only offered where [CodecSupport.canEncodeHeic] is true. */
+    HEIC(".heic", "image/heic");
+
+    companion object {
+        /** Formats this phone can write, in picker order. HEIC is left out (not greyed out) when unsupported. */
+        fun availableFor(canEncodeHeic: Boolean): List<ImageOutputFormat> =
+            entries.filter { it != HEIC || canEncodeHeic }
+
+        fun available(): List<ImageOutputFormat> = availableFor(CodecSupport.canEncodeHeic)
+
+        /** Maps a picker label like "jpg" back to its format; unknown labels fall back to JPEG. */
+        fun fromExtension(ext: String): ImageOutputFormat =
+            entries.firstOrNull { it.extension.removePrefix(".").equals(ext.removePrefix("."), ignoreCase = true) } ?: JPEG
+    }
 }
 
 data class ExifInfo(
@@ -69,25 +86,7 @@ object ImageEngine {
                     originalBitmap
                 }
 
-                FileOutputStream(outputFile).use { out ->
-                    val format = when (targetFormat) {
-                        ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                        ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
-                        ImageOutputFormat.WEBP -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                if (quality >= 100) {
-                                    Bitmap.CompressFormat.WEBP_LOSSLESS
-                                } else {
-                                    Bitmap.CompressFormat.WEBP_LOSSY
-                                }
-                            } else {
-                                @Suppress("DEPRECATION")
-                                Bitmap.CompressFormat.WEBP
-                            }
-                        }
-                    }
-                    bitmapToCompress.compress(format, quality.coerceIn(1, 100), out)
-                }
+                writeBitmap(bitmapToCompress, outputFile, targetFormat, quality)
             } finally {
                 if (!originalBitmap.isRecycled) {
                     originalBitmap.recycle()
@@ -216,7 +215,7 @@ object ImageEngine {
     }
 
     /**
-     * Converts image to target format (JPEG, PNG, WEBP).
+     * Converts image to target format (JPEG, PNG, WEBP, or HEIC where the phone can encode it).
      */
     suspend fun convertFormat(
         context: Context,
@@ -241,25 +240,7 @@ object ImageEngine {
                     originalBitmap
                 }
 
-                FileOutputStream(outputFile).use { out ->
-                    val format = when (targetFormat) {
-                        ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                        ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
-                        ImageOutputFormat.WEBP -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                if (quality >= 100) {
-                                    Bitmap.CompressFormat.WEBP_LOSSLESS
-                                } else {
-                                    Bitmap.CompressFormat.WEBP_LOSSY
-                                }
-                            } else {
-                                @Suppress("DEPRECATION")
-                                Bitmap.CompressFormat.WEBP
-                            }
-                        }
-                    }
-                    bitmapToCompress.compress(format, quality.coerceIn(1, 100), out)
-                }
+                writeBitmap(bitmapToCompress, outputFile, targetFormat, quality)
             } finally {
                 if (!originalBitmap.isRecycled) {
                     originalBitmap.recycle()
@@ -268,6 +249,67 @@ object ImageEngine {
             }
 
             outputFile
+        }
+    }
+
+    /** Encodes [bitmap] into [outputFile] as [format]. Does not recycle [bitmap]. */
+    private fun writeBitmap(bitmap: Bitmap, outputFile: File, format: ImageOutputFormat, quality: Int) {
+        if (format == ImageOutputFormat.HEIC) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || !CodecSupport.canEncodeHeic) {
+                throw UnsupportedOperationException("This phone can't save HEIC photos. Pick JPEG, PNG or WEBP instead.")
+            }
+            writeHeic(bitmap, outputFile, quality)
+            return
+        }
+        FileOutputStream(outputFile).use { out ->
+            val compressFormat = when (format) {
+                ImageOutputFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                ImageOutputFormat.PNG -> Bitmap.CompressFormat.PNG
+                ImageOutputFormat.WEBP -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        if (quality >= 100) {
+                            Bitmap.CompressFormat.WEBP_LOSSLESS
+                        } else {
+                            Bitmap.CompressFormat.WEBP_LOSSY
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Bitmap.CompressFormat.WEBP
+                    }
+                }
+                ImageOutputFormat.HEIC -> error("HEIC is written by writeHeic")
+            }
+            bitmap.compress(compressFormat, quality.coerceIn(1, 100), out)
+        }
+    }
+
+    private const val HEIC_ENCODE_TIMEOUT_MS = 60_000L
+
+    /** Single-image HEIC via androidx HeifWriter (HEVC encoder). HeifWriter writes no EXIF. */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun writeHeic(bitmap: Bitmap, outputFile: File, quality: Int) {
+        // HeifWriter uploads the bitmap as a GL texture; keep it plain 8-bit ARGB.
+        val input = if (bitmap.config == Bitmap.Config.ARGB_8888) bitmap else bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        try {
+            val writer = HeifWriter.Builder(outputFile.absolutePath, input.width, input.height, HeifWriter.INPUT_MODE_BITMAP)
+                .setQuality(quality.coerceIn(1, 100))
+                .setMaxImages(1)
+                .build()
+            try {
+                writer.start()
+                writer.addBitmap(input)
+                writer.stop(HEIC_ENCODE_TIMEOUT_MS)
+            } finally {
+                writer.close()
+            }
+        } catch (e: Exception) {
+            outputFile.delete()
+            throw IllegalStateException("Could not save as HEIC on this phone. Try JPEG instead.", e)
+        } finally {
+            if (input !== bitmap) input.recycle()
+        }
+        if (outputFile.length() == 0L) {
+            throw IllegalStateException("Could not save as HEIC on this phone. Try JPEG instead.")
         }
     }
 
@@ -299,6 +341,7 @@ object ImageEngine {
             val isJpeg = mime in listOf("image/jpeg", "image/jpg") || ext in listOf("jpg", "jpeg", "jpe")
             val isPng = mime == "image/png" || ext == "png"
             val isWebp = mime == "image/webp" || ext == "webp"
+            val isHeic = mime in listOf("image/heic", "image/heif") || ext in listOf("heic", "heif")
 
             if (isJpeg) {
                 val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
@@ -357,8 +400,18 @@ object ImageEngine {
                 }
                 bitmap.recycle()
                 outputFile
+            } else if (isHeic && CodecSupport.canEncodeHeic) {
+                // Re-encode the pixels only; HeifWriter writes no metadata. Orientation is already applied by the decoder.
+                val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ImageOutputFormat.HEIC.extension)
+                val bitmap = BitmapDecoder.decode(context, inputUri)
+                try {
+                    writeBitmap(bitmap, outputFile, ImageOutputFormat.HEIC, 95)
+                } finally {
+                    bitmap.recycle()
+                }
+                outputFile
             } else {
-                // Fallback for HEIC or other formats
+                // Fallback for AVIF, HEIC on phones without a HEIC encoder, or other formats
                 val outputFile = FileUtils.createTempOutputFile(context, "clean_exif", ".jpg")
                 val bitmap = BitmapDecoder.decode(context, inputUri)
                 FileOutputStream(outputFile).use { out ->

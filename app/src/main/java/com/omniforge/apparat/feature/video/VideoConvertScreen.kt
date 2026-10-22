@@ -25,6 +25,7 @@ import com.omniforge.apparat.core.theme.*
 import com.omniforge.apparat.core.ui.*
 import androidx.compose.ui.unit.sp
 import com.omniforge.apparat.core.util.FileUtils
+import com.omniforge.apparat.engine.video.VideoCodecChoice
 import com.omniforge.apparat.engine.video.VideoEngine
 import com.omniforge.apparat.engine.video.VideoMetadata
 
@@ -46,6 +47,8 @@ fun VideoConvertScreen(
     var fileSize by retained(JOB_KEY, "fileSize") { mutableStateOf(initialUri?.let { FileUtils.getFileSize(context, it) }) }
     var videoMetadata by retained(JOB_KEY, "videoMetadata") { mutableStateOf<VideoMetadata?>(null) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
+    val codecs = remember { VideoCodecChoice.availableOnDevice() }
+    var selectedCodec by retained(JOB_KEY, "selectedCodec") { mutableStateOf(VideoCodecChoice.H264) }
 
     LaunchedEffect(selectedUri) {
         val uri = selectedUri
@@ -166,25 +169,73 @@ fun VideoConvertScreen(
             )
 
             Text(
-                text = "Accepts MKV, WEBM, MOV, 3GP and other videos your phone can play. Output is an MP4 (H.264 + AAC) that plays everywhere.",
+                text = "Accepts MKV, WEBM, MOV, 3GP and other videos your phone can play. Output is an MP4 (${selectedCodec.shortName} + AAC)" +
+                    if (selectedCodec == VideoCodecChoice.H264) " that plays everywhere." else ".",
                 style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
+
+            // Codec Selection: only shown when the phone can encode more than H.264 in hardware.
+            if (codecs.size > 1) {
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Output Codec",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        codecs.forEach { codec ->
+                            val isSelected = selectedCodec == codec
+                            OutlinedButton(
+                                onClick = { selectedCodec = codec },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isSelected) AccentVideo else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) onPrimaryForAccent(AccentVideo) else MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = BorderStroke(1.dp, if (isSelected) AccentVideo else MaterialTheme.colorScheme.outline)
+                            ) {
+                                Text(
+                                    text = codec.label,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
+                    val codec = selectedCodec.takeIf { it in codecs } ?: VideoCodecChoice.H264
                     ToolJobs.launch(context, JOB_KEY, "Convert to MP4") { appContext ->
+                        var usedCodec = codec
                         processState = ProcessState.Processing(0f, "Converting to MP4...")
                         val result = VideoEngine.convertToMp4(
                             context = appContext,
                             inputUri = uri,
+                            codec = codec,
+                            onCodecUsed = { usedCodec = it },
                             onProgress = { p, msg -> processState = ProcessState.Processing(p, msg) }
                         )
                         result.fold(
                             onSuccess = { outputFile ->
+                                val fallbackNote = if (usedCodec != codec) {
+                                    " Saved as H.264 because this phone's ${codec.shortName} encoder failed."
+                                } else ""
                                 processState = ProcessState.Success(
                                     outputFile = outputFile,
-                                    message = "Converted to MP4!"
+                                    message = "Converted to MP4!$fallbackNote"
                                 )
                             },
                             onFailure = { err ->

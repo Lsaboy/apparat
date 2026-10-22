@@ -103,6 +103,8 @@ object FileUtils {
         "jpg", "jpeg" -> "image/jpeg"
         "png" -> "image/png"
         "webp" -> "image/webp"
+        "heic", "heif" -> "image/heic"
+        "avif" -> "image/avif"
         "gif" -> "image/gif"
         "mp4" -> "video/mp4"
         "m4a" -> "audio/mp4"
@@ -170,6 +172,8 @@ object FileUtils {
                     "jpg", "jpeg" -> "image/jpeg"
                     "png" -> "image/png"
                     "webp" -> "image/webp"
+                    "heic", "heif" -> "image/heic"
+                    "avif" -> "image/avif"
                     "gif" -> "image/gif"
                     "pdf" -> "application/pdf"
                     "mp4" -> "video/mp4"
@@ -295,6 +299,8 @@ object FileUtils {
             com.omniforge.apparat.engine.image.ImageOutputFormat.JPEG -> lowerMime in listOf("image/jpeg", "image/jpg") || ext in listOf("jpg", "jpeg", "jpe")
             com.omniforge.apparat.engine.image.ImageOutputFormat.PNG -> lowerMime == "image/png" || ext == "png"
             com.omniforge.apparat.engine.image.ImageOutputFormat.WEBP -> lowerMime == "image/webp" || ext == "webp"
+            com.omniforge.apparat.engine.image.ImageOutputFormat.HEIC ->
+                lowerMime in listOf("image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence") || ext in listOf("heic", "heif")
         }
     }
 

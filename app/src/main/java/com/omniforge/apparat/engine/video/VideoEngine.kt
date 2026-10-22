@@ -71,12 +71,19 @@ object VideoEngine {
 
     const val MP4_MIME = "video/mp4"
 
+    /**
+     * Re-encodes at [preset]'s size and bitrate in [codec]. If a HEVC/AV1 encode fails in the encoder,
+     * it retries once as H.264; [onCodecUsed] reports the codec the output actually ended up in.
+     */
     suspend fun shrinkVideo(
         context: Context,
         inputUri: Uri,
         preset: VideoShrinkPreset = VideoShrinkPreset.DISCORD_FAST,
+        codec: VideoCodecChoice = VideoCodecChoice.H264,
+        onCodecUsed: (VideoCodecChoice) -> Unit = {},
         onProgress: (Float, String) -> Unit = { _, _ -> }
     ): Result<File> = runCatchingCancellable {
+        withContext(Dispatchers.IO) { VideoDecodeSupport.requireDecodable(context, inputUri) }
         val info = readVideoInfo(context, inputUri)
         val effects = mutableListOf<Effect>()
         var bitrate = preset.bitrate
@@ -98,28 +105,73 @@ object VideoEngine {
             .setEffects(Effects(emptyList(), effects))
             .build()
         onProgress(0f, "Compressing video (${preset.label})...")
-        runTransformer(context, item, output, forceVideoEncode = true, videoBitrate = bitrate) { p ->
-            onProgress(p, "Compressing video... ${(p * 100).toInt()}%")
+        val used = encodeWithFallback(codec, onProgress) { attempt ->
+            runTransformer(
+                context, item, output,
+                videoMimeType = attempt.mimeType,
+                videoBitrate = VideoCodecChoice.scaledBitrate(bitrate, attempt)
+            ) { p ->
+                onProgress(p, "Compressing video (${attempt.shortName})... ${(p * 100).toInt()}%")
+            }
         }
+        onCodecUsed(used)
         output
     }
 
-    /** Re-packages any supported input (MKV, WEBM, MOV, 3GP…) as an H.264/AAC MP4. */
+    /**
+     * Re-packages any supported input (MKV, WEBM, MOV, 3GP…) as an MP4 with AAC audio and [codec] video
+     * (H.264 by default). A failed HEVC/AV1 encode retries once as H.264, reported through [onCodecUsed].
+     */
     suspend fun convertToMp4(
         context: Context,
         inputUri: Uri,
+        codec: VideoCodecChoice = VideoCodecChoice.H264,
+        onCodecUsed: (VideoCodecChoice) -> Unit = {},
         onProgress: (Float, String) -> Unit = { _, _ -> }
     ): Result<File> = runCatchingCancellable {
+        withContext(Dispatchers.IO) { VideoDecodeSupport.requireDecodable(context, inputUri) }
         val output = FileUtils.createTempOutputFile(context, "converted", ".mp4")
         val item = EditedMediaItem.Builder(MediaItem.fromUri(inputUri)).build()
         onProgress(0f, "Converting to MP4...")
-        runTransformer(
-            context, item, output,
-            videoMimeType = MimeTypes.VIDEO_H264,
-            audioMimeType = MimeTypes.AUDIO_AAC
-        ) { p -> onProgress(p, "Converting to MP4... ${(p * 100).toInt()}%") }
+        val used = encodeWithFallback(codec, onProgress) { attempt ->
+            runTransformer(
+                context, item, output,
+                videoMimeType = attempt.mimeType,
+                audioMimeType = MimeTypes.AUDIO_AAC
+            ) { p -> onProgress(p, "Converting to MP4 (${attempt.shortName})... ${(p * 100).toInt()}%") }
+        }
+        onCodecUsed(used)
         output
     }
+
+    /**
+     * Runs [export] in [codec]; if that is HEVC/AV1 and the encoder itself fails, runs it once more as H.264.
+     * Returns the codec that succeeded. Decode, file and cancellation errors are never retried.
+     */
+    private suspend fun encodeWithFallback(
+        codec: VideoCodecChoice,
+        onProgress: (Float, String) -> Unit,
+        export: suspend (VideoCodecChoice) -> Unit
+    ): VideoCodecChoice {
+        try {
+            export(codec)
+            return codec
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            if (codec == VideoCodecChoice.H264 || !isEncoderFailure(e)) throw e
+        }
+        withContext(Dispatchers.Main) { onProgress(0f, "${codec.shortName} encoder failed, retrying as H.264...") }
+        export(VideoCodecChoice.H264)
+        return VideoCodecChoice.H264
+    }
+
+    private fun isEncoderFailure(e: Throwable): Boolean =
+        (e.cause as? ExportException)?.errorCode in setOf(
+            ExportException.ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED,
+            ExportException.ERROR_CODE_ENCODER_INIT_FAILED,
+            ExportException.ERROR_CODE_ENCODING_FAILED
+        )
 
     suspend fun burnSubtitles(
         context: Context,

@@ -26,6 +26,7 @@ import com.omniforge.apparat.core.settings.SaveMode
 import com.omniforge.apparat.core.theme.*
 import com.omniforge.apparat.core.ui.*
 import com.omniforge.apparat.core.util.FileUtils
+import com.omniforge.apparat.engine.video.VideoCodecChoice
 import com.omniforge.apparat.engine.video.VideoEngine
 import com.omniforge.apparat.engine.video.VideoMetadata
 import com.omniforge.apparat.engine.video.VideoShrinkPreset
@@ -52,6 +53,8 @@ fun VideoShrinkScreen(
     var videoMetadata by retained(JOB_KEY, "videoMetadata") { mutableStateOf<VideoMetadata?>(null) }
 
     var selectedPreset by retained(JOB_KEY, "selectedPreset") { mutableStateOf(VideoShrinkPreset.DISCORD_FAST) }
+    val codecs = remember { VideoCodecChoice.availableOnDevice() }
+    var selectedCodec by retained(JOB_KEY, "selectedCodec") { mutableStateOf(VideoCodecChoice.H264) }
     var saveMode by retained(JOB_KEY, "saveMode") { mutableStateOf(AppSettings(context).defaultSaveMode) }
     var processState by retained(JOB_KEY, "processState") { mutableStateOf<ProcessState>(ProcessState.Idle) }
 
@@ -227,21 +230,68 @@ fun VideoShrinkScreen(
                 }
             }
 
+            // Codec Selection: only shown when the phone can encode more than H.264 in hardware.
+            if (codecs.size > 1) {
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Output Codec",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        codecs.forEach { codec ->
+                            val isSelected = selectedCodec == codec
+                            OutlinedButton(
+                                onClick = { selectedCodec = codec },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isSelected) AccentVideo else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) onPrimaryForAccent(AccentVideo) else MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = BorderStroke(1.dp, if (isSelected) AccentVideo else MaterialTheme.colorScheme.outline)
+                            ) {
+                                Text(
+                                    text = codec.label,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Button(
                 onClick = {
                     val uri = selectedUri ?: return@Button
+                    val codec = selectedCodec.takeIf { it in codecs } ?: VideoCodecChoice.H264
                     ToolJobs.launch(context, JOB_KEY, "Video Shrinker") { appContext ->
                         processState = ProcessState.Processing(0.2f, "Preparing video...")
+                        var usedCodec = codec
                         val result = VideoEngine.shrinkVideo(
                             context = appContext,
                             inputUri = uri,
                             preset = selectedPreset,
+                            codec = codec,
+                            onCodecUsed = { usedCodec = it },
                             onProgress = { p, msg ->
                                 processState = ProcessState.Processing(p, msg)
                             }
                         )
                         result.fold(
                             onSuccess = { outputFile ->
+                                val fallbackNote = if (usedCodec != codec) {
+                                    " Saved as H.264 because this phone's ${codec.shortName} encoder failed."
+                                } else ""
                                 val origBytes = if ((fileSize ?: 0L) > 0L) fileSize!! else {
                                     runCatching { appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } }.getOrNull() ?: 0L
                                 }
@@ -250,25 +300,25 @@ fun VideoShrinkScreen(
                                 if (origBytes > 0L && newBytes >= origBytes) {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "Video is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further."
+                                        message = "Video is already optimized (${FileUtils.formatFileSize(newBytes)}) — could not reduce size further." + fallbackNote
                                     )
                                 } else if (saveMode == SaveMode.OVERWRITE_ORIGINAL && allowOverwrite) {
                                     val overwritten = FileUtils.overwriteOriginal(appContext, uri, outputFile)
                                     if (overwritten) {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Original video overwritten in-place!"
+                                            message = "Original video overwritten in-place!" + fallbackNote
                                         )
                                     } else {
                                         processState = ProcessState.Success(
                                             outputFile = outputFile,
-                                            message = "Processed! (Original is read-only — tap Save below to save copy)"
+                                            message = "Processed! (Original is read-only — tap Save below to save copy)" + fallbackNote
                                         )
                                     }
                                 } else {
                                     processState = ProcessState.Success(
                                         outputFile = outputFile,
-                                        message = "Video compressed successfully!"
+                                        message = "Video compressed successfully!" + fallbackNote
                                     )
                                 }
                             },

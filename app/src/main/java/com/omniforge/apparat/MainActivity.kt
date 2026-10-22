@@ -206,7 +206,12 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("images_to_pdf") {
-                        val sharedPhotos = payload?.uris?.takeIf { incomingMimeType == "image/*" }.orEmpty()
+                        val sharedPhotos = when {
+                            payload?.uris?.isNotEmpty() == true && incomingMimeType == "image/*" -> payload.uris
+                            // A single photo shared via the tool picker
+                            incomingUri != null && incomingMimeType?.startsWith("image/") == true -> listOf(incomingUri)
+                            else -> emptyList()
+                        }
                         ConsumeSharedPayloadEffect(sharedPhotos.firstOrNull())
                         ImagesToPdfScreen(
                             initialUris = sharedPhotos,

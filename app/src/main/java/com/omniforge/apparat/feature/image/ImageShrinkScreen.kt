@@ -289,15 +289,12 @@ fun ImageShrinkScreen(
             // Format Selection Row
             FormatSelectorRow(
                 title = "Output Format",
-                formats = listOf("jpg", "webp", "png"),
+                // HEIC is listed only on phones that can encode it (CodecSupport); AVIF has no Android encoder.
+                formats = listOf(ImageOutputFormat.JPEG, ImageOutputFormat.WEBP, ImageOutputFormat.PNG, ImageOutputFormat.HEIC)
+                    .filter { it in ImageOutputFormat.available() }
+                    .map { it.extension.removePrefix(".") },
                 selectedFormat = outputFormat.extension.removePrefix("."),
-                onFormatSelect = { ext ->
-                    outputFormat = when (ext.lowercase()) {
-                        "png" -> ImageOutputFormat.PNG
-                        "webp" -> ImageOutputFormat.WEBP
-                        else -> ImageOutputFormat.JPEG
-                    }
-                },
+                onFormatSelect = { ext -> outputFormat = ImageOutputFormat.fromExtension(ext) },
                 accentColor = AccentImage
             )
 
