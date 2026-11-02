@@ -14,6 +14,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asSkiaBitmap
+import kotlin.time.Duration.Companion.minutes
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -58,6 +62,20 @@ class EndToEndUiTest {
         override val lifecycle: Lifecycle get() = registry
     }
 
+    /** Runs a UI test; on failure saves what the window showed to build/screenshots/fail-<name>.png. */
+    private fun e2e(name: String, block: ComposeUiTest.() -> Unit) = runComposeUiTest(testTimeout = 5.minutes) {
+        try {
+            block()
+        } catch (t: Throwable) {
+            runCatching {
+                val bmp = onRoot().captureToImage().asSkiaBitmap()
+                val data = org.jetbrains.skia.Image.makeFromBitmap(bmp).encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)!!
+                File("build/screenshots").apply { mkdirs() }.resolve("fail-$name.png").writeBytes(data.bytes)
+            }
+            throw t
+        }
+    }
+
     private fun ComposeUiTest.open(route: String, file: File? = null, mime: String? = null): AppController {
         val controller = AppController()
         if (file != null) controller.payload = SharedPayload(uri = Uri.fromFile(file), mimeType = mime)
@@ -94,7 +112,7 @@ class EndToEndUiTest {
     }
 
     @Test
-    fun compressPdfAndSave() = runComposeUiTest {
+    fun compressPdfAndSave() = e2e("compressPdfAndSave") {
         val pdf = File(work, "scan.pdf")
         PDDocument().use { doc ->
             val page = PDPage(PDRectangle.A4)
@@ -115,7 +133,7 @@ class EndToEndUiTest {
     }
 
     @Test
-    fun shrinkVideoAndSave() = runComposeUiTest {
+    fun shrinkVideoAndSave() = e2e("shrinkVideoAndSave") {
         val video = File(work, "holiday.mp4")
         runBlocking {
             Ffmpeg.run(
@@ -137,7 +155,7 @@ class EndToEndUiTest {
     }
 
     @Test
-    fun shrinkPhotoUnderLimit() = runComposeUiTest {
+    fun shrinkPhotoUnderLimit() = e2e("shrinkPhotoUnderLimit") {
         val photo = File(work, "passport.png")
         runBlocking { Ffmpeg.run(listOf("-f", "lavfi", "-i", "testsrc2=size=1600x1200", "-frames:v", "1", photo.absolutePath)) }
         open("image_shrink", photo, "image/png")
@@ -150,7 +168,7 @@ class EndToEndUiTest {
     }
 
     @Test
-    fun formatJson() = runComposeUiTest {
+    fun formatJson() = e2e("formatJson") {
         open("json_tool")
         onNode(hasSetTextAction()).performTextInput("""{"tool":"apparat","n":[1,2]}""")
         clickWhenEnabled("Prettify")
@@ -158,7 +176,7 @@ class EndToEndUiTest {
     }
 
     @Test
-    fun droppedPdfsGoToMerge() = runComposeUiTest {
+    fun droppedPdfsGoToMerge() = e2e("droppedPdfsGoToMerge") {
         val a = File(work, "a.pdf"); val b = File(work, "b.pdf")
         for (f in listOf(a, b)) PDDocument().use { it.addPage(PDPage()); it.save(f) }
         val controller = AppController()
