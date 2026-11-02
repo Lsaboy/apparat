@@ -97,6 +97,12 @@ fun main(args: Array<String>) {
         ) {
             LaunchedEffect(Unit) {
                 window.minimumSize = java.awt.Dimension(400, 560)
+                // Mouse "back" side button goes back too.
+                java.awt.Toolkit.getDefaultToolkit().addAWTEventListener({ e ->
+                    if (e is java.awt.event.MouseEvent && e.id == java.awt.event.MouseEvent.MOUSE_RELEASED && e.button == 4) {
+                        java.awt.EventQueue.invokeLater { BackDispatcher.dispatch() || controller.pop() }
+                    }
+                }, java.awt.AWTEvent.MOUSE_EVENT_MASK)
                 DesktopDialogs.owner = window
                 DesktopNotifications.onOpenRoute = { route ->
                     window.isVisible = true
