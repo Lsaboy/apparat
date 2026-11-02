@@ -219,13 +219,16 @@ object VideoEngine {
         }
     }
 
+    /** A path for an FFmpeg concat list: forward slashes (fine on Windows too) and quotes escaped. */
+    private fun concatPath(file: File): String = file.absolutePath.replace('\\', '/').replace("'", "'\\''")
+
     /** One PNG per cue plus a blank, sequenced with an FFmpeg concat list by duration. */
     private fun writeCueImages(cues: List<SubtitleCue>, renderer: SubtitleRenderer, dir: File): File {
         val blank = File(dir, "blank.png").also { renderer.renderBlank(it) }
         val sb = StringBuilder("ffconcat version 1.0\n")
         fun entry(file: File, seconds: Double) {
             if (seconds <= 0.0005) return
-            sb.append("file '").append(file.absolutePath.replace("'", "'\\''")).append("'\n")
+            sb.append("file '").append(concatPath(file)).append("'\n")
             sb.append("duration ").append("%.3f".format(java.util.Locale.ROOT, seconds)).append('\n')
         }
         var cursorUs = 0L
@@ -239,7 +242,7 @@ object VideoEngine {
         }
         entry(blank, 1.0)
         // The concat demuxer ignores the last entry's duration: end on the blank frame.
-        sb.append("file '").append(blank.absolutePath.replace("'", "'\\''")).append("'\n")
+        sb.append("file '").append(concatPath(blank)).append("'\n")
         return File(dir, "subs.ffconcat").apply { writeText(sb.toString()) }
     }
 

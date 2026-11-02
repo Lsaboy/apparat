@@ -42,6 +42,10 @@ fun main(args: Array<String>) {
     if (args.any { it == "--version" }) { println("Apparat $APP_VERSION"); return }
     setLinuxWindowClass("apparat")
 
+    val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.isFile }
+    // Already running? Give it the files (or just bring it forward) and stop here.
+    if (System.getProperty("apparat.multiInstance") == null && SingleInstance.handOff(initialFiles)) return
+
     val context = Context.app
     ToastHost.install()
     ToolJobs.onActivityCreated(context, restoring = false)
@@ -51,7 +55,6 @@ fun main(args: Array<String>) {
 
     val appSettings = AppSettings(context)
     val controller = AppController()
-    val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.isFile }
     val windowPrefs = context.getSharedPreferences("desktop_window", Context.MODE_PRIVATE)
 
     application {
@@ -124,6 +127,14 @@ fun main(args: Array<String>) {
                     }
                 }
                 if (initialFiles.isNotEmpty()) controller.handleFiles(initialFiles)
+                SingleInstance.listen { files ->
+                    java.awt.EventQueue.invokeLater {
+                        if (window.extendedState and java.awt.Frame.ICONIFIED != 0) window.extendedState = java.awt.Frame.NORMAL
+                        window.toFront()
+                        window.requestFocus()
+                        if (files.isNotEmpty()) controller.handleFiles(files)
+                    }
+                }
             }
 
             ApparatDesktopApp(controller, appSettings)

@@ -24,7 +24,14 @@ object DesktopShell {
 
     /** Shows [file] selected in the file manager (or opens its folder where selecting isn't possible). */
     fun reveal(file: File): Boolean {
-        if (DesktopPaths.isWindows) return exec("explorer", "/select,", file.absolutePath)
+        if (DesktopPaths.isWindows) {
+            val ok = runCatching {
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE_FILE_DIR)) {
+                    Desktop.getDesktop().browseFileDirectory(file); true
+                } else false
+            }.getOrDefault(false)
+            return ok || exec("explorer.exe", "/select,${file.absolutePath}") || open(file.parentFile ?: return false)
+        }
         if (DesktopPaths.isMac) return exec("open", "-R", file.absolutePath)
         // FileManager1 D-Bus interface (Nautilus, Dolphin, Nemo, Thunar...) selects the file.
         val uri = file.toURI().toString().replace("file:/", "file:///").replace("file:////", "file:///")
