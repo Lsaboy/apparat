@@ -18,7 +18,7 @@ val appVersion = "1.5.0"
 // Desktop replacements for the few Android-only files live in src/main/kotlin.
 // ---------------------------------------------------------------------------------------------
 val androidSources = rootProject.file("../app/src/main/java")
-val syncAndroidUiSources by tasks.registering(Sync::class) {
+val syncAndroidUiSources = tasks.register<Sync>("syncAndroidUiSources") {
     from(androidSources) {
         include(
             "com/omniforge/apparat/feature/**",
@@ -32,7 +32,7 @@ val syncAndroidUiSources by tasks.registering(Sync::class) {
 }
 
 val androidTests = rootProject.file("../app/src/test/java")
-val syncAndroidUiTests by tasks.registering(Sync::class) {
+val syncAndroidUiTests = tasks.register<Sync>("syncAndroidUiTests") {
     from(androidTests) {
         include(
             "com/omniforge/apparat/feature/**",
@@ -67,7 +67,11 @@ tasks.test { useJUnit() }
 compose.desktop {
     application {
         mainClass = "com.omniforge.apparat.desktop.MainKt"
-        jvmArgs += listOf("-Dfile.encoding=UTF-8", "-XX:+UseG1GC", "-XX:MaxRAMPercentage=60")
+        jvmArgs += listOf(
+            "-Dfile.encoding=UTF-8", "-XX:+UseG1GC", "-XX:MaxRAMPercentage=60",
+            // Lets the app set its X11 window class on Linux (ignored elsewhere).
+            "--add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED"
+        )
 
         nativeDistributions {
             // .deb for Debian/Ubuntu, .msi and .exe installers for Windows. Each is built on its own
@@ -118,4 +122,16 @@ compose.desktop {
             }
         }
     }
+}
+
+// Offscreen screenshots of every screen (used on CI to check the UI without a display).
+tasks.register<JavaExec>("screenshots") {
+    group = "verification"
+    dependsOn("testClasses")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.omniforge.apparat.desktop.ScreenshotsKt")
+    val dir = layout.buildDirectory.dir("screenshots").get().asFile
+    args(dir.absolutePath)
+    systemProperty("java.awt.headless", "true")
+    systemProperty("apparat.home", layout.buildDirectory.dir("screenshot-home").get().asFile.absolutePath)
 }

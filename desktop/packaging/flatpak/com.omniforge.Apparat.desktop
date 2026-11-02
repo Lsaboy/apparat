@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Apparat
+GenericName=File Tools
+Comment=Offline PDF, video, image and utility tools
+Exec=apparat %F
+Icon=com.omniforge.Apparat
+Terminal=false
+Categories=Utility;Office;Graphics;AudioVideo;
+Keywords=pdf;merge;split;compress;video;gif;mp4;image;exif;qr;checksum;json;base64;
+MimeType=application/pdf;image/jpeg;image/png;image/webp;image/heic;video/mp4;video/x-matroska;video/webm;video/quicktime;
+StartupWMClass=apparat

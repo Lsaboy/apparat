@@ -3,7 +3,9 @@ name: Desktop CI
 on:
   push:
     branches: [ 'desktop-port' ]
-    paths: [ 'desktop/**', 'app/src/main/java/**', '.github/workflows/desktop-ci.yml' ]
+    paths: [ 'desktop/**', 'app/src/main/java/**', 'app/src/test/java/**', '.github/workflows/desktop-ci.yml' ]
+  pull_request:
+    paths: [ 'desktop/**', 'app/src/main/java/**', 'app/src/test/java/**' ]
   workflow_dispatch:
 
 jobs:
@@ -17,4 +19,25 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile
-        run: ./gradlew -p desktop :app:compileKotlin --continue
+        run: ./gradlew -p desktop :app:compileKotlin :app:compileTestKotlin --continue
+      - name: Test
+        run: ./gradlew -p desktop test --continue
+      - name: Screenshots
+        run: ./gradlew -p desktop :app:screenshots
+      - name: Package .deb
+        run: ./gradlew -p desktop packageDeb
+      - name: Install the .deb and start it
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb imagemagick > /dev/null
+          sudo apt-get install -y ./desktop/app/build/compose/binaries/main/deb/*.deb
+          ls /opt/apparat/bin
+          (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
+          cat /tmp/apparat.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-ci
+          path: |
+            desktop/app/build/screenshots/
+            desktop/app/build/compose/binaries/main/deb/*.deb
+            desktop/*/build/reports/tests/

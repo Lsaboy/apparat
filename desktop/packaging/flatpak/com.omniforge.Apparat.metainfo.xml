@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.omniforge.Apparat</id>
+  <name>Apparat</name>
+  <summary>Offline PDF, video, image and utility tools</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer id="app.omniforge">
+    <name>Omniforge</name>
+  </developer>
+  <description>
+    <p>21 everyday tools that work entirely on your computer, with no account and no uploads.</p>
+    <ul>
+      <li>PDF: remove password, compress, split, merge, PDF to images, photos to PDF</li>
+      <li>Video and audio: shrink, trim and mute, burn subtitles, video to GIF, convert to MP4, extract audio</li>
+      <li>Photos: shrink to a size limit, document scanner, palette extractor, format conversion, EXIF stripper</li>
+      <li>Utilities: QR codes, checksums, JSON formatter, Base64</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.omniforge.Apparat.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.5.0" date="2026-11-02"/>
+  </releases>
+</component>

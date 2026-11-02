@@ -60,7 +60,7 @@ tasks.test {
 // Pure-logic files used unchanged from the Android app (single source of truth). They are copied
 // into build/ at compile time; edit them in app/src/main/java, not in the copy.
 val androidSources = rootProject.file("../app/src/main/java")
-val syncAndroidEngineSources by tasks.registering(Sync::class) {
+val syncAndroidEngineSources = tasks.register<Sync>("syncAndroidEngineSources") {
     from(androidSources) {
         include(
             "com/omniforge/apparat/engine/common/UtilityEngine.kt",
@@ -78,7 +78,7 @@ sourceSets.main {
 
 // The Android app's JVM unit tests for engines and utilities run against the desktop versions too.
 val androidTests = rootProject.file("../app/src/test/java")
-val syncAndroidEngineTests by tasks.registering(Sync::class) {
+val syncAndroidEngineTests = tasks.register<Sync>("syncAndroidEngineTests") {
     from(androidTests) {
         include("com/omniforge/apparat/engine/**", "com/omniforge/apparat/core/util/**", "com/omniforge/apparat/core/jobs/**")
         // These two also test screen code; they run in the app module instead.

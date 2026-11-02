@@ -40,6 +40,7 @@ fun main(args: Array<String>) {
     // Wayland/X11 scaling is picked up by Skia; keep text antialiasing crisp on Linux.
     System.setProperty("awt.useSystemAAFontSettings", "lcd")
     if (args.any { it == "--version" }) { println("Apparat $APP_VERSION"); return }
+    setLinuxWindowClass("apparat")
 
     val context = Context.app
     ToastHost.install()
@@ -139,5 +140,19 @@ fun main(args: Array<String>) {
                 }
             }
         }
+    }
+}
+
+/**
+ * On X11 the window class is what docks use to match a window to its .desktop file (and icon).
+ * Java derives it from the main class name; set it to the app's name instead.
+ */
+private fun setLinuxWindowClass(name: String) {
+    if (com.omniforge.apparat.desktop.platform.DesktopPaths.isWindows || com.omniforge.apparat.desktop.platform.DesktopPaths.isMac) return
+    runCatching {
+        val toolkit = java.awt.Toolkit.getDefaultToolkit()
+        val field = toolkit.javaClass.getDeclaredField("awtAppClassName")
+        field.isAccessible = true
+        field.set(toolkit, name)
     }
 }

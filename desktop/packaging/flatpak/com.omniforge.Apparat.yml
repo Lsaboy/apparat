@@ -1,0 +1,57 @@
+# Flatpak manifest for Apparat (desktop). It packages the app image built by Gradle, which already
+# contains its own trimmed Java runtime and FFmpeg, so the Freedesktop runtime is all it needs.
+#
+# Build (from the repository root, on Linux with flatpak-builder installed):
+#   desktop/packaging/flatpak/build-flatpak.sh
+# which runs `./gradlew -p desktop createDistributable` and then flatpak-builder, and writes
+# desktop/build/Apparat.flatpak (install with: flatpak install --user Apparat.flatpak).
+app-id: com.omniforge.Apparat
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: apparat
+finish-args:
+  # Java's toolkit draws through X11 (XWayland on Wayland sessions).
+  - --share=ipc
+  - --socket=x11
+  - --device=dri
+  # Files are picked with the app's own dialogs, so it needs to see the user's files.
+  - --filesystem=home
+  - --filesystem=xdg-download
+  - --filesystem=/media
+  - --filesystem=/run/media
+  # "Job finished" notifications and "Show in folder".
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.FileManager1
+  - --env=APPARAT_FLATPAK=1
+modules:
+  - name: apparat
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ../../app/build/compose/binaries/main/app/Apparat
+        dest: app-image
+      - type: file
+        path: com.omniforge.Apparat.desktop
+      - type: file
+        path: com.omniforge.Apparat.metainfo.xml
+      - type: file
+        path: ../icons/apparat.png
+      - type: file
+        path: ../icons/apparat-128.png
+      - type: file
+        path: ../icons/apparat-64.png
+      - type: file
+        path: ../icons/apparat.svg
+      - type: file
+        path: apparat.sh
+    build-commands:
+      - mkdir -p /app/lib /app/bin
+      - cp -a app-image /app/lib/apparat
+      - install -Dm755 apparat.sh /app/bin/apparat
+      - install -Dm644 com.omniforge.Apparat.desktop /app/share/applications/com.omniforge.Apparat.desktop
+      - install -Dm644 com.omniforge.Apparat.metainfo.xml /app/share/metainfo/com.omniforge.Apparat.metainfo.xml
+      - install -Dm644 apparat.png /app/share/icons/hicolor/512x512/apps/com.omniforge.Apparat.png
+      - install -Dm644 apparat-128.png /app/share/icons/hicolor/128x128/apps/com.omniforge.Apparat.png
+      - install -Dm644 apparat-64.png /app/share/icons/hicolor/64x64/apps/com.omniforge.Apparat.png
+      - install -Dm644 apparat.svg /app/share/icons/hicolor/scalable/apps/com.omniforge.Apparat.svg

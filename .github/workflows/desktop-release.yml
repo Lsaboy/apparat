@@ -1,0 +1,68 @@
+name: Desktop Release
+
+# Builds the desktop installers: .deb and .flatpak on Linux, .msi and .exe on Windows.
+# Runs on version tags (v*) or by hand from the Actions tab. Each installer bundles its own Java
+# runtime and FFmpeg. The files are attached to the run (and to the GitHub release for tags).
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test
+        run: ./gradlew -p desktop test
+      - name: Build .deb
+        run: ./gradlew -p desktop packageDeb
+      - name: Build .flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          desktop/packaging/flatpak/build-flatpak.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apparat-linux
+          path: |
+            desktop/app/build/compose/binaries/main/deb/*.deb
+            desktop/build/Apparat.flatpak
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/app/build/compose/binaries/main/deb/*.deb
+            desktop/build/Apparat.flatpak
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build .msi and .exe
+        run: ./gradlew -p desktop packageMsi packageExe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apparat-windows
+          path: |
+            desktop/app/build/compose/binaries/main/msi/*.msi
+            desktop/app/build/compose/binaries/main/exe/*.exe
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/app/build/compose/binaries/main/msi/*.msi
+            desktop/app/build/compose/binaries/main/exe/*.exe
