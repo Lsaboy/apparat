@@ -17,6 +17,24 @@ class FfmpegException(message: String, val log: String) : RuntimeException(messa
  */
 object Ffmpeg {
 
+    /**
+     * A ProcessBuilder for an FFmpeg/FFprobe command. For the bundled binaries the bundle folder is
+     * put on the library path: its libraries find each other there, not in the system.
+     */
+    fun process(command: List<String>): ProcessBuilder {
+        val pb = ProcessBuilder(command)
+        val exe = File(command.first())
+        val dir = exe.parentFile
+        if (exe.isAbsolute && dir != null && !DesktopPaths.isWindows) {
+            val key = if (DesktopPaths.isMac) "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
+            val env = pb.environment()
+            env[key] = dir.absolutePath + (env[key]?.let { File.pathSeparator + it } ?: "")
+        }
+        return pb
+    }
+
+    fun process(vararg command: String): ProcessBuilder = process(command.toList())
+
     /** Why the bundled FFmpeg couldn't be used (for logs and the error message), or null. */
     @Volatile
     var bundleProblem: String? = null
@@ -50,7 +68,7 @@ object Ffmpeg {
     private var lastRunOutput = ""
 
     private fun runs(exe: String): Boolean = runCatching {
-        val p = ProcessBuilder(exe, "-hide_banner", "-version").redirectErrorStream(true).start()
+        val p = process(exe, "-hide_banner", "-version").redirectErrorStream(true).start()
         lastRunOutput = p.inputStream.readBytes().toString(Charsets.UTF_8).take(800)
         p.waitFor() == 0
     }.onFailure { lastRunOutput = it.toString() }.getOrDefault(false)
@@ -75,7 +93,7 @@ object Ffmpeg {
     /** True when FFmpeg starts at all (used for a clear message if it's missing). */
     val isAvailable: Boolean by lazy {
         runCatching {
-            val p = ProcessBuilder(ffmpeg, "-hide_banner", "-version").redirectErrorStream(true).start()
+            val p = process(ffmpeg, "-hide_banner", "-version").redirectErrorStream(true).start()
             p.inputStream.readBytes()
             p.waitFor() == 0
         }.getOrDefault(false)
@@ -84,7 +102,7 @@ object Ffmpeg {
     /** Encoders compiled into the FFmpeg build, e.g. "libx264", "libx265", "libsvtav1". */
     val encoders: Set<String> by lazy {
         runCatching {
-            val p = ProcessBuilder(ffmpeg, "-hide_banner", "-encoders").redirectErrorStream(true).start()
+            val p = process(ffmpeg, "-hide_banner", "-encoders").redirectErrorStream(true).start()
             val out = p.inputStream.bufferedReader().readText()
             p.waitFor()
             out.lines().mapNotNull { line ->
@@ -104,7 +122,7 @@ object Ffmpeg {
         onProgress: (Float) -> Unit = {}
     ): Unit = withContext(Dispatchers.IO) {
         val command = listOf(ffmpeg, "-hide_banner", "-nostdin", "-y", "-progress", "pipe:1", "-nostats") + args
-        val process = ProcessBuilder(command).start()
+        val process = process(command).start()
         val log = ArrayDeque<String>()
         val errReader = Thread {
             runCatching {
@@ -149,7 +167,7 @@ object Ffmpeg {
 
     /** Runs a short command and returns stdout (stderr discarded). Throws on a non-zero exit. */
     fun capture(command: List<String>): String {
-        val p = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        val p = process(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
         val out = p.inputStream.bufferedReader().readText()
         if (p.waitFor() != 0) throw FfmpegException("Could not read this media file.", out)
         return out

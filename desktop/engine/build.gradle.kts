@@ -24,7 +24,8 @@ val skikoPlatform = when {
 
 val ffmpegVersion = "8.1.2-1.5.14"
 val javacppVersion = "1.5.14"
-val skikoVersion = "0.156.0"
+// Must match the Skia (skiko) version that the Compose Multiplatform release uses (1.12.2 → 0.150.2).
+val skikoVersion = "0.150.2"
 
 dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")

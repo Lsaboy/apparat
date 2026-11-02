@@ -362,7 +362,7 @@ object VideoEngine {
                 "-vf", "fps=$safeFps,scale=$outW:$outH:flags=lanczos", "-frames:v", frameCount.toString(),
                 "-an", "-f", "rawvideo", "-pix_fmt", "argb", "pipe:1"
             )
-            val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+            val process = Ffmpeg.process(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
             try {
                 FileOutputStream(output).buffered().use { out ->
                     val encoder = GifEncoder(out, outW, outH, frameDelayMs)

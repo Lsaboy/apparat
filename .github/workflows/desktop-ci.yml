@@ -45,6 +45,8 @@ jobs:
       - name: Install the .deb and start it
         if: success() || failure()
         run: |
+          # The runner has no menu folders (a desktop system does); the .deb's menu entry needs them.
+          sudo mkdir -p /usr/share/applications /usr/share/desktop-directories /usr/share/icons/hicolor
           sudo apt-get install -y ./desktop/app/build/compose/binaries/main/deb/*.deb
           ls /opt/apparat/bin
           (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
