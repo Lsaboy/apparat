@@ -40,6 +40,7 @@ fun main(args: Array<String>) {
     // Wayland/X11 scaling is picked up by Skia; keep text antialiasing crisp on Linux.
     System.setProperty("awt.useSystemAAFontSettings", "lcd")
     if (args.any { it == "--version" }) { println("Apparat $APP_VERSION"); return }
+    if (args.any { it == "--self-test" }) kotlin.system.exitProcess(runSelfTest())
     setLinuxWindowClass("apparat")
 
     val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.isFile }

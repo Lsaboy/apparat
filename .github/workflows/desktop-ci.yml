@@ -50,6 +50,8 @@ jobs:
           sudo apt-get install -y ./desktop/app/build/compose/binaries/main/deb/*.deb
           ls /opt/apparat/bin
           mkdir -p desktop/app/build/screenshots
+          /opt/apparat/bin/Apparat --self-test | tee desktop/app/build/screenshots/zz-deb-self-test.txt
+          mkdir -p desktop/app/build/screenshots
           (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
           cat /tmp/apparat.log
           cp /tmp/apparat.log desktop/app/build/screenshots/zz-installed-app.log || true
@@ -96,6 +98,7 @@ jobs:
         run: |
           mkdir -p shots
           flatpak install --user -y --noninteractive desktop/build/Apparat.flatpak
+          flatpak run com.omniforge.Apparat --self-test | tee shots/flatpak-self-test.txt || true
           (dbus-run-session -- xvfb-run -a -s "-screen 0 1280x960x24" bash -c 'flatpak run com.omniforge.Apparat > /tmp/flatpak.log 2>&1 & sleep 30; import -window root shots/flatpak-app.png; kill %1') || true
           cp /tmp/flatpak.log shots/flatpak-app.log || true
           ls -la desktop/build/Apparat.flatpak | tee shots/flatpak-size.txt
