@@ -60,9 +60,16 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
+    @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+    testImplementation(compose.desktop.uiTestJUnit4)
 }
 
-tasks.test { useJUnit() }
+tasks.test {
+    useJUnit()
+    // Tests keep their settings, cache and "Downloads" in build/, never in the real home folder.
+    systemProperty("apparat.home", layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
+    doFirst { layout.buildDirectory.dir("test-home").get().asFile.deleteRecursively() }
+}
 
 compose.desktop {
     application {
