@@ -110,9 +110,10 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
             Spacer(Modifier.height(4.dp))
 
             Section("1. What to do") {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                 BatchOperation.entries.forEach { op ->
                     Row(
-                        Modifier.fillMaxWidth().clickable(enabled = !running) { operation = op; states.clear(); summary = null },
+                        Modifier.fillMaxWidth().clickable(enabled = !running) { operation = op; states.clear(); summary = null }.padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -121,8 +122,10 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
                             enabled = !running,
                             colors = RadioButtonDefaults.colors(selectedColor = AccentUtility)
                         )
+                        Spacer(Modifier.width(10.dp))
                         Text(op.label, style = MaterialTheme.typography.bodyMedium)
                     }
+                }
                 }
                 when (operation) {
                     BatchOperation.PHOTO_UNDER_KB -> BraunSegmentedControl(
@@ -197,7 +200,8 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
             }
 
             Section("3. Save into") {
-                Text(outputDir.path, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val home = System.getProperty("user.home")
+                Text(if (outputDir.path.startsWith(home)) "~" + outputDir.path.removePrefix(home) else outputDir.path, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text("Existing files are never overwritten: a number is added instead.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { pickOutputFolder.launch(null) }, enabled = !running, shape = RoundedCornerShape(6.dp)) { Text("Choose folder…") }
             }
