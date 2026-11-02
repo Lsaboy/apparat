@@ -7,8 +7,6 @@ An open-source, local-first Android media and document toolkit engineered with t
 
 Designed for absolute utility, zero distractions, high contrast, and tactile mechanical clarity.
 
-**Linux & Windows:** the same app runs on the desktop (Compose Multiplatform, same screens). Install files: `.deb`, `.flatpak`, `.msi`/`.exe`. See [`desktop/README.md`](desktop/README.md).
-
 **Developer docs:** [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) (structure, rules, roadmap) · [`docs/PLAY_STORE_GUIDE.md`](docs/PLAY_STORE_GUIDE.md) · [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) · past plans and audits in [`docs/archive/`](docs/archive/)
 
 ---

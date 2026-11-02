@@ -62,16 +62,21 @@ tasks.test {
 // Pure-logic files used unchanged from the Android app (single source of truth). They are copied
 // into build/ at compile time; edit them in app/src/main/java, not in the copy.
 val androidSources = rootProject.file("../app/src/main/java")
+val overridesDir = rootProject.file("android-overrides")
+val engineSourceFiles = listOf(
+    "com/omniforge/apparat/engine/common/UtilityEngine.kt",
+    "com/omniforge/apparat/engine/common/JsonFormatter.kt",
+    "com/omniforge/apparat/engine/video/GifEncoder.kt",
+    "com/omniforge/apparat/engine/image/TargetKbSearchEngine.kt",
+    "com/omniforge/apparat/core/jobs/ExclusiveRunner.kt"
+)
 val syncAndroidEngineSources = tasks.register<Sync>("syncAndroidEngineSources") {
+    // A file in desktop/android-overrides/ replaces its Android original (desktop-only patch).
     from(androidSources) {
-        include(
-            "com/omniforge/apparat/engine/common/UtilityEngine.kt",
-            "com/omniforge/apparat/engine/common/JsonFormatter.kt",
-            "com/omniforge/apparat/engine/video/GifEncoder.kt",
-            "com/omniforge/apparat/engine/image/TargetKbSearchEngine.kt",
-            "com/omniforge/apparat/core/jobs/ExclusiveRunner.kt"
-        )
+        include(engineSourceFiles)
+        exclude(engineSourceFiles.filter { overridesDir.resolve(it).isFile })
     }
+    from(overridesDir) { include(engineSourceFiles) }
     into(layout.buildDirectory.dir("generated/androidShared"))
 }
 sourceSets.main {

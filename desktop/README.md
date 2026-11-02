@@ -1,5 +1,8 @@
 # Apparat for Linux and Windows
 
+> How this fits with the Android app (branching, keeping them in sync, desktop-only features):
+> see [STRATEGY.md](STRATEGY.md). The Android app comes first; nothing here changes its build.
+
 The desktop app has the same 21 tools, screens and Braun look as the Android app. Its screens
 are the Android app's own Compose code, compiled for desktop with Compose Multiplatform.
 
@@ -98,6 +101,13 @@ the desktop build fails to compile until you do, so nothing slips through.
 If a new screen uses an Android API that has no desktop version yet, the desktop build fails
 with "Unresolved reference". Add a small stand-in under `desktop/engine/src/main/kotlin/android/…`
 (or `desktop/app/src/main/kotlin/androidx/…` for UI APIs).
+
+## Desktop-only tools
+
+Two extra tools exist only on desktop (they use the bundled FFmpeg): **Audio Converter**
+(MP3/M4A/Opus/FLAC/WAV, bitrate, loudness levelling) and **Rotate, Flip & Speed**. They are
+listed in `app/src/main/kotlin/com/omniforge/apparat/core/model/DesktopTools.kt`; see STRATEGY.md
+for how to add more.
 
 ## Desktop differences
 

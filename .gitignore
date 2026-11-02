@@ -26,8 +26,3 @@ dist/
 
 # Release bundles (signed binaries); the notes are tracked
 update/*.aab
-
-# Desktop build outputs
-desktop/**/build/
-desktop/.kotlin/
-.kotlin/

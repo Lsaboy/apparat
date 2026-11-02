@@ -16,19 +16,43 @@ val appVersion = "1.5.0"
 // Shared UI: the Android app's screens, theme and components compile here unchanged. They are
 // copied into build/ at compile time, so always edit them under app/src/main/java.
 // Desktop replacements for the few Android-only files live in src/main/kotlin.
+//
+// Two desktop-side adjustments are made to the copies, never to the Android files:
+//  - desktop/android-overrides/<path> replaces the Android file at <path> (a desktop-only patch;
+//    see desktop/android-overrides/README.md and the checkAndroidOverrides task);
+//  - ToolModels.kt's ALL_TOOLS is renamed ANDROID_TOOLS, so the desktop can define
+//    ALL_TOOLS = ANDROID_TOOLS + desktop-only tools (core/model/DesktopTools.kt).
 // ---------------------------------------------------------------------------------------------
 val androidSources = rootProject.file("../app/src/main/java")
+val overridesDir = rootProject.file("android-overrides")
+val uiSourcePatterns = listOf(
+    "com/omniforge/apparat/feature/**",
+    "com/omniforge/apparat/core/model/**",
+    "com/omniforge/apparat/core/theme/**",
+    "com/omniforge/apparat/core/ui/**",
+    "com/omniforge/apparat/core/jobs/ToolJobs.kt"
+)
+val overriddenPaths: List<String> = overridesDir.walkTopDown()
+    .filter { it.isFile && it.extension == "kt" }
+    .map { it.relativeTo(overridesDir).invariantSeparatorsPath }
+    .toList()
+
 val syncAndroidUiSources = tasks.register<Sync>("syncAndroidUiSources") {
     from(androidSources) {
-        include(
-            "com/omniforge/apparat/feature/**",
-            "com/omniforge/apparat/core/model/**",
-            "com/omniforge/apparat/core/theme/**",
-            "com/omniforge/apparat/core/ui/**",
-            "com/omniforge/apparat/core/jobs/ToolJobs.kt"
-        )
+        include(uiSourcePatterns)
+        exclude(overriddenPaths)
+        filesMatching("com/omniforge/apparat/core/model/ToolModels.kt") {
+            filter { line -> line.replace("val ALL_TOOLS = listOf(", "val ANDROID_TOOLS = listOf(") }
+        }
     }
+    from(overridesDir) { include(uiSourcePatterns) }
     into(layout.buildDirectory.dir("generated/androidShared"))
+    doLast {
+        val models = destinationDir.resolve("com/omniforge/apparat/core/model/ToolModels.kt")
+        check(models.readText().contains("val ANDROID_TOOLS = listOf(")) {
+            "ToolModels.kt no longer declares 'val ALL_TOOLS = listOf(': update the rename in desktop/app/build.gradle.kts"
+        }
+    }
 }
 
 val androidTests = rootProject.file("../app/src/test/java")
@@ -41,6 +65,10 @@ val syncAndroidUiTests = tasks.register<Sync>("syncAndroidUiTests") {
             "com/omniforge/apparat/core/util/OutputNamingTest.kt",
             "com/omniforge/apparat/engine/pdf/PdfSplitTest.kt"
         )
+        // These check the Android tool catalogue; on desktop that list is ANDROID_TOOLS.
+        filesMatching(listOf("**/HomeSearchTest.kt", "**/LauncherShortcutsTest.kt")) {
+            filter { line -> line.replace("ALL_TOOLS", "ANDROID_TOOLS") }
+        }
     }
     into(layout.buildDirectory.dir("generated/androidSharedTests"))
 }

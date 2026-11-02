@@ -167,6 +167,46 @@ class EndToEndUiTest {
         }
     }
 
+    private fun makeClip(name: String): File {
+        val f = File(work, name)
+        if (!f.exists()) runBlocking {
+            Ffmpeg.run(listOf("-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=2", "-f", "lavfi", "-i", "sine=duration=2",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", f.absolutePath))
+        }
+        return f
+    }
+
+    @Test
+    fun desktopOnlyAudioConverter() = e2e("desktopOnlyAudioConverter") {
+        val clip = makeClip("interview.mp4")
+        open("audio_convert", clip, "video/mp4")
+        waitForText("interview.mp4")
+        clickWhenEnabled("Convert Audio")
+        waitForText("Converted to MP3")
+        saveAndCheck("interview.mp3")
+        assertEquals("mp3", MediaProbe.of(File(File(DesktopPaths.downloadsDir, "Apparat"), "interview.mp3"))!!.audioCodec)
+    }
+
+    @Test
+    fun desktopOnlyRotate() = e2e("desktopOnlyRotate") {
+        val clip = makeClip("sideways.mp4")
+        open("video_rotate", clip, "video/mp4")
+        waitForText("sideways.mp4")
+        onNode(hasText("90° right") and hasClickAction()).performClick()
+        clickWhenEnabled("Apply")
+        waitForText("Video ready!")
+        saveAndCheck("sideways_edited.mp4")
+        val p = MediaProbe.of(File(File(DesktopPaths.downloadsDir, "Apparat"), "sideways_edited.mp4"))!!
+        assertEquals(360, p.displayWidth)
+    }
+
+    @Test
+    fun desktopToolsAreListedOnHome() = e2e("desktopToolsAreListedOnHome") {
+        assertEquals(23, com.omniforge.apparat.core.model.ALL_TOOLS.size)
+        open("home")
+        waitForText("23 Instruments")
+    }
+
     @Test
     fun formatJson() = e2e("formatJson") {
         open("json_tool")

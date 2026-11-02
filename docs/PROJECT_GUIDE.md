@@ -155,11 +155,6 @@ PDF, blue video, green photo, amber utilities). Rules:
    `preview` build, not only debug.
 10. Before committing: `./gradlew :app:testDebugUnitTest :app:assembleDebug`. Before a release:
     `./gradlew :app:lintRelease` (0 errors) and a smoke test of the `preview` build on a phone.
-11. The Linux/Windows app compiles the screens in `feature/**`, `core/ui`, `core/theme`,
-    `core/model` and `ToolJobs` unchanged. After changing them, also run
-    `./gradlew -p desktop test`. A new Android-only API in a screen fails that build until it gets
-    a desktop stand-in; a changed engine/FileUtils/OutputSaver signature needs the same change in
-    its desktop version. See `desktop/README.md`.
 
 ---
 
@@ -177,12 +172,7 @@ Release bundles refuse to build without the real key (no accidental debug-signed
 Play steps, data-safety answers and CI secrets: `docs/PLAY_STORE_GUIDE.md`.
 
 Version bumps: `versionCode` +1 every upload, `versionName` semantic (1.1.0 → 1.1.1 fixes, 1.2.0
-features), both in `app/build.gradle.kts`. The desktop version is `appVersion` in
-`desktop/app/build.gradle.kts` (and `APP_VERSION` in `desktop/.../Main.kt`, the Flatpak metainfo).
-
-Desktop (Linux, Windows): `./gradlew -p desktop run`, `test`, `packageDeb`, `packageMsi`/`packageExe`
-(on Windows), `desktop/packaging/flatpak/build-flatpak.sh`; the **Desktop Release** workflow builds
-all installers on `v*` tags. Details in `desktop/README.md`.
+features), both in `app/build.gradle.kts`.
 
 ---
 

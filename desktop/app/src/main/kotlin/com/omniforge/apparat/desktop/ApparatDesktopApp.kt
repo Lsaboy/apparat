@@ -61,7 +61,9 @@ val TOOL_ROUTES = setOf(
     "pdf_unlock", "pdf_shrink", "pdf_split", "pdf_merge", "pdf_to_images", "images_to_pdf",
     "video_shrink", "video_trim", "video_caption", "video_to_gif", "video_convert", "audio_extract",
     "image_shrink", "document_scan", "palette_extractor", "image_convert", "exif_strip",
-    "qr_studio", "hash_verifier", "json_tool", "base64_studio"
+    "qr_studio", "hash_verifier", "json_tool", "base64_studio",
+    // Desktop-only tools (core/model/DesktopTools.kt)
+    "audio_convert", "video_rotate"
 )
 
 /** A file (or files, or text) handed to the app: dropped on the window or opened with Apparat. */
@@ -267,6 +269,14 @@ private fun Destination(route: String, controller: AppController, appSettings: A
         }
         "json_tool" -> { ConsumeSharedTextEffect(incomingText); JsonToolScreen(initialText = incomingText, onBack = back) }
         "base64_studio" -> { ConsumeSharedTextEffect(incomingText); Base64StudioScreen(initialText = incomingText, onBack = back) }
+
+        // Desktop-only tools
+        "audio_convert" -> {
+            val u = incomingUri?.takeIf { incomingMimeType?.startsWith("audio/") == true || incomingMimeType?.startsWith("video/") == true }
+            ConsumeSharedPayloadEffect(u)
+            com.omniforge.apparat.desktop.feature.AudioConvertScreen(initialUri = u, onBack = back)
+        }
+        "video_rotate" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoRotateScreen(initialUri = u, onBack = back) }
         else -> HomeScreen(
             appSettings = appSettings,
             onNavigateToTool = { controller.navigate(it) },
