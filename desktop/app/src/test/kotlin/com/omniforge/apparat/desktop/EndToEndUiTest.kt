@@ -202,9 +202,30 @@ class EndToEndUiTest {
 
     @Test
     fun desktopToolsAreListedOnHome() = e2e("desktopToolsAreListedOnHome") {
-        assertEquals(23, com.omniforge.apparat.core.model.ALL_TOOLS.size)
+        assertEquals(24, com.omniforge.apparat.core.model.ALL_TOOLS.size)
         open("home")
-        waitForText("23 Instruments")
+        waitForText("24 Instruments")
+    }
+
+    @Test
+    fun desktopOnlyBatchFromDroppedFolder() = e2e("desktopOnlyBatchFromDroppedFolder") {
+        val folder = File(work, "holiday-photos").apply { mkdirs() }
+        runBlocking {
+            for (n in 1..2) Ffmpeg.run(listOf("-f", "lavfi", "-i", "testsrc2=size=1200x900", "-frames:v", "1", File(folder, "img$n.png").absolutePath))
+        }
+        File(folder, "notes.txt").writeText("not a photo")
+        val controller = AppController()
+        controller.handleFiles(listOf(folder))
+        assertEquals("batch_process", controller.current)
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides TestLifecycle) { ApparatDesktopApp(controller, AppSettings(Context.app)) }
+        }
+        waitForText("img1.png")
+        onNode(hasText("Convert photos") and hasClickAction()).performScrollTo().performClick()
+        clickWhenEnabled("Process 2 files")
+        waitForText("Batch finished: 2 done, 1 skipped")
+        val out = File(DesktopPaths.downloadsDir, "Apparat/Batch")
+        assertEquals(setOf("img1.jpg", "img2.jpg"), out.list()!!.toSet())
     }
 
     @Test

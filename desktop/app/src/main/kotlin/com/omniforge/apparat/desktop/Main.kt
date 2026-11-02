@@ -43,7 +43,7 @@ fun main(args: Array<String>) {
     if (args.any { it == "--self-test" }) kotlin.system.exitProcess(runSelfTest())
     setLinuxWindowClass("apparat")
 
-    val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.isFile }
+    val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.exists() }
     // Already running? Give it the files (or just bring it forward) and stop here.
     if (System.getProperty("apparat.multiInstance") == null && SingleInstance.handOff(initialFiles)) return
 

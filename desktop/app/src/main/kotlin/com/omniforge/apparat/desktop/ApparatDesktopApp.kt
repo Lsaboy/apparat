@@ -63,7 +63,7 @@ val TOOL_ROUTES = setOf(
     "image_shrink", "document_scan", "palette_extractor", "image_convert", "exif_strip",
     "qr_studio", "hash_verifier", "json_tool", "base64_studio",
     // Desktop-only tools (core/model/DesktopTools.kt)
-    "audio_convert", "video_rotate"
+    "audio_convert", "video_rotate", "batch_process"
 )
 
 /** A file (or files, or text) handed to the app: dropped on the window or opened with Apparat. */
@@ -79,6 +79,9 @@ data class SharedPayload(
 class AppController {
     val backStack: SnapshotStateList<String> = mutableStateListOf("home")
     var payload by mutableStateOf<SharedPayload?>(null)
+
+    /** Files/folders to start the Batch screen with (from a folder drop). */
+    var batchSeed: List<File> = emptyList()
     var forward by mutableStateOf(true)
         private set
 
@@ -120,8 +123,15 @@ class AppController {
     /** Whether [route] keeps its payload until left (see [keepPayloadRoutes]). */
     fun keepsPayload(route: String) = route in keepPayloadRoutes
 
-    /** Same routing rules as Android's share/open intents. */
+    /** Same routing rules as Android's share/open intents (the Batch screen takes drops itself). */
     fun handleFiles(files: List<File>) {
+        if (current == "batch_process") com.omniforge.apparat.desktop.feature.BatchDrop.target?.let { it(files); return }
+        if (files.any { it.isDirectory }) {
+            // A dropped folder means "do something to all of these".
+            batchSeed = files
+            navigate("batch_process")
+            return
+        }
         val existing = files.filter { it.isFile }
         if (existing.isEmpty()) return
         val uris = existing.map { Uri.fromFile(it) }
@@ -275,6 +285,11 @@ private fun Destination(route: String, controller: AppController, appSettings: A
             val u = incomingUri?.takeIf { incomingMimeType?.startsWith("audio/") == true || incomingMimeType?.startsWith("video/") == true }
             ConsumeSharedPayloadEffect(u)
             com.omniforge.apparat.desktop.feature.AudioConvertScreen(initialUri = u, onBack = back)
+        }
+        "batch_process" -> {
+            val seed = remember { controller.batchSeed.also { controller.batchSeed = emptyList() } }
+            val expanded = remember(seed) { seed.flatMap { f -> if (f.isDirectory) f.walkTopDown().filter { it.isFile }.sortedBy { it.path }.toList() else listOf(f) } }
+            com.omniforge.apparat.desktop.feature.BatchScreen(initialFiles = expanded, onBack = back)
         }
         "video_rotate" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoRotateScreen(initialUri = u, onBack = back) }
         else -> HomeScreen(

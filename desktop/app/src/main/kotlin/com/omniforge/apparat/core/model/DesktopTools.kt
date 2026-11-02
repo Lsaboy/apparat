@@ -8,6 +8,16 @@ package com.omniforge.apparat.core.model
  */
 val DESKTOP_ONLY_TOOLS: List<ToolItem> = listOf(
     ToolItem(
+        id = "batch_process",
+        shortTitle = "Batch",
+        title = "Batch Processor",
+        description = "Compress, shrink or convert many PDFs, photos, videos or audio files at once, straight into a folder.",
+        category = ToolCategory.UTILITIES,
+        route = "batch_process",
+        badge = "Desktop",
+        keywords = listOf("batch", "bulk", "many", "multiple", "folder", "all", "mass", "queue", "compress", "convert", "shrink")
+    ),
+    ToolItem(
         id = "audio_convert",
         shortTitle = "Audio Convert",
         title = "Audio Converter",
