@@ -37,10 +37,13 @@ jobs:
           ldd "$f" | grep -i "not found" || echo "all libraries found"
           "$f" -hide_banner -version | head -2 || true
       - name: Screenshots
+        if: success() || failure()
         run: ./gradlew -p desktop :app:screenshots
       - name: Package .deb
+        if: success() || failure()
         run: ./gradlew -p desktop packageDeb
       - name: Install the .deb and start it
+        if: success() || failure()
         run: |
           sudo apt-get install -y ./desktop/app/build/compose/binaries/main/deb/*.deb
           ls /opt/apparat/bin
