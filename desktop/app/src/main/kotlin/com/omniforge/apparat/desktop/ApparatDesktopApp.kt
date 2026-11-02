@@ -82,19 +82,41 @@ class AppController {
 
     val current: String get() = backStack.last()
 
+    /**
+     * Merge PDFs and Photos to PDF import their incoming files in an effect keyed by the payload's
+     * token, so their payload must stay put until the user leaves the screen (clearing it right
+     * away changes the token and cancels the import halfway).
+     */
+    private val keepPayloadRoutes = setOf("pdf_merge", "images_to_pdf")
+    private var keptPayloadRoute: String? = null
+
+    private fun afterRouteChange() {
+        val kept = keptPayloadRoute
+        if (kept != null && current != kept) {
+            keptPayloadRoute = null
+            payload = null
+        } else if (kept == null && current in keepPayloadRoutes && payload != null) {
+            keptPayloadRoute = current
+        }
+    }
+
     fun navigate(route: String) {
         if (route == current) return
         forward = true
-        if (route == "home") { backStack.clear(); backStack.add("home"); return }
-        backStack.add(route)
+        if (route == "home") { backStack.clear(); backStack.add("home") } else backStack.add(route)
+        afterRouteChange()
     }
 
     fun pop(): Boolean {
         if (backStack.size <= 1) return false
         forward = false
         backStack.removeAt(backStack.lastIndex)
+        afterRouteChange()
         return true
     }
+
+    /** Whether [route] keeps its payload until left (see [keepPayloadRoutes]). */
+    fun keepsPayload(route: String) = route in keepPayloadRoutes
 
     /** Same routing rules as Android's share/open intents. */
     fun handleFiles(files: List<File>) {
@@ -176,7 +198,7 @@ private fun Destination(route: String, controller: AppController, appSettings: A
 
     @Composable
     fun ConsumeSharedPayloadEffect(targetUri: Uri?) {
-        LaunchedEffect(targetUri) { if (targetUri != null) controller.payload = null }
+        LaunchedEffect(targetUri) { if (targetUri != null && !controller.keepsPayload(route)) controller.payload = null }
     }
 
     @Composable

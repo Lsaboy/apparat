@@ -12,7 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.captureToImage
@@ -170,9 +170,18 @@ class EndToEndUiTest {
     @Test
     fun formatJson() = e2e("formatJson") {
         open("json_tool")
-        onNode(hasSetTextAction()).performTextInput("""{"tool":"apparat","n":[1,2]}""")
+        onNode(hasSetTextAction()).performTextReplacement("""{"tool":"apparat","n":[1,2]}""")
         clickWhenEnabled("Prettify")
         waitForText("\"tool\": \"apparat\"")
+    }
+
+    @Test
+    fun qrCodeIsGenerated() = e2e("qrCodeIsGenerated") {
+        open("qr_studio")
+        onNode(hasSetTextAction()).performTextReplacement("https://example.com/apparat")
+        waitUntil(timeoutMillis = 30_000) {
+            onAllNodes(androidx.compose.ui.test.hasContentDescription("Generated QR Code")).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test
@@ -187,5 +196,7 @@ class EndToEndUiTest {
         }
         waitForText("a.pdf")
         waitForText("b.pdf")
+        clickWhenEnabled("Merge 2 PDFs")
+        waitForText("Merged 2 PDFs into one", 60_000)
     }
 }
