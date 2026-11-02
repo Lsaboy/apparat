@@ -11,6 +11,11 @@ are the Android app's own Compose code, compiled for desktop with Compose Multip
 | Any Linux with Flatpak | `Apparat.flatpak` | `flatpak install --user Apparat.flatpak`, then `flatpak run com.omniforge.Apparat`. Needs the Flathub remote for the Freedesktop runtime. |
 | Windows 10 / 11 | `Apparat-1.5.0.msi` or `Apparat-1.5.0.exe` | One-click installer for the current user (no admin prompt). Adds Start-menu and desktop shortcuts. |
 
+After installing, `Apparat --self-test` checks that everything works on that computer (FFmpeg,
+video, audio, GIF, image and PDF engines) without opening a window:
+`/opt/apparat/bin/Apparat --self-test`, `flatpak run com.omniforge.Apparat --self-test`, or
+`"%LOCALAPPDATA%\Apparat\Apparat.exe" --self-test` on Windows (in a terminal).
+
 Nothing else needs to be installed. Every installer carries a private Java runtime (trimmed to
 the modules the app uses) and FFmpeg. The private runtime is only used by Apparat: it doesn't
 touch or replace a Java you already have, and an installed Java isn't needed or used.

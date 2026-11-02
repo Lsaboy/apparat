@@ -25,12 +25,29 @@ object Ffmpeg {
         val pb = ProcessBuilder(command)
         val exe = File(command.first())
         val dir = exe.parentFile
-        if (exe.isAbsolute && dir != null && !DesktopPaths.isWindows) {
-            val key = if (DesktopPaths.isMac) "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
+        if (exe.isAbsolute && dir != null) {
             val env = pb.environment()
-            env[key] = dir.absolutePath + (env[key]?.let { File.pathSeparator + it } ?: "")
+            if (DesktopPaths.isWindows) {
+                // DLLs next to the .exe are found anyway; also offer javacpp's C++ runtime DLLs.
+                val key = env.keys.firstOrNull { it.equals("PATH", ignoreCase = true) } ?: "PATH"
+                val extra = listOfNotNull(dir.absolutePath, windowsRuntimeDir?.absolutePath).joinToString(File.pathSeparator)
+                env[key] = extra + (env[key]?.let { File.pathSeparator + it } ?: "")
+            } else {
+                val key = if (DesktopPaths.isMac) "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
+                env[key] = dir.absolutePath + (env[key]?.let { File.pathSeparator + it } ?: "")
+            }
         }
         return pb
+    }
+
+    /** javacpp's Windows jar ships the Microsoft C++ runtime DLLs; unpacked once, on Windows only. */
+    private val windowsRuntimeDir: File? by lazy {
+        if (!DesktopPaths.isWindows) return@lazy null
+        runCatching {
+            val platform = org.bytedeco.javacpp.Loader.getPlatform()
+            org.bytedeco.javacpp.Loader.cacheResources(org.bytedeco.javacpp.Loader::class.java, "/org/bytedeco/javacpp/$platform/")
+                ?.firstOrNull()?.let { if (it.isDirectory) it else it.parentFile }
+        }.getOrNull()
     }
 
     fun process(vararg command: String): ProcessBuilder = process(command.toList())
