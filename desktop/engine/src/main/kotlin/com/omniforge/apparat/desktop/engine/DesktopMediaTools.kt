@@ -12,7 +12,7 @@ import java.util.Locale
 /** Output of the desktop-only Audio Converter. */
 enum class AudioConvertFormat(val label: String, val extension: String, val mimeType: String, val lossless: Boolean) {
     MP3("MP3", ".mp3", "audio/mpeg", false),
-    M4A("M4A (AAC)", ".m4a", "audio/mp4", false),
+    M4A("M4A", ".m4a", "audio/mp4", false),
     OPUS("Opus", ".opus", "audio/opus", false),
     FLAC("FLAC", ".flac", "audio/flac", true),
     WAV("WAV", ".wav", "audio/wav", true)
