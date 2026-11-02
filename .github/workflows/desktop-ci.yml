@@ -71,3 +71,38 @@ jobs:
             desktop/app/build/screenshots/
             desktop/app/build/compose/binaries/main/deb/*.deb
             desktop/*/build/reports/tests/
+
+  flatpak:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install flatpak tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flatpak flatpak-builder xvfb imagemagick dbus-x11 > /dev/null
+          # Ubuntu 24.04 blocks the user namespaces that bubblewrap (used by flatpak) needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build .flatpak
+        run: desktop/packaging/flatpak/build-flatpak.sh
+      - name: Install and start it
+        run: |
+          mkdir -p shots
+          flatpak install --user -y --noninteractive desktop/build/Apparat.flatpak
+          (dbus-run-session -- xvfb-run -a -s "-screen 0 1280x960x24" bash -c 'flatpak run com.omniforge.Apparat > /tmp/flatpak.log 2>&1 & sleep 30; import -window root shots/flatpak-app.png; kill %1') || true
+          cp /tmp/flatpak.log shots/flatpak-app.log || true
+          ls -la desktop/build/Apparat.flatpak | tee shots/flatpak-size.txt
+      - name: Publish to the ci-flatpak branch
+        if: always()
+        run: |
+          mkdir -p shots && cd shots && echo "${GITHUB_SHA}" > SOURCE_COMMIT
+          git init -q && git checkout -q -b ci-flatpak
+          git add -A && git -c user.name=desktop-ci -c user.email=ci@localhost commit -qm "Flatpak check for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-flatpak
