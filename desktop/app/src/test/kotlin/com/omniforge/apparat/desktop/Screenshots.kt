@@ -1,7 +1,12 @@
 package com.omniforge.apparat.desktop
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.Density
 import com.omniforge.apparat.core.settings.AppSettings
 import com.omniforge.apparat.core.settings.ThemeStyle
@@ -20,7 +25,10 @@ fun main(args: Array<String>) {
         settings.themeStyle = theme
         val controller = AppController()
         if (route != "home") controller.navigate(route)
-        val scene = ImageComposeScene(w, h, Density(1f)) { ApparatDesktopApp(controller, settings) }
+        val scene = ImageComposeScene(w, h, Density(1f)) {
+            // A real window provides a lifecycle; an offscreen scene doesn't.
+            CompositionLocalProvider(LocalLifecycleOwner provides ShotLifecycle) { ApparatDesktopApp(controller, settings) }
+        }
         try {
             var t = 0L
             repeat(40) { scene.render(t); t += 50_000_000L } // let animations and effects settle
@@ -47,4 +55,9 @@ fun main(args: Array<String>) {
         shoot("${i++}-$route", route, if (i % 2 == 0) ThemeStyle.LIGHT else ThemeStyle.DARK)
     }
     kotlin.system.exitProcess(0)
+}
+
+private object ShotLifecycle : LifecycleOwner {
+    private val registry = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+    override val lifecycle: Lifecycle get() = registry
 }

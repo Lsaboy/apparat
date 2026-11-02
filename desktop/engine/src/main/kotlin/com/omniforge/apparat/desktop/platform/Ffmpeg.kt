@@ -17,22 +17,58 @@ class FfmpegException(message: String, val log: String) : RuntimeException(messa
  */
 object Ffmpeg {
 
-    private fun bundled(cls: Class<*>): String? = runCatching {
+    /** Why the bundled FFmpeg couldn't be used (for logs and the error message), or null. */
+    @Volatile
+    var bundleProblem: String? = null
+        private set
+
+    /**
+     * Unpacks the FFmpeg build that ships inside the app (bytedeco's per-OS jar) into the cache and
+     * returns the path of [program] ("ffmpeg" or "ffprobe"). Only the files are extracted; nothing is
+     * loaded into the JVM, so missing optional system libraries can't crash the app.
+     */
+    private fun bundled(program: String): String? = try {
+        val platform = org.bytedeco.javacpp.Loader.getPlatform()
         System.setProperty("org.bytedeco.javacpp.cachedir", File(DesktopPaths.cacheDir, "native").path)
-        org.bytedeco.javacpp.Loader.load(cls)
-    }.getOrNull()?.takeIf { File(it).canExecute() }
-
-    val ffmpeg: String by lazy {
-        System.getenv("APPARAT_FFMPEG")?.takeIf { File(it).canExecute() }
-            ?: bundled(org.bytedeco.ffmpeg.ffmpeg::class.java)
-            ?: "ffmpeg"
+        val anchor = org.bytedeco.ffmpeg.global.avutil::class.java
+        val files = org.bytedeco.javacpp.Loader.cacheResources(anchor, "/org/bytedeco/ffmpeg/$platform-gpl/")
+            ?.takeIf { it.isNotEmpty() }
+            ?: org.bytedeco.javacpp.Loader.cacheResources(anchor, "/org/bytedeco/ffmpeg/$platform/")
+            ?: emptyArray()
+        val dir = files.firstOrNull()?.let { if (it.isDirectory) it else it.parentFile }
+        val exe = listOf("$program.exe", program).map { File(dir, it) }.firstOrNull { it.isFile }
+            ?: files.firstOrNull { it.name == program || it.name == "$program.exe" }
+            ?: error("$program not found in the bundled FFmpeg ($platform)")
+        if (!exe.canExecute()) exe.setExecutable(true)
+        exe.absolutePath
+    } catch (t: Throwable) {
+        bundleProblem = "${t.javaClass.simpleName}: ${t.message}"
+        System.err.println("Apparat: bundled $program unavailable ($bundleProblem); falling back to PATH")
+        null
     }
 
-    val ffprobe: String by lazy {
-        System.getenv("APPARAT_FFPROBE")?.takeIf { File(it).canExecute() }
-            ?: bundled(org.bytedeco.ffmpeg.ffprobe::class.java)
-            ?: "ffprobe"
+    private fun runs(exe: String): Boolean = runCatching {
+        val p = ProcessBuilder(exe, "-hide_banner", "-version").redirectErrorStream(true).start()
+        p.inputStream.readBytes()
+        p.waitFor() == 0
+    }.getOrDefault(false)
+
+    /** The bundled binary if it starts here, else one on PATH (e.g. on a system missing a library it needs). */
+    private fun pick(program: String, envVar: String): String {
+        System.getenv(envVar)?.takeIf { File(it).canExecute() }?.let { return it }
+        val bundled = bundled(program)
+        if (bundled != null && runs(bundled)) return bundled
+        if (bundled != null) {
+            bundleProblem = "the bundled $program doesn't start on this system"
+            System.err.println("Apparat: $bundleProblem; trying $program on PATH")
+            if (runs(program)) return program
+        }
+        return bundled ?: program
     }
+
+    val ffmpeg: String by lazy { pick("ffmpeg", "APPARAT_FFMPEG") }
+
+    val ffprobe: String by lazy { pick("ffprobe", "APPARAT_FFPROBE") }
 
     /** True when FFmpeg starts at all (used for a clear message if it's missing). */
     val isAvailable: Boolean by lazy {
