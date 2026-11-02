@@ -8,6 +8,10 @@ on:
     paths: [ 'desktop/**', 'app/src/main/java/**', 'app/src/test/java/**' ]
   workflow_dispatch:
 
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   linux:
     runs-on: ubuntu-latest
@@ -26,6 +30,12 @@ jobs:
         run: ./gradlew -p desktop :app:compileKotlin :app:compileTestKotlin --continue
       - name: Test
         run: ./gradlew -p desktop test --continue
+      - name: Bundled FFmpeg diagnostics
+        if: always()
+        run: |
+          f=$(find /tmp/apparat-test-home -name ffmpeg -type f | head -1); echo "$f"; ls -la "$(dirname "$f")" || true
+          ldd "$f" | grep -i "not found" || echo "all libraries found"
+          "$f" -hide_banner -version | head -2 || true
       - name: Screenshots
         run: ./gradlew -p desktop :app:screenshots
       - name: Package .deb
@@ -38,7 +48,7 @@ jobs:
           cat /tmp/apparat.log
           cp /tmp/apparat.log desktop/app/build/screenshots/zz-installed-app.log || true
       - name: Publish screenshots to the ci-screenshots branch
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         run: |
           mkdir -p desktop/app/build/screenshots
           find desktop -path '*/build/test-results/test/*.xml' -exec grep -l '<failure' {} \; | xargs -r -I{} cp {} desktop/app/build/screenshots/ || true

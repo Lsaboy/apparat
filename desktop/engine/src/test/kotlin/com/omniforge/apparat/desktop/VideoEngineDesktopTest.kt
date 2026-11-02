@@ -24,7 +24,7 @@ class VideoEngineDesktopTest {
     @Test fun bundledFfmpegRuns() {
         assertTrue("bundled ffmpeg must be used, got ${Ffmpeg.ffmpeg} (${Ffmpeg.bundleProblem})", java.io.File(Ffmpeg.ffmpeg).isAbsolute)
         assertTrue("bundled ffprobe must be used, got ${Ffmpeg.ffprobe}", java.io.File(Ffmpeg.ffprobe).isAbsolute)
-        assertTrue("bundled ffmpeg: ${Ffmpeg.ffmpeg}", Ffmpeg.isAvailable)
+        assertTrue("bundled ffmpeg: ${Ffmpeg.ffmpeg} (${Ffmpeg.bundleProblem})", Ffmpeg.isAvailable)
         assertTrue("libx264 in build", "libx264" in Ffmpeg.encoders)
         assertTrue("aac in build", "aac" in Ffmpeg.encoders)
     }

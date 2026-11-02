@@ -47,11 +47,13 @@ object Ffmpeg {
         null
     }
 
+    private var lastRunOutput = ""
+
     private fun runs(exe: String): Boolean = runCatching {
         val p = ProcessBuilder(exe, "-hide_banner", "-version").redirectErrorStream(true).start()
-        p.inputStream.readBytes()
+        lastRunOutput = p.inputStream.readBytes().toString(Charsets.UTF_8).take(800)
         p.waitFor() == 0
-    }.getOrDefault(false)
+    }.onFailure { lastRunOutput = it.toString() }.getOrDefault(false)
 
     /** The bundled binary if it starts here, else one on PATH (e.g. on a system missing a library it needs). */
     private fun pick(program: String, envVar: String): String {
@@ -59,7 +61,7 @@ object Ffmpeg {
         val bundled = bundled(program)
         if (bundled != null && runs(bundled)) return bundled
         if (bundled != null) {
-            bundleProblem = "the bundled $program doesn't start on this system"
+            bundleProblem = "the bundled $program doesn't start on this system: $lastRunOutput"
             System.err.println("Apparat: $bundleProblem; trying $program on PATH")
             if (runs(program)) return program
         }
