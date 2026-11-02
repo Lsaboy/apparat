@@ -74,11 +74,11 @@ class EndToEndUiTest {
         onNode(hasText(label) and hasClickAction())
 
     private fun ComposeUiTest.waitForText(text: String, timeoutMs: Long = 120_000) {
-        waitUntil(timeoutMs) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        waitUntil(timeoutMillis = timeoutMs) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun ComposeUiTest.clickWhenEnabled(label: String, timeoutMs: Long = 60_000) {
-        waitUntil(timeoutMs) { onAllNodes(hasText(label) and hasClickAction() and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        waitUntil(timeoutMillis = timeoutMs) { onAllNodes(hasText(label) and hasClickAction() and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
         button(label).performScrollTo().performClick()
     }
 
@@ -87,7 +87,7 @@ class EndToEndUiTest {
     private fun ComposeUiTest.saveAndCheck(expectedName: String) {
         val before = savedFiles().toSet()
         clickWhenEnabled("Save to Downloads/Apparat")
-        waitUntil(30_000) { (savedFiles().toSet() - before).isNotEmpty() }
+        waitUntil(timeoutMillis = 30_000) { (savedFiles().toSet() - before).isNotEmpty() }
         val saved = (savedFiles().toSet() - before).single()
         assertEquals(expectedName, saved.name)
         assertTrue(saved.length() > 0)
@@ -143,7 +143,7 @@ class EndToEndUiTest {
         open("image_shrink", photo, "image/png")
         waitForText("passport.png")
         clickWhenEnabled("Shrink Photo")
-        waitUntil(60_000) {
+        waitUntil(timeoutMillis = 60_000) {
             onAllNodes(hasText("shrunk", substring = true)).fetchSemanticsNodes().isNotEmpty() ||
                 onAllNodes(hasText("Shrunk to", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }

@@ -50,6 +50,7 @@ dependencies {
 
 tasks.test {
     useJUnit()
+    systemProperty("apparat.home", layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
     // Android wording ("This phone can't play…"); the desktop message says "computer".
     filter { excludeTestsMatching("*VideoCodecChoiceTest.unsupported message names the codec") }
     testLogging {

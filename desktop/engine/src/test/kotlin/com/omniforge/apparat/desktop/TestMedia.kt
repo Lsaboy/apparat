@@ -8,7 +8,6 @@ import java.io.File
 /** Generates small media files with the bundled FFmpeg, once per test run. */
 object TestMedia {
     val dir: File by lazy {
-        System.setProperty("apparat.home", File(System.getProperty("java.io.tmpdir"), "apparat-test-home").path)
         File(System.getProperty("java.io.tmpdir"), "apparat-test-media").apply { deleteRecursively(); mkdirs() }
     }
 

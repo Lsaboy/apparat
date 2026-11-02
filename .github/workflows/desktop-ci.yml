@@ -33,7 +33,7 @@ jobs:
       - name: Bundled FFmpeg diagnostics
         if: always()
         run: |
-          f=$(find /tmp/apparat-test-home -name ffmpeg -type f | head -1); echo "$f"; ls -la "$(dirname "$f")" || true
+          f=$(find desktop -path '*test-home*' -name ffmpeg -type f | head -1); echo "$f"; ls -la "$(dirname "$f")" || true
           ldd "$f" | grep -i "not found" || echo "all libraries found"
           "$f" -hide_banner -version | head -2 || true
       - name: Screenshots
@@ -49,6 +49,7 @@ jobs:
           sudo mkdir -p /usr/share/applications /usr/share/desktop-directories /usr/share/icons/hicolor
           sudo apt-get install -y ./desktop/app/build/compose/binaries/main/deb/*.deb
           ls /opt/apparat/bin
+          mkdir -p desktop/app/build/screenshots
           (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
           cat /tmp/apparat.log
           cp /tmp/apparat.log desktop/app/build/screenshots/zz-installed-app.log || true
