@@ -1,0 +1,38 @@
+name: Android CI
+
+# Checks every push and pull request: JVM unit tests + a debug build. Does not sign, upload or
+# touch the Play Store (that stays in "Deploy to Google Play Store").
+on:
+  push:
+    branches-ignore: [ 'ci-screenshots', 'ci-flatpak' ]
+    paths-ignore: [ 'desktop/**', '.github/workflows/desktop-*.yml', '**.md' ]
+  pull_request:
+    paths-ignore: [ 'desktop/**', '**.md' ]
+  workflow_dispatch:
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+      - name: Debug build
+        run: ./gradlew :app:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-ci
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/reports/tests/
+          retention-days: 14
