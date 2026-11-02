@@ -86,17 +86,21 @@ the right tool there.
   `ToolJobs`, `retained`, the activity-result pickers). If you ever want one on Android, the
   screen moves over almost unchanged and only its engine needs an Android version.
 
-Done so far: **Audio Converter** (MP3/M4A/Opus/FLAC/WAV, bitrate, loudness levelling) and
-**Rotate, Flip & Speed** (lossless rotation, mirror/flip, 0.25×-4× with pitch kept).
+Done so far:
+- **Batch Processor**: many PDFs/photos/videos/audio files, one operation (compress PDFs,
+  shrink photos, photos under N KB, convert photos, strip metadata, shrink/convert videos,
+  convert audio), results written straight into a folder. Dropping a folder on the window opens
+  it. Also on the command line: `apparat --batch compress-pdf ~/Scans` (`apparat --help`).
+- **Audio Converter**: MP3/M4A/Opus/FLAC/WAV, bitrate, loudness levelling.
+- **Rotate, Flip & Speed**: lossless rotation, mirror/flip, 0.25×-4× with pitch kept.
 
 ### More desktop ideas, most valuable first
 
-1. **Batch mode.** Drop 50 photos or PDFs or videos, apply one tool to all of them, write into a
-   folder. This is the biggest thing a desktop does better than a phone. The engines are already
-   headless and per-file; it needs a queue screen and a "same settings for all" runner.
-2. **Command line.** `apparat compress-pdf in.pdf`, `apparat shrink-video *.mov --preset whatsapp`.
-   Cheap to add because `--self-test` already drives the engines without a window. Good for power
-   users and scripts.
+1. ~~Batch mode~~ and ~~command line~~: done (see above). Next step for batch: more operations
+   (split every PDF, PDF→images, merge per folder) and per-operation quality settings.
+2. **Windows console.** The Windows launcher is a GUI program, so `--batch`/`--self-test` print
+   nothing in a terminal there. The self-test also writes and opens a report file. A separate
+   `apparat-cli.exe` console launcher would fix this properly.
 3. **Hardware video encoding.** The bundled FFmpeg includes NVENC (NVIDIA), QSV (Intel) and
    VAAPI. Try them and fall back to x264. That makes 4K shrinking several times faster.
 4. **PDF page tools with thumbnails.** Reorder, rotate or delete pages, add page numbers or a
@@ -119,6 +123,16 @@ Done so far: **Audio Converter** (MP3/M4A/Opus/FLAC/WAV, bitrate, loudness level
    import halfway. The desktop app had the identical bug and was fixed in its own navigation by
    keeping the payload until the user leaves the screen. Worth a test on a phone: share 3 PDFs
    from Files to Apparat and check that all 3 appear in Merge PDFs.
+
+## Branches made in this session
+
+| Branch | What | Action |
+|---|---|---|
+| `desktop-port` | The desktop app: `desktop/` + `desktop-ci.yml` + `desktop-release.yml`. Touches no Android file | Keep as the desktop branch; merge `master` into it regularly |
+| `fix/qr-cancelled-generation` | One-line Android QR fix, based on `master` | Merge into `master` when it suits the Play release (verified: Android unit tests + debug build pass with it) |
+| `ci/android-checks` | `android-ci.yml`: Android unit tests + debug APK on every push/PR. Doesn't sign or upload | Recommended for `master`: catches a broken build before it reaches Play. Passes on today's `master` |
+| `verify/qr-fix-android-build` | The two branches above combined, used once to prove the fix builds on Android | Delete |
+| `ci-screenshots`, `ci-flatpak` | Written by desktop CI (screenshots, self-test output) | Delete any time; recreated on each run |
 
 ## Versions and releases
 

@@ -104,8 +104,10 @@ with "Unresolved reference". Add a small stand-in under `desktop/engine/src/main
 
 ## Desktop-only tools
 
-Two extra tools exist only on desktop (they use the bundled FFmpeg): **Audio Converter**
-(MP3/M4A/Opus/FLAC/WAV, bitrate, loudness levelling) and **Rotate, Flip & Speed**. They are
+Three extra tools exist only on desktop: **Batch Processor** (one operation on many files, into a
+folder; drop a folder on the window to start one), **Audio Converter** (MP3/M4A/Opus/FLAC/WAV,
+bitrate, loudness levelling) and **Rotate, Flip & Speed**. Batches also run from a terminal:
+`apparat --batch compress-pdf ~/Scans` (see `apparat --help`). They are
 listed in `app/src/main/kotlin/com/omniforge/apparat/core/model/DesktopTools.kt`; see STRATEGY.md
 for how to add more.
 
