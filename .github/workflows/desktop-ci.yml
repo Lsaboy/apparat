@@ -11,6 +11,8 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -34,6 +36,17 @@ jobs:
           ls /opt/apparat/bin
           (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
           cat /tmp/apparat.log
+          cp /tmp/apparat.log desktop/app/build/screenshots/zz-installed-app.log || true
+      - name: Publish screenshots to the ci-screenshots branch
+        if: always()
+        run: |
+          mkdir -p desktop/app/build/screenshots
+          find desktop -path '*/build/test-results/test/*.xml' -exec grep -l '<failure' {} \; | xargs -r -I{} cp {} desktop/app/build/screenshots/ || true
+          cd desktop/app/build/screenshots
+          echo "${GITHUB_SHA}" > SOURCE_COMMIT
+          git init -q && git checkout -q -b ci-screenshots
+          git add -A && git -c user.name=desktop-ci -c user.email=ci@localhost commit -qm "Desktop CI screenshots for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-screenshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
