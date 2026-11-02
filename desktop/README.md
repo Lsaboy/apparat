@@ -34,6 +34,25 @@ The Windows installers use WiX, which the Compose Gradle plugin downloads by its
 The desktop build is separate from the Android build: `./gradlew` on its own still builds only
 the Android app, so Android Studio and the Play Store workflow are unaffected.
 
+## Tests
+
+`./gradlew -p desktop test` runs:
+
+- **Engine tests** (`desktop/engine/src/test`): every PDF, image and video function against real
+  files made on the fly (password PDFs, rotated phone videos, WEBM, EXIF-tagged JPEGs…), plus the
+  Android app's own engine/utility unit tests, run against the desktop versions.
+- **End-to-end UI tests** (`desktop/app/src/test/.../EndToEndUiTest.kt`): open the real screens,
+  feed a file in, click the tool's button, wait for the job and save the result
+  (Compress PDF, Video Shrinker, Shrink Photo, JSON, QR, drop two PDFs → Merge).
+- The Android app's screen-logic tests (split ranges, output names, search, theme contrast).
+
+`./gradlew -p desktop :app:screenshots` renders every screen offscreen into
+`desktop/app/build/screenshots/`.
+
+The **Desktop CI** workflow runs all of that on Linux, builds and installs the .deb and the
+.flatpak, starts both under a virtual display, and pushes the screenshots to the `ci-screenshots`
+and `ci-flatpak` branches (throwaway branches, safe to delete; they are force-pushed on every run).
+
 ## How it's put together
 
 ```
