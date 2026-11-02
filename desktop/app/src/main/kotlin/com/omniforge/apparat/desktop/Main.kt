@@ -41,6 +41,8 @@ fun main(args: Array<String>) {
     System.setProperty("awt.useSystemAAFontSettings", "lcd")
     if (args.any { it == "--version" }) { println("Apparat $APP_VERSION"); return }
     if (args.any { it == "--self-test" }) kotlin.system.exitProcess(runSelfTest())
+    if (args.any { it == "--help" || it == "-h" }) { println(CLI_HELP); return }
+    if (args.any { it == "--batch" }) kotlin.system.exitProcess(runCommandLineBatch(args.toList()))
     setLinuxWindowClass("apparat")
 
     val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.exists() }

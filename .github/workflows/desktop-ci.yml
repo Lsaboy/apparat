@@ -51,6 +51,9 @@ jobs:
           ls /opt/apparat/bin
           mkdir -p desktop/app/build/screenshots
           /opt/apparat/bin/Apparat --self-test | tee desktop/app/build/screenshots/zz-deb-self-test.txt
+          # Command-line batch on the installed app: two PDFs from the repo's test fixtures folder.
+          mkdir -p /tmp/cli-in && cp desktop/packaging/icons/apparat.png /tmp/cli-in/a.png && cp desktop/packaging/icons/apparat-charcoal.png /tmp/cli-in/b.png
+          /opt/apparat/bin/Apparat --batch convert-image --format webp --out /tmp/cli-out /tmp/cli-in | tee desktop/app/build/screenshots/zz-deb-cli.txt
           mkdir -p desktop/app/build/screenshots
           (xvfb-run -a -s "-screen 0 1280x960x24" bash -c '/opt/apparat/bin/Apparat > /tmp/apparat.log 2>&1 & sleep 25; import -window root desktop/app/build/screenshots/zz-installed-app.png; kill %1' ) || true
           cat /tmp/apparat.log

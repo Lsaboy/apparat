@@ -24,6 +24,18 @@ import java.io.File
  * `flatpak run com.omniforge.Apparat --self-test`, or `Apparat.exe --self-test` on Windows.
  */
 fun runSelfTest(): Int {
+    val report = StringBuilder()
+    fun println(line: String) { kotlin.io.println(line); report.append(line).append('\n') }
+    val code = selfTest(::println)
+    // The Windows launcher has no console: also save the report and open it.
+    val file = File(DesktopPaths.dataDir, "self-test.txt")
+    runCatching { file.writeText(report.toString()) }
+    kotlin.io.println("Report saved to $file")
+    if (DesktopPaths.isWindows) com.omniforge.apparat.desktop.platform.DesktopShell.open(file)
+    return code
+}
+
+private fun selfTest(println: (String) -> Unit): Int {
     val ctx = Context.app
     val dir = File(DesktopPaths.cacheDir, "self-test").apply { deleteRecursively(); mkdirs() }
     var failed = 0
