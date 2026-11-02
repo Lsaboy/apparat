@@ -32,6 +32,8 @@ dependencies {
     api("org.apache.pdfbox:pdfbox:3.0.8")
     // QR codes
     api("com.google.zxing:core:3.5.4")
+    // EXIF/GPS reading for every image format (JPEG, PNG, WEBP, HEIC...)
+    implementation("com.drewnoakes:metadata-extractor:2.22.0")
     // Image decode/encode/resize (JPEG, PNG, WEBP) through Skia, which Compose Desktop ships anyway
     api("org.jetbrains.skiko:skiko-awt:$skikoVersion")
     runtimeOnly("org.jetbrains.skiko:skiko-awt-runtime-$skikoPlatform:$skikoVersion")
@@ -47,8 +49,43 @@ dependencies {
 
 tasks.test {
     useJUnit()
+    // Android wording ("This phone can't play…"); the desktop message says "computer".
+    filter { excludeTestsMatching("*VideoCodecChoiceTest.unsupported message names the codec") }
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+// Pure-logic files used unchanged from the Android app (single source of truth). They are copied
+// into build/ at compile time; edit them in app/src/main/java, not in the copy.
+val androidSources = rootProject.file("../app/src/main/java")
+val syncAndroidEngineSources by tasks.registering(Sync::class) {
+    from(androidSources) {
+        include(
+            "com/omniforge/apparat/engine/common/UtilityEngine.kt",
+            "com/omniforge/apparat/engine/common/JsonFormatter.kt",
+            "com/omniforge/apparat/engine/video/GifEncoder.kt",
+            "com/omniforge/apparat/engine/image/TargetKbSearchEngine.kt",
+            "com/omniforge/apparat/core/jobs/ExclusiveRunner.kt"
+        )
+    }
+    into(layout.buildDirectory.dir("generated/androidShared"))
+}
+sourceSets.main {
+    kotlin.srcDir(syncAndroidEngineSources)
+}
+
+// The Android app's JVM unit tests for engines and utilities run against the desktop versions too.
+val androidTests = rootProject.file("../app/src/test/java")
+val syncAndroidEngineTests by tasks.registering(Sync::class) {
+    from(androidTests) {
+        include("com/omniforge/apparat/engine/**", "com/omniforge/apparat/core/util/**", "com/omniforge/apparat/core/jobs/**")
+        // These two also test screen code; they run in the app module instead.
+        exclude("**/OutputNamingTest.kt", "**/PdfSplitTest.kt")
+    }
+    into(layout.buildDirectory.dir("generated/androidSharedTests"))
+}
+sourceSets.test {
+    kotlin.srcDir(syncAndroidEngineTests)
 }
