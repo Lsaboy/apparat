@@ -11,6 +11,16 @@ import kotlin.coroutines.coroutineContext
 class FfmpegException(message: String, val log: String) : RuntimeException(message)
 
 /**
+ * Extra environment for one FFmpeg run: [libDirs] go on the library path before the bundle folder
+ * (e.g. the system's libva for hardware video), [vars] are set as is (e.g. LIBVA_DRIVERS_PATH).
+ */
+data class FfmpegEnv(val libDirs: List<File> = emptyList(), val vars: Map<String, String> = emptyMap()) {
+    companion object {
+        val NONE = FfmpegEnv()
+    }
+}
+
+/**
  * Runs the FFmpeg/FFprobe executables bundled with the app (bytedeco's GPL build: libx264, AAC,
  * and decoders for practically everything). Set APPARAT_FFMPEG / APPARAT_FFPROBE to use other
  * binaries; if the bundled ones can't be unpacked, the ones on PATH are used.
@@ -21,20 +31,22 @@ object Ffmpeg {
      * A ProcessBuilder for an FFmpeg/FFprobe command. For the bundled binaries the bundle folder is
      * put on the library path: its libraries find each other there, not in the system.
      */
-    fun process(command: List<String>): ProcessBuilder {
+    fun process(command: List<String>, extra: FfmpegEnv = FfmpegEnv.NONE): ProcessBuilder {
         val pb = ProcessBuilder(command)
         val exe = File(command.first())
         val dir = exe.parentFile
+        pb.environment().putAll(extra.vars)
         if (exe.isAbsolute && dir != null) {
             val env = pb.environment()
             if (DesktopPaths.isWindows) {
                 // DLLs next to the .exe are found anyway; also offer javacpp's C++ runtime DLLs.
                 val key = env.keys.firstOrNull { it.equals("PATH", ignoreCase = true) } ?: "PATH"
-                val extra = listOfNotNull(dir.absolutePath, windowsRuntimeDir?.absolutePath).joinToString(File.pathSeparator)
-                env[key] = extra + (env[key]?.let { File.pathSeparator + it } ?: "")
+                val paths = listOfNotNull(dir.absolutePath, windowsRuntimeDir?.absolutePath).joinToString(File.pathSeparator)
+                env[key] = paths + (env[key]?.let { File.pathSeparator + it } ?: "")
             } else {
                 val key = if (DesktopPaths.isMac) "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
-                env[key] = dir.absolutePath + (env[key]?.let { File.pathSeparator + it } ?: "")
+                val front = (extra.libDirs.map { it.absolutePath } + dir.absolutePath).joinToString(File.pathSeparator)
+                env[key] = front + (env[key]?.let { File.pathSeparator + it } ?: "")
             }
         }
         return pb
@@ -136,10 +148,11 @@ object Ffmpeg {
     suspend fun run(
         args: List<String>,
         durationSec: Double? = null,
+        env: FfmpegEnv = FfmpegEnv.NONE,
         onProgress: (Float) -> Unit = {}
     ): Unit = withContext(Dispatchers.IO) {
         val command = listOf(ffmpeg, "-hide_banner", "-nostdin", "-y", "-progress", "pipe:1", "-nostats") + args
-        val process = process(command).start()
+        val process = process(command, env).start()
         val log = ArrayDeque<String>()
         val errReader = Thread {
             runCatching {

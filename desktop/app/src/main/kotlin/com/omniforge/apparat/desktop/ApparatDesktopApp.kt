@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
@@ -43,6 +44,7 @@ import com.omniforge.apparat.feature.pdf.PdfSplitScreen
 import com.omniforge.apparat.feature.pdf.PdfToImagesScreen
 import com.omniforge.apparat.feature.pdf.PdfUnlockScreen
 import com.omniforge.apparat.feature.settings.CustomizationScreen
+import com.omniforge.apparat.desktop.feature.HardwareVideoSetting
 import com.omniforge.apparat.feature.utilities.Base64StudioScreen
 import com.omniforge.apparat.feature.utilities.HashVerifierScreen
 import com.omniforge.apparat.feature.utilities.JsonToolScreen
@@ -232,7 +234,10 @@ private fun Destination(route: String, controller: AppController, appSettings: A
             onDismissSharedPayload = { controller.payload = null },
             onThemeChanged = onThemeChanged
         )
-        "settings" -> CustomizationScreen(appSettings = appSettings, onSettingsChanged = onThemeChanged, onBack = back)
+        "settings" -> Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) { CustomizationScreen(appSettings = appSettings, onSettingsChanged = onThemeChanged, onBack = back) }
+            HardwareVideoSetting(appSettings)
+        }
 
         "pdf_unlock" -> { val u = pdfUri(); ConsumeSharedPayloadEffect(u); PdfUnlockScreen(initialUri = u, onBack = back) }
         "pdf_shrink" -> { val u = pdfUri(); ConsumeSharedPayloadEffect(u); PdfShrinkScreen(initialUri = u, onBack = back) }

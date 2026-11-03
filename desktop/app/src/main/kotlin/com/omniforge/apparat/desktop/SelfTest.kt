@@ -5,6 +5,7 @@ import android.net.Uri
 import com.omniforge.apparat.core.util.CodecSupport
 import com.omniforge.apparat.desktop.platform.DesktopPaths
 import com.omniforge.apparat.desktop.platform.Ffmpeg
+import com.omniforge.apparat.desktop.platform.HwAccel
 import com.omniforge.apparat.desktop.platform.MediaProbe
 import com.omniforge.apparat.engine.common.UtilityEngine
 import com.omniforge.apparat.engine.image.ImageEngine
@@ -12,6 +13,7 @@ import com.omniforge.apparat.engine.image.ImageOutputFormat
 import com.omniforge.apparat.engine.pdf.PdfEngine
 import com.omniforge.apparat.engine.video.AudioOutputFormat
 import com.omniforge.apparat.engine.video.VideoCodecChoice
+import com.omniforge.apparat.engine.video.VideoEncoding
 import com.omniforge.apparat.engine.video.VideoEngine
 import com.omniforge.apparat.engine.video.VideoShrinkPreset
 import kotlinx.coroutines.runBlocking
@@ -56,6 +58,7 @@ private fun selfTest(println: (String) -> Unit): Int {
         require("libx264" in Ffmpeg.encoders) { "libx264 missing" }
         "$codecs; HEVC=${CodecSupport.canEncodeHevc} AV1=${CodecSupport.canEncodeAv1}"
     }
+    check("hardware video") { HwAccel.report().trim().replace("\n", "\n      ") }
     val video = File(dir, "test.mp4")
     check("make test video") {
         runBlocking {
@@ -67,7 +70,7 @@ private fun selfTest(println: (String) -> Unit): Int {
     check("video shrink") {
         val out = runBlocking { VideoEngine.shrinkVideo(ctx, Uri.fromFile(video), VideoShrinkPreset.MAX_SHRINK).getOrThrow() }
         val p = MediaProbe.of(out)!!
-        "${p.width}x${p.height} ${p.videoCodec}/${p.audioCodec}"
+        "${p.width}x${p.height} ${p.videoCodec}/${p.audioCodec} via ${VideoEncoding.lastPlan?.let(VideoEncoding::describe)}"
     }
     check("audio extract") {
         val out = runBlocking { VideoEngine.extractAudio(ctx, Uri.fromFile(video), AudioOutputFormat.M4A).getOrThrow() }

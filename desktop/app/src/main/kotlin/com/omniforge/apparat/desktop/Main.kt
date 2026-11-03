@@ -40,6 +40,7 @@ fun main(args: Array<String>) {
     // Wayland/X11 scaling is picked up by Skia; keep text antialiasing crisp on Linux.
     System.setProperty("awt.useSystemAAFontSettings", "lcd")
     if (args.any { it == "--version" }) { println("Apparat $APP_VERSION"); return }
+    com.omniforge.apparat.desktop.platform.HwAccel.enabled = AppSettings(Context.app).hardwareVideo
     if (args.any { it == "--self-test" }) kotlin.system.exitProcess(runSelfTest())
     if (args.any { it == "--help" || it == "-h" }) { println(CLI_HELP); return }
     if (args.any { it == "--batch" }) kotlin.system.exitProcess(runCommandLineBatch(args.toList()))
@@ -54,7 +55,11 @@ fun main(args: Array<String>) {
     ToolJobs.onActivityCreated(context, restoring = false)
     thread(isDaemon = true, name = "cache-cleanup") { FileUtils.cleanStaleCache(context, appStartTime = appStartTime) }
     // Unpack FFmpeg in the background so the first video job starts quickly.
-    thread(isDaemon = true, name = "ffmpeg-warmup") { runCatching { com.omniforge.apparat.desktop.platform.Ffmpeg.isAvailable } }
+    thread(isDaemon = true, name = "ffmpeg-warmup") {
+        runCatching { com.omniforge.apparat.desktop.platform.Ffmpeg.isAvailable }
+        // Then find the graphics card's encoders, so the first video job doesn't wait for it.
+        runCatching { com.omniforge.apparat.desktop.platform.HwAccel.warmUp() }
+    }
 
     val appSettings = AppSettings(context)
     val controller = AppController()

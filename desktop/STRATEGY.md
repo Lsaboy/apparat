@@ -100,8 +100,9 @@ Done so far:
 2. **Windows console.** The Windows launcher is a GUI program, so `--batch`/`--self-test` print
    nothing in a terminal there. The self-test also writes and opens a report file. A separate
    `apparat-cli.exe` console launcher would fix this properly.
-3. **Hardware video encoding.** The bundled FFmpeg includes NVENC (NVIDIA), QSV (Intel) and
-   VAAPI. Try them and fall back to x264. That makes 4K shrinking several times faster.
+3. ~~Hardware video encoding~~: done. VA-API (AMD/Intel on Linux), NVENC, QSV, D3D12/Media
+   Foundation (AMD on Windows), with step-by-step fallback to the CPU. Pitfalls: README.md,
+   "Hardware video". Code: `platform/HwAccel.kt`, `engine/video/VideoEncodePlan.kt`.
 4. **PDF page tools with thumbnails.** Reorder, rotate or delete pages, add page numbers or a
    watermark. A big screen makes page grids practical.
 5. **Video:** join clips, crop, extract frames / contact sheet, change resolution or frame rate.

@@ -111,6 +111,55 @@ bitrate, loudness levelling) and **Rotate, Flip & Speed**. Batches also run from
 listed in `app/src/main/kotlin/com/omniforge/apparat/core/model/DesktopTools.kt`; see STRATEGY.md
 for how to add more.
 
+## Hardware video
+
+Video tools (shrink, convert, subtitles, strip, trim re-encode, rotate/flip/speed) use the
+graphics card when they can. Settings → **Hardware video encoding** shows what was found and turns
+it off. `Apparat --self-test` prints the same report and which path the test encode used.
+
+| System | GPU | API |
+|---|---|---|
+| Linux | AMD (Radeon), Intel | VA-API (`h264_vaapi`, `hevc_vaapi`, `av1_vaapi`) |
+| Linux | NVIDIA | NVENC (+ CUDA decode) |
+| Windows | NVIDIA | NVENC |
+| Windows | Intel | Quick Sync (QSV) |
+| Windows | AMD | D3D12 video encode, then Media Foundation. The bundled FFmpeg has no AMF |
+
+Each encode tries, in order: everything on the GPU (decode, scale, encode; only when the sole
+filter is a resize) → GPU decode + GPU encode → CPU decode + GPU encode → CPU in the chosen codec →
+CPU H.264. A failed step is remembered for the session, and two failed GPU encodes in a row turn
+the GPU off for that codec until restart. A broken driver costs one retry, not a failed job.
+
+Known pitfalls and what the app does about them:
+
+- **Missing VA-API driver (Linux, AMD/Intel).** Needs `mesa-va-drivers` (Pop!_OS/Ubuntu: usually
+  installed; Fedora: `mesa-va-drivers-freeworld` from RPM Fusion, the stock one has H.264/HEVC
+  encoding removed). Intel also needs `intel-media-va-driver`. Check with `vainfo`. The report
+  says which package is missing.
+- **Permissions.** `/dev/dri/renderD*` must be readable: the user must be in the `render` (some
+  distros: `video`) group. The report names the group.
+- **Old bundled libva.** The FFmpeg build ships libva 2.14, too old for current Mesa. The app
+  loads the system libva first; nothing to do.
+- **Several GPUs** (laptop iGPU + dGPU): each render node is probed and the one that encodes wins.
+  `APPARAT_VAAPI_DEVICE=/dev/dri/renderD129` forces one.
+- **NVIDIA on Linux:** `nvidia-vaapi-driver` only decodes, so NVIDIA cards use NVENC directly.
+  NVENC in this FFmpeg needs driver 570 or newer.
+- **AV1 encoding** needs a recent GPU (AMD RX 7000 / RDNA3+, Intel Arc, NVIDIA RTX 40+). Older
+  cards fall back to SVT-AV1 on the CPU.
+- **Size limits.** H.264 hardware encoders stop at 4096 px; above that (and below 128 px) the
+  CPU is used.
+- **10-bit / HDR sources** are converted to 8-bit without tone mapping, on GPU and CPU alike.
+  Colours of HDR clips may look flat.
+- **Quality.** GPU encoders get a bitrate (never above the source's); at the same size they look
+  slightly worse than x264. Turn the setting off for best quality per MB.
+- **Rotated phone videos** on the full-GPU path: the rotation flag is restored by a stream-copy
+  remux, so they play upright.
+- **Flatpak** has `--device=dri`; GPU access works there too.
+- `APPARAT_HWACCEL=off` disables it; `=vaapi|nvenc|qsv|d3d12va|mf` allows only that API.
+- CI machines have no GPU, so CI only tests the fallback (a fake VA-API device must end in a
+  correct CPU encode). The GPU paths themselves are tested by running `--self-test` on the
+  actual computer.
+
 ## Desktop differences
 
 | Android | Desktop |
@@ -118,7 +167,7 @@ for how to add more.
 | System file picker, share sheet, "Open with" | Native open/save dialogs; drag files onto the window; "Open with Apparat" in the file manager (.deb/Flatpak register PDF, image and video types) |
 | Share button | Shows the file selected in the file manager |
 | Saves to Downloads/Apparat (MediaStore) | Saves to `~/Downloads/Apparat` (`%USERPROFILE%\Downloads\Apparat` on Windows), or the folder picked in Settings |
-| Media3 hardware encoding | FFmpeg software encoding (libx264). HEVC/AV1 options appear only if the bundled FFmpeg has those encoders |
+| Media3 hardware encoding | FFmpeg: GPU encoding where it works (see "Hardware video"), otherwise x264/x265/SVT-AV1 |
 | Trim & Mute re-encodes the frames before the first keyframe | Stream copy; the MP4 edit list starts playback exactly at the chosen time |
 | HEIC output | Not offered (HEIC and AVIF photos can still be opened) |
 | Back gesture | Esc, Alt+Left, or the back arrow |

@@ -63,6 +63,11 @@ class AppSettings(context: Context) {
         get() = prefs.getString("save_tree_uri", null)
         set(value) = prefs.edit().apply { if (value == null) remove("save_tree_uri") else putString("save_tree_uri", value) }.apply()
 
+    /** Desktop: encode videos on the graphics card when it can (falls back to the CPU on its own). */
+    var hardwareVideo: Boolean
+        get() = prefs.getBoolean("hw_video", true)
+        set(value) = prefs.edit().putBoolean("hw_video", value).apply()
+
     var accentIndex: Int
         get() = prefs.getInt("accent_index", 0).coerceIn(0, AppAccentSwatches.size - 1)
         set(value) = prefs.edit().putInt("accent_index", value).apply()

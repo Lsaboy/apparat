@@ -4,8 +4,15 @@ import android.content.Context
 import android.net.Uri
 import com.omniforge.apparat.core.util.FileUtils
 import com.omniforge.apparat.desktop.platform.Ffmpeg
+import com.omniforge.apparat.desktop.platform.FfmpegEnv
+import com.omniforge.apparat.desktop.platform.HwAccel
 import com.omniforge.apparat.desktop.platform.MediaProbe
+import com.omniforge.apparat.engine.video.EncodeJob
+import com.omniforge.apparat.engine.video.VideoCodecChoice
+import com.omniforge.apparat.engine.video.VideoEncoding
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -48,9 +55,15 @@ object DesktopMediaTools {
 
     private fun fmt(v: Double) = String.format(Locale.ROOT, "%.4f", v)
 
-    private suspend fun runInto(args: List<String>, output: File, duration: Double, onProgress: (Float) -> Unit) {
+    private suspend fun runInto(
+        args: List<String>,
+        output: File,
+        duration: Double,
+        env: FfmpegEnv = FfmpegEnv.NONE,
+        onProgress: (Float) -> Unit
+    ) {
         try {
-            Ffmpeg.run(args + output.absolutePath, duration, onProgress)
+            Ffmpeg.run(args + output.absolutePath, duration, env, onProgress)
             check(output.isFile && output.length() > 0) { "FFmpeg produced no output." }
         } catch (t: Throwable) {
             output.delete()
@@ -141,15 +154,25 @@ object DesktopMediaTools {
         if (flipVertical) v += "vflip"
         if (speed != 1f) v += "setpts=PTS/${fmt(speed.toDouble())}"
         v += "scale=trunc(iw/2)*2:trunc(ih/2)*2"
-        val args = mutableListOf("-i", uri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?", "-vf", v.joinToString(","))
-        if (speed != 1f && info.hasAudio) args += listOf("-af", atempoChain(speed.toDouble()))
-        args += listOf(
-            "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-metadata:s:v:0", "rotate=0"
-        )
+        val quarter = turn == VideoTurn.CW90 || turn == VideoTurn.CCW90
+        val outW = (if (quarter) info.displayHeight else info.displayWidth) / 2 * 2
+        val outH = (if (quarter) info.displayWidth else info.displayHeight) / 2 * 2
+        val job = EncodeJob(info, outW, outH, fps = info.fps?.times(speed))
         val outDuration = info.durationSec / speed
-        onProgress(0f, "Processing video...")
-        runInto(args, output, outDuration) { p -> onProgress(p, "Processing video... ${(p * 100).toInt()}%") }
+        val backend = withContext(Dispatchers.IO) { HwAccel.backend() }
+        VideoEncoding.encode(
+            VideoCodecChoice.H264, job, output, backend,
+            onAttempt = { plan, retry ->
+                onProgress(0f, if (retry) "Processing video: retrying with ${plan.label}..." else "Processing video (${plan.label})...")
+            }
+        ) { plan, target ->
+            val args = plan.input + listOf("-i", uri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?") + plan.vfArgs(v)
+            val audio = if (speed != 1f && info.hasAudio) listOf("-af", atempoChain(speed.toDouble())) else emptyList()
+            runInto(
+                args + audio + plan.encoder + listOf("-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-metadata:s:v:0", "rotate=0"),
+                target, outDuration, plan.env
+            ) { p -> onProgress(p, "Processing video (${plan.plan.label})... ${(p * 100).toInt()}%") }
+        }
         output
     }
 }

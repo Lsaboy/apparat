@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import com.omniforge.apparat.core.util.FileUtils
 import com.omniforge.apparat.desktop.platform.Ffmpeg
+import com.omniforge.apparat.desktop.platform.FfmpegEnv
 import com.omniforge.apparat.desktop.platform.FfmpegException
+import com.omniforge.apparat.desktop.platform.HwAccel
 import com.omniforge.apparat.desktop.platform.MediaProbe
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -64,23 +66,27 @@ object VideoEngine {
 
     private fun even(value: Float): Int = max(2, (value / 2).roundToInt() * 2)
 
-    /** Encoder args for [codec] at [bitrate] (bits/s), or plain quality-based H.264. */
-    private fun videoEncoderArgs(codec: VideoCodecChoice, bitrate: Int?): List<String> {
-        val encoder = codec.ffmpegEncoder ?: throw IllegalStateException("${codec.shortName} encoding isn't available on this computer.")
-        val args = mutableListOf("-c:v", encoder)
-        when (encoder) {
-            "libx264" -> args += listOf("-preset", "medium", "-profile:v", "high")
-            "libx265" -> args += listOf("-preset", "medium", "-tag:v", "hvc1")
-            "libsvtav1" -> args += listOf("-preset", "8")
-            "libaom-av1" -> args += listOf("-cpu-used", "6", "-row-mt", "1")
+    /** Both sides rounded down to even numbers (yuv420p needs even sizes). */
+    private fun floorEven(w: Int, h: Int): Pair<Int, Int> = max(2, w / 2 * 2) to max(2, h / 2 * 2)
+
+    /** Encodes through [VideoEncoding] (GPU first, then CPU) and reports progress as "[verb] (H.264, VA-API)... 40%". */
+    private suspend fun encodeVideo(
+        codec: VideoCodecChoice,
+        job: EncodeJob,
+        output: File,
+        progress: Progress,
+        verb: String,
+        durationSec: Double?,
+        build: (PlanArgs, File) -> List<String>
+    ): EncodePlan {
+        val backend = withContext(Dispatchers.IO) { HwAccel.backend() }
+        return VideoEncoding.encode(codec, job, output, backend, onAttempt = { plan, retry ->
+            progress.post(0f, if (retry) "$verb: retrying with ${plan.label}..." else "$verb (${plan.label})...", force = true)
+        }) { args, target ->
+            runToFile(build(args, target), target, durationSec, args.env) { p ->
+                progress.post(p, "$verb (${args.plan.label})... ${(p * 100).toInt()}%")
+            }
         }
-        if (bitrate != null) {
-            args += listOf("-b:v", bitrate.toString(), "-maxrate", (bitrate * 3 / 2).toString(), "-bufsize", (bitrate * 2).toString())
-        } else if (encoder == "libx264") {
-            args += listOf("-crf", "20")
-        }
-        args += listOf("-pix_fmt", "yuv420p")
-        return args
     }
 
     private val mp4Flags = listOf("-movflags", "+faststart")
@@ -99,30 +105,28 @@ object VideoEngine {
         val shortSide = min(info.displayWidth, info.displayHeight)
         var bitrate = preset.bitrate
         val filters = mutableListOf<String>()
-        if (shortSide > preset.shortSide) {
+        val (w, h) = if (shortSide > preset.shortSide) {
             val scale = preset.shortSide.toFloat() / shortSide
-            filters += "scale=${even(info.displayWidth * scale)}:${even(info.displayHeight * scale)}:flags=lanczos"
+            (even(info.displayWidth * scale) to even(info.displayHeight * scale)).also { (sw, sh) -> filters += "scale=$sw:$sh:flags=lanczos" }
         } else {
             val pixelRatio = (info.displayWidth.toFloat() * info.displayHeight) / (preset.shortSide * preset.shortSide * 16f / 9f)
             bitrate = (preset.bitrate * pixelRatio).roundToInt()
             // Odd sizes can't be encoded as yuv420p.
-            if (info.displayWidth % 2 != 0 || info.displayHeight % 2 != 0) filters += "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+            floorEven(info.displayWidth, info.displayHeight).also { (sw, sh) ->
+                if (sw != info.displayWidth || sh != info.displayHeight) filters += "scale=$sw:$sh"
+            }
         }
         info.bitrate?.takeIf { it > 0 }?.let { bitrate = min(bitrate, (it * 0.8f).roundToInt()) }
         bitrate = max(bitrate, 200_000)
 
         val output = FileUtils.createTempOutputFile(context, "shrunk", ".mp4")
         progress.post(0f, "Compressing video (${preset.label})...", force = true)
-        val used = encodeWithFallback(codec, progress) { attempt ->
-            val args = mutableListOf("-i", inputUri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?")
-            if (filters.isNotEmpty()) args += listOf("-vf", filters.joinToString(","))
-            args += videoEncoderArgs(attempt, VideoCodecChoice.scaledBitrate(bitrate, attempt))
-            args += listOf("-c:a", "aac", "-b:a", "128k", "-ac", "2") + mp4Flags + output.absolutePath
-            runToFile(args, output, info.durationSec) { p ->
-                progress.post(p, "Compressing video (${attempt.shortName})... ${(p * 100).toInt()}%")
-            }
+        val job = EncodeJob(info, w, h, bitrate, allowFullGpu = true)
+        val used = encodeVideo(codec, job, output, progress, "Compressing video", info.durationSec) { args, target ->
+            args.input + listOf("-i", inputUri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?") + args.vfArgs(filters) + args.encoder +
+                listOf("-c:a", "aac", "-b:a", "128k", "-ac", "2") + mp4Flags + target.absolutePath
         }
-        onCodecUsed(used)
+        onCodecUsed(used.codec)
         output
     }
 
@@ -138,42 +142,27 @@ object VideoEngine {
         val progress = Progress(onProgress)
         val output = FileUtils.createTempOutputFile(context, "converted", ".mp4")
         progress.post(0f, "Converting to MP4...", force = true)
-        val used = encodeWithFallback(codec, progress) { attempt ->
-            val args = mutableListOf("-i", inputUri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?")
-            if (info.displayWidth % 2 != 0 || info.displayHeight % 2 != 0) args += listOf("-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2")
-            args += videoEncoderArgs(attempt, null)
-            args += listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + output.absolutePath
-            runToFile(args, output, info.durationSec) { p ->
-                progress.post(p, "Converting to MP4 (${attempt.shortName})... ${(p * 100).toInt()}%")
-            }
+        val (w, h) = floorEven(info.displayWidth, info.displayHeight)
+        val filters = if (w != info.displayWidth || h != info.displayHeight) listOf("scale=$w:$h") else emptyList()
+        val job = EncodeJob(info, w, h, bitrate = null, allowFullGpu = true)
+        val used = encodeVideo(codec, job, output, progress, "Converting to MP4", info.durationSec) { args, target ->
+            args.input + listOf("-i", inputUri.file.absolutePath, "-map", "0:v:0", "-map", "0:a:0?") + args.vfArgs(filters) + args.encoder +
+                listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + target.absolutePath
         }
-        onCodecUsed(used)
+        onCodecUsed(used.codec)
         output
     }
 
-    /** Runs [export] in [codec]; if HEVC/AV1 fails in FFmpeg, runs it once more as H.264. */
-    private suspend fun encodeWithFallback(
-        codec: VideoCodecChoice,
-        progress: Progress,
-        export: suspend (VideoCodecChoice) -> Unit
-    ): VideoCodecChoice {
-        try {
-            export(codec)
-            return codec
-        } catch (c: CancellationException) {
-            throw c
-        } catch (e: Exception) {
-            if (codec == VideoCodecChoice.H264 || e !is FfmpegException && e !is IllegalStateException) throw e
-        }
-        progress.post(0f, "${codec.shortName} encoder failed, retrying as H.264...", force = true)
-        export(VideoCodecChoice.H264)
-        return VideoCodecChoice.H264
-    }
-
     /** Runs FFmpeg writing [output]; deletes it on failure or cancellation. */
-    private suspend fun runToFile(args: List<String>, output: File, durationSec: Double?, onProgress: (Float) -> Unit) {
+    private suspend fun runToFile(
+        args: List<String>,
+        output: File,
+        durationSec: Double?,
+        env: FfmpegEnv = FfmpegEnv.NONE,
+        onProgress: (Float) -> Unit
+    ) {
         try {
-            Ffmpeg.run(args, durationSec, onProgress)
+            Ffmpeg.run(args, durationSec, env, onProgress)
             if (!output.exists() || output.length() == 0L) throw IllegalStateException("FFmpeg produced no output.")
         } catch (t: Throwable) {
             output.delete()
@@ -204,15 +193,16 @@ object VideoEngine {
             val w = even(info.displayWidth.toFloat())
             val h = even(info.displayHeight.toFloat())
             val list = withContext(Dispatchers.IO) { writeCueImages(cues, SubtitleRenderer(w, h, fontSize), workDir) }
-            progress.post(0f, "Burning subtitles...", force = true)
-            val args = listOf(
-                "-i", videoUri.file.absolutePath,
-                "-f", "concat", "-safe", "0", "-i", list.absolutePath,
-                "-filter_complex",
-                "[0:v]scale=$w:$h,format=yuv420p[base];[1:v]format=rgba[subs];[base][subs]overlay=0:0:eof_action=pass:format=auto[v]",
-                "-map", "[v]", "-map", "0:a:0?"
-            ) + videoEncoderArgs(VideoCodecChoice.H264, null) + listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + output.absolutePath
-            runToFile(args, output, info.durationSec) { p -> progress.post(p, "Burning subtitles... ${(p * 100).toInt()}%") }
+            val job = EncodeJob(info, w, h)
+            encodeVideo(VideoCodecChoice.H264, job, output, progress, "Burning subtitles", info.durationSec) { args, target ->
+                args.input + listOf(
+                    "-i", videoUri.file.absolutePath,
+                    "-f", "concat", "-safe", "0", "-i", list.absolutePath,
+                    "-filter_complex",
+                    "[0:v]scale=$w:$h,format=yuv420p[base];[1:v]format=rgba[subs];[base][subs]overlay=0:0:eof_action=pass:format=auto${args.complexSuffix}[v]",
+                    "-map", "[v]", "-map", "0:a:0?"
+                ) + args.encoder + listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + target.absolutePath
+            }
             output
         } finally {
             workDir.deleteRecursively()
@@ -291,8 +281,10 @@ object VideoEngine {
             }
         } catch (e: FfmpegException) {
             // The video codec can't go into MP4 as is (e.g. some MKV/WEBM streams): re-encode.
-            runToFile(base + videoEncoderArgs(VideoCodecChoice.H264, null) + mp4Flags + output.absolutePath, output, info.durationSec) { p ->
-                progress.post(p, "Removing audio (re-encoding)... ${(p * 100).toInt()}%")
+            val (w, h) = floorEven(info.displayWidth, info.displayHeight)
+            val filters = if (w != info.displayWidth || h != info.displayHeight) listOf("scale=$w:$h") else emptyList()
+            encodeVideo(VideoCodecChoice.H264, EncodeJob(info, w, h), output, progress, "Removing audio (re-encoding)", info.durationSec) { args, target ->
+                args.input + base + args.vfArgs(filters) + args.encoder + mp4Flags + target.absolutePath
             }
         }
         output
@@ -324,10 +316,11 @@ object VideoEngine {
                 progress.post(p, "Trimming... ${(p * 100).toInt()}%")
             }
         } catch (e: FfmpegException) {
-            runToFile(
-                base + videoEncoderArgs(VideoCodecChoice.H264, null) + listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + output.absolutePath,
-                output, clipLength
-            ) { p -> progress.post(p, "Trimming (re-encoding)... ${(p * 100).toInt()}%") }
+            val (w, h) = floorEven(info.displayWidth, info.displayHeight)
+            val filters = if (w != info.displayWidth || h != info.displayHeight) listOf("scale=$w:$h") else emptyList()
+            encodeVideo(VideoCodecChoice.H264, EncodeJob(info, w, h), output, progress, "Trimming (re-encoding)", clipLength) { args, target ->
+                args.input + base + args.vfArgs(filters) + args.encoder + listOf("-c:a", "aac", "-b:a", "192k") + mp4Flags + target.absolutePath
+            }
         }
         output
     }
