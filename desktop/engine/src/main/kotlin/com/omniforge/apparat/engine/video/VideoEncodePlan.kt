@@ -1,5 +1,6 @@
 package com.omniforge.apparat.engine.video
 
+import android.widget.Toast
 import com.omniforge.apparat.desktop.platform.Ffmpeg
 import com.omniforge.apparat.desktop.platform.FfmpegEnv
 import com.omniforge.apparat.desktop.platform.FfmpegException
@@ -141,6 +142,15 @@ object VideoEncoding {
     var lastPlan: EncodePlan? = null
         private set
 
+    /**
+     * Where fallback notices go: a toast in the window, a printed line on the command line.
+     * Each distinct notice is shown once per session, so a batch of 100 files says it once.
+     */
+    @Volatile
+    var notice: (String) -> Unit = { Toast.makeText(null, it, Toast.LENGTH_LONG).show() }
+
+    private val noticesShown = mutableSetOf<String>()
+
     /** Source codecs worth trying to decode on the GPU. */
     private val gpuDecodable = setOf("h264", "hevc", "vp9", "av1", "vp8", "mpeg2video")
 
@@ -211,6 +221,7 @@ object VideoEncoding {
                 continue
             }
             remember(plan, failed, job.source.videoCodec.orEmpty())
+            announceFallback(plan, failed)
             lastPlan = plan
             System.err.println("Apparat: video encoded with ${describe(plan)}")
             return plan
@@ -238,6 +249,27 @@ object VideoEncoding {
         }
         if (success.isHardware) HwAccel.recordSuccess(success.backend!!, success.codec)
     }
+
+    /** Tells the user (once per kind, per session) that the GPU failed and the CPU took over. */
+    private fun announceFallback(success: EncodePlan, failed: List<EncodePlan>) {
+        val hwFailed = failed.filter { it.isHardware }
+        if (hwFailed.isEmpty()) return
+        val gpu = hwFailed.first().backend!!
+        val text = when {
+            !success.isHardware -> {
+                val paused = hwFailed.any { !HwAccel.usable(gpu, it.codec) }
+                "The graphics card (${gpu.api.label}) couldn't encode this video, so the CPU did it instead (slower, same result)." +
+                    if (paused) " ${hwFailed.first().codec.shortName} hardware encoding is off until Apparat restarts." else ""
+            }
+            success.level == EncodeLevel.GPU_ENCODE -> "The graphics card couldn't decode this video, so the CPU decoded it and the GPU encoded it."
+            else -> return // full GPU -> GPU decode: still all hardware, nothing worth saying
+        }
+        HwAccel.noteFallback(if (success.isHardware) "CPU decoding" else "CPU encoding")
+        val first = synchronized(noticesShown) { noticesShown.add(text) }
+        if (first) runCatching { notice(text) }
+    }
+
+    internal fun resetNoticesForTests() = synchronized(noticesShown) { noticesShown.clear() }
 
     /** Copies [from] to [to] with the display rotation of the source (the full-GPU path drops it). */
     private suspend fun restoreRotation(from: File, to: File, rotation: Int) {

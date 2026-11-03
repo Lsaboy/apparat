@@ -42,9 +42,17 @@ class HwAccelTest {
     private fun source(codec: String = "h264", w: Int = 1920, h: Int = 1080, rotation: Int = 0, bitrate: Long? = 8_000_000) =
         MediaProbe(10.0, bitrate, "mp4", codec, w, h, rotation, 30.0, "aac", 2, 48000)
 
-    @Before @After fun reset() {
+    private val notices = mutableListOf<String>()
+
+    @Before fun setUp() {
+        reset()
+        VideoEncoding.notice = { notices += it }
+    }
+
+    @After fun reset() {
         HwAccel.overrideForTests = null
         HwAccel.resetSessionForTests()
+        VideoEncoding.resetNoticesForTests()
     }
 
     @Test fun planOrderFullThenDecodeThenEncodeThenCpu() {
@@ -145,6 +153,14 @@ class HwAccelTest {
         // Two failed GPU encodes in a row: hardware is skipped for that codec from now on.
         assertFalse(HwAccel.usable(b, VideoCodecChoice.H264))
         assertTrue(VideoEncoding.plans(VideoCodecChoice.H264, EncodeJob(source(), 1280, 720), b).all { !it.isHardware })
+        // The user was told, without being asked anything, and not once per file.
+        assertEquals(notices.toString(), 2, notices.size)
+        assertTrue(notices[0].contains("the CPU did it instead"))
+        assertTrue(notices[1].contains("off until Apparat restarts"))
+        assertTrue(HwAccel.summary(), HwAccel.summary().contains("fell back to CPU encoding 2x"))
+        // A third file goes straight to the CPU: no GPU attempt, no new notice.
+        VideoEngine.shrinkVideo(ctx, TestMedia.uri(TestMedia.mp4), VideoShrinkPreset.MAX_SHRINK).getOrThrow()
+        assertEquals(2, notices.size)
     }
 
     @Test fun brokenGpuRotatedTransformStillCorrect() = runBlocking {

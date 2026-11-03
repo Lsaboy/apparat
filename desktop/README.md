@@ -129,6 +129,8 @@ Each encode tries, in order: everything on the GPU (decode, scale, encode; only 
 filter is a resize) → GPU decode + GPU encode → CPU decode + GPU encode → CPU in the chosen codec →
 CPU H.264. A failed step is remembered for the session, and two failed GPU encodes in a row turn
 the GPU off for that codec until restart. A broken driver costs one retry, not a failed job.
+No question is asked: a short message says the CPU took over (once per kind of failure per
+session), and Settings → Hardware video shows how often it happened.
 
 Known pitfalls and what the app does about them:
 

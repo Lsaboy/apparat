@@ -160,9 +160,18 @@ object HwAccel {
     fun summary(): String {
         if (disabledByEnv) return "Off (APPARAT_HWACCEL=$envChoice)"
         if (!enabled) return "Off: videos are encoded on the CPU"
-        val d = detectedOrNull() ?: return "Checking the graphics card..."
+        val d = overrideForTests?.let { Detection(it, emptyList(), null) } ?: detectedOrNull() ?: return "Checking the graphics card..."
         val b = d.backend ?: return "No hardware encoder found, using the CPU" + (d.reason?.let { ": $it" } ?: "")
-        return "Using ${b.description} (${b.api.label}): " + b.encoders.keys.joinToString { it.shortName }
+        val base = "Using ${b.description} (${b.api.label}): " + b.encoders.keys.joinToString { it.shortName }
+        val fell = synchronized(fallbacks) { fallbacks.entries.joinToString { "${it.key} ${it.value}x" } }
+        return if (fell.isEmpty()) base else "$base. This session the GPU failed and fell back to $fell"
+    }
+
+    private val fallbacks = linkedMapOf<String, Int>()
+
+    /** Counts a GPU -> CPU fallback ([kind]: "CPU encoding" / "CPU decoding") for the settings summary. */
+    fun noteFallback(kind: String) {
+        synchronized(fallbacks) { fallbacks.merge(kind, 1) { a, b -> a + b } }
     }
 
     // ---- Session bookkeeping: what failed on this computer since the app started ----
@@ -193,6 +202,7 @@ object HwAccel {
     internal fun resetSessionForTests() {
         synchronized(failures) { failures.clear() }
         synchronized(pathFailed) { pathFailed.clear() }
+        synchronized(fallbacks) { fallbacks.clear() }
     }
 
     // ---- Detection ----
