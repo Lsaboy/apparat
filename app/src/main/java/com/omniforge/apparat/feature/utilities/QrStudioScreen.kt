@@ -118,6 +118,9 @@ fun QrStudioScreen(
                 }
                 qrBitmap = bmp
                 qrErrorMessage = null
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // A newer payload replaced this one; don't overwrite its result with an error.
+                throw e
             } catch (e: Exception) {
                 qrBitmap = null
                 val msg = e.message ?: ""
