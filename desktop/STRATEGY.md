@@ -56,8 +56,7 @@ or tag. Desktop releases don't have to track every Android commit.
 **Desktop-only patches to Android files:** `desktop/android-overrides/<path>` replaces that
 Android file in the desktop build only. Each one is pinned to the exact Android file it was made
 from (`overrides.lock`). The build warns when that Android file changes, or when Android has
-caught up and the override can be deleted. Keep these rare; today there is one (the QR fix
-below).
+caught up and the override can be deleted. Keep these rare; today there are none.
 
 ## Where the platforms deliberately differ
 
@@ -114,9 +113,8 @@ Done so far:
 
 1. **QR Studio could show "Failed to generate QR code: The coroutine scope left the
    composition"** when the text changes while a code is being generated, because the generation
-   treats its own cancellation as an error. The one-line fix is on branch
-   **`fix/qr-cancelled-generation`** (based on `master`). Merge it whenever suits the release;
-   then delete `desktop/android-overrides/.../QrStudioScreen.kt` and its line in `overrides.lock`.
+   treats its own cancellation as an error. **Fixed on `master`** (merged from
+   `fix/qr-cancelled-generation`); the desktop override was removed.
 2. **Sharing several PDFs or photos into the app may lose them.** `MainActivity` clears the shared
    payload in a `LaunchedEffect` while Merge PDFs / Photos to PDF are still importing it. Clearing
    it changes `shareToken`, which restarts their `LaunchedEffect(shareToken)` and cancels the
@@ -129,7 +127,7 @@ Done so far:
 | Branch | What | Action |
 |---|---|---|
 | `desktop-port` | The desktop app: `desktop/` + `desktop-ci.yml` + `desktop-release.yml`. Touches no Android file | Keep as the desktop branch; merge `master` into it regularly |
-| `fix/qr-cancelled-generation` | One-line Android QR fix, based on `master` | Merge into `master` when it suits the Play release (verified: Android unit tests + debug build pass with it) |
+| `fix/qr-cancelled-generation` | One-line Android QR fix | Merged into `master`; delete |
 | `ci/android-checks` | `android-ci.yml`: Android unit tests + debug APK on every push/PR. Doesn't sign or upload | Recommended for `master`: catches a broken build before it reaches Play. Passes on today's `master` |
 | `verify/qr-fix-android-build` | The two branches above combined, used once to prove the fix builds on Android | Delete |
 | `ci-screenshots`, `ci-flatpak` | Written by desktop CI (screenshots, self-test output) | Delete any time; recreated on each run |

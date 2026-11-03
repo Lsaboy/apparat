@@ -11,8 +11,9 @@ checkAndroidOverrides` (also run by `test` and on CI) reports when:
   of the new Android file, then update its hash in `overrides.lock`;
 - the Android file now equals the override (Android took the fix) → delete the override and its line.
 
-Current overrides:
+Current overrides: none.
+
+To add one, list it here:
 
 | File | Why | Android follow-up |
 |---|---|---|
-| `feature/utilities/QrStudioScreen.kt` | Don't show a cancelled QR generation as "Failed to generate QR code" | Branch `fix/qr-cancelled-generation` (one line); delete this override once it's merged |

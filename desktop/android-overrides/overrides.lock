@@ -1,2 +1,1 @@
 # <path relative to app/src/main/java> <sha256 of the Android file the override was made from>
-com/omniforge/apparat/feature/utilities/QrStudioScreen.kt d11b7d36c4f08eeb2c1f68b691bdf20946725f3c4b75347c55fcc1598ab302a5
