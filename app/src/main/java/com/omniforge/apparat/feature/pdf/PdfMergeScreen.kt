@@ -37,6 +37,8 @@ import com.omniforge.apparat.engine.pdf.PdfAccess
 import com.omniforge.apparat.engine.pdf.PdfEngine
 import com.omniforge.apparat.engine.pdf.PdfMergeInput
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Nav route; also the key for this tool's background job and retained state. */
 private const val JOB_KEY = "pdf_merge"
@@ -86,7 +88,10 @@ fun PdfMergeScreen(
         password = password
     )
 
-    suspend fun addUris(uris: List<Uri>) {
+    // One add at a time, so a shared file arriving twice (single + list) isn't added twice.
+    val addLock = remember { Mutex() }
+
+    suspend fun addUris(uris: List<Uri>) = addLock.withLock {
         val known = entries.map { it.uri }.toSet() + passwordQueue
         val needPassword = mutableListOf<Uri>()
         var unreadable = 0
@@ -109,17 +114,21 @@ fun PdfMergeScreen(
         processState = ProcessState.Idle
     }
 
+    // The work runs in [scope], not the effect: the app clears the shared payload right after
+    // this screen opens, which changes the effect keys and would cancel a half-done add.
     LaunchedEffect(initialUri) {
         if (initialUri != null && initialUri != lastHandledInitialUri) {
             lastHandledInitialUri = initialUri
-            addUris(listOf(initialUri))
+            val uri = initialUri
+            scope.launch { addUris(listOf(uri)) }
         }
     }
     var lastShareToken by retained(JOB_KEY, "lastShareToken") { mutableStateOf(0L) }
     LaunchedEffect(shareToken) {
         if (initialUris.isNotEmpty() && shareToken != lastShareToken) {
             lastShareToken = shareToken
-            addUris(initialUris)
+            val uris = initialUris
+            scope.launch { addUris(uris) }
         }
     }
 
