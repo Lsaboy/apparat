@@ -65,7 +65,8 @@ val TOOL_ROUTES = setOf(
     "image_shrink", "document_scan", "palette_extractor", "image_convert", "exif_strip",
     "qr_studio", "hash_verifier", "json_tool", "base64_studio",
     // Desktop-only tools (core/model/DesktopTools.kt)
-    "audio_convert", "video_rotate", "batch_process"
+    "audio_convert", "video_rotate", "batch_process",
+    "pdf_pages", "video_join", "video_crop", "video_resize", "video_frames", "watch_folder"
 )
 
 /** A file (or files, or text) handed to the app: dropped on the window or opened with Apparat. */
@@ -147,7 +148,8 @@ class AppController {
         when {
             types.all { it.startsWith("image/") } -> { payload = SharedPayload(uris = uris, mimeType = "image/*"); navigate("images_to_pdf") }
             types.all { it == "application/pdf" } -> { payload = SharedPayload(uris = uris, mimeType = "application/pdf"); navigate("pdf_merge") }
-            else -> Toast.makeText(Context.app, "Drop several photos (to make a PDF) or several PDFs (to merge them).", Toast.LENGTH_LONG).show()
+            types.all { it.startsWith("video/") } -> { payload = SharedPayload(uris = uris, mimeType = "video/*"); navigate("video_join") }
+            else -> Toast.makeText(Context.app, "Drop several photos (to make a PDF), PDFs (to merge them) or videos (to join them).", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -297,6 +299,18 @@ private fun Destination(route: String, controller: AppController, appSettings: A
             com.omniforge.apparat.desktop.feature.BatchScreen(initialFiles = expanded, onBack = back)
         }
         "video_rotate" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoRotateScreen(initialUri = u, onBack = back) }
+        "pdf_pages" -> { val u = pdfUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.PdfPagesScreen(initialUri = u, onBack = back) }
+        "video_crop" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoCropScreen(initialUri = u, onBack = back) }
+        "video_resize" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoResizeScreen(initialUri = u, onBack = back) }
+        "video_frames" -> { val u = videoUri(); ConsumeSharedPayloadEffect(u); com.omniforge.apparat.desktop.feature.VideoFramesScreen(initialUri = u, onBack = back) }
+        "video_join" -> {
+            val list = remember(payload) {
+                payload?.uris?.takeIf { incomingMimeType == "video/*" }.orEmpty().ifEmpty { listOfNotNull(videoUri()) }
+            }
+            ConsumeSharedPayloadEffect(list.firstOrNull())
+            com.omniforge.apparat.desktop.feature.VideoJoinScreen(initialUris = list, onBack = back)
+        }
+        "watch_folder" -> com.omniforge.apparat.desktop.feature.WatchFolderScreen(onBack = back)
         else -> HomeScreen(
             appSettings = appSettings,
             onNavigateToTool = { controller.navigate(it) },

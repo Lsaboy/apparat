@@ -48,19 +48,23 @@ fun SaveButtons(file: File, mimeType: String, fileName: String) {
         }
     }
 
+    fun saveToDefault() {
+        if (saving) return
+        saving = true
+        scope.launch {
+            val outcome = withContext(NonCancellable) {
+                OutputSaver.saveToDefault(appContext, listOf(SaveItem(file, mimeType, fileName)))
+            }
+            saving = false
+            Toast.makeText(appContext, outcome.message, Toast.LENGTH_LONG).show()
+        }
+    }
+    ShortcutHandler(KeyboardShortcuts.Action.SAVE) { saveToDefault() }
+    ShortcutHandler(KeyboardShortcuts.Action.SAVE_AS) { if (!saving) runCatching { saveAs.launch(fileName) } }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Button(
-        onClick = {
-            if (saving) return@Button
-            saving = true
-            scope.launch {
-                val outcome = withContext(NonCancellable) {
-                    OutputSaver.saveToDefault(appContext, listOf(SaveItem(file, mimeType, fileName)))
-                }
-                saving = false
-                Toast.makeText(appContext, outcome.message, Toast.LENGTH_LONG).show()
-            }
-        },
+        onClick = { saveToDefault() },
         enabled = !saving,
         modifier = Modifier.fillMaxWidth().height(48.dp),
         colors = ButtonDefaults.buttonColors(
@@ -117,6 +121,10 @@ fun SaveAllButtons(items: List<SaveItem>, noun: String = "files") {
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree: Uri? ->
         if (tree != null) run { onProgress -> OutputSaver.saveToPickedFolder(appContext, tree, items, onProgress) }
+    }
+
+    ShortcutHandler(KeyboardShortcuts.Action.SAVE, enabled = items.isNotEmpty()) {
+        if (!saving) run { onProgress -> OutputSaver.saveToDefault(appContext, items, onProgress) }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

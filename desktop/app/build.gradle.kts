@@ -1,4 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 plugins {
     kotlin("jvm")
@@ -156,6 +158,32 @@ compose.desktop {
                 upgradeUuid = "6f1c3c3e-5a3e-4c55-9e57-1d0b0f5a7a21"
             }
         }
+    }
+}
+
+// Windows: Apparat.exe is a windowed program, so Windows detaches it from the terminal and
+// `--batch` output is lost. apparat-cli.exe is the same launcher marked as a console program
+// (PE subsystem 2 -> 3); jpackage launchers read app/<own name>.cfg, so it gets a copy of the
+// config that also tells the app it was started from a terminal. It's added to the app image
+// that packageMsi/packageExe install.
+tasks.matching { it.name == "createDistributable" }.configureEach {
+    doLast {
+        if (!System.getProperty("os.name").startsWith("Windows")) return@doLast
+        val image = outputs.files.files.flatMap { it.walkTopDown().maxDepth(2).toList() }
+            .firstOrNull { it.name == "Apparat.exe" }?.parentFile
+            ?: throw GradleException("Apparat.exe not found in the app image")
+        val exe = image.resolve("Apparat.exe").readBytes()
+        val pe = ByteBuffer.wrap(exe).order(ByteOrder.LITTLE_ENDIAN).getInt(0x3C)
+        val subsystemAt = pe + 24 + 68
+        check(exe[pe].toInt() == 'P'.code && exe[pe + 1].toInt() == 'E'.code) { "Apparat.exe isn't a PE file" }
+        check(exe[subsystemAt].toInt() == 2) { "Unexpected subsystem ${exe[subsystemAt]} in Apparat.exe" }
+        exe[subsystemAt] = 3
+        image.resolve("apparat-cli.exe").writeBytes(exe)
+        val cfg = image.resolve("app/Apparat.cfg").readText()
+        val cliCfg = if ("[JavaOptions]" in cfg) cfg.replaceFirst("[JavaOptions]", "[JavaOptions]\njava-options=-Dapparat.cli=true")
+            else cfg + "\n[JavaOptions]\njava-options=-Dapparat.cli=true\n"
+        image.resolve("app/apparat-cli.cfg").writeText(cliCfg)
+        logger.lifecycle("Added console launcher: ${image.resolve("apparat-cli.exe")}")
     }
 }
 

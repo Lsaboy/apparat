@@ -27,6 +27,8 @@ import com.omniforge.apparat.core.theme.SuccessGreen
 import com.omniforge.apparat.core.theme.accentText
 import com.omniforge.apparat.core.theme.onPrimaryForAccent
 import com.omniforge.apparat.core.ui.BraunSegmentedControl
+import com.omniforge.apparat.core.ui.KeyboardShortcuts
+import com.omniforge.apparat.core.ui.ShortcutHandler
 import com.omniforge.apparat.core.ui.ToolScaffold
 import com.omniforge.apparat.core.util.FileUtils
 import com.omniforge.apparat.desktop.engine.AudioConvertFormat
@@ -87,6 +89,7 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
     val pickOutputFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) outputDir = uri.file
     }
+    ShortcutHandler(KeyboardShortcuts.Action.OPEN, enabled = !running) { pickFiles.launch(operation.input.mimes.toTypedArray()) }
 
     @Composable
     fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -127,31 +130,7 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
                     }
                 }
                 }
-                when (operation) {
-                    BatchOperation.PHOTO_UNDER_KB -> BraunSegmentedControl(
-                        options = listOf(50, 100, 200, 500, 1000), selectedOption = options.photoLimitKb,
-                        onOptionSelected = { options = options.copy(photoLimitKb = it) }, labelForOption = { "$it KB" },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BatchOperation.CONVERT_IMAGE -> BraunSegmentedControl(
-                        options = ImageOutputFormat.available(), selectedOption = options.imageFormat,
-                        onOptionSelected = { options = options.copy(imageFormat = it) }, labelForOption = { it.name },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BatchOperation.SHRINK_VIDEO -> BraunSegmentedControl(
-                        options = VideoShrinkPreset.entries.toList(), selectedOption = options.videoPreset,
-                        onOptionSelected = { options = options.copy(videoPreset = it) }, labelForOption = { "${it.shortSide}p" },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BatchOperation.CONVERT_AUDIO -> BraunSegmentedControl(
-                        options = AudioConvertFormat.entries.toList(), selectedOption = options.audioFormat,
-                        onOptionSelected = { options = options.copy(audioFormat = it) }, labelForOption = { it.label },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BatchOperation.SHRINK_PHOTO -> Text("Longest side 1920 px, quality 80%, location and camera data removed.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    BatchOperation.COMPRESS_PDF -> Text("Photos and scans inside each PDF re-saved at about 150 DPI.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else -> {}
-                }
+                BatchOptionControls(operation, options) { options = it }
             }
 
             Section("2. Files (${files.size}${if (files.isNotEmpty() && accepted != files.size) ", $accepted usable" else ""})") {
@@ -261,5 +240,35 @@ fun BatchScreen(initialFiles: List<File> = emptyList(), onBack: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+/** The settings shown under the chosen operation (shared with the watch folder). */
+@Composable
+internal fun BatchOptionControls(operation: BatchOperation, options: BatchOptions, onChange: (BatchOptions) -> Unit) {
+    when (operation) {
+        BatchOperation.PHOTO_UNDER_KB -> BraunSegmentedControl(
+            options = listOf(50, 100, 200, 500, 1000), selectedOption = options.photoLimitKb,
+            onOptionSelected = { onChange(options.copy(photoLimitKb = it)) }, labelForOption = { "$it KB" },
+            modifier = Modifier.fillMaxWidth()
+        )
+        BatchOperation.CONVERT_IMAGE -> BraunSegmentedControl(
+            options = ImageOutputFormat.available(), selectedOption = options.imageFormat,
+            onOptionSelected = { onChange(options.copy(imageFormat = it)) }, labelForOption = { it.name },
+            modifier = Modifier.fillMaxWidth()
+        )
+        BatchOperation.SHRINK_VIDEO -> BraunSegmentedControl(
+            options = VideoShrinkPreset.entries.toList(), selectedOption = options.videoPreset,
+            onOptionSelected = { onChange(options.copy(videoPreset = it)) }, labelForOption = { "${it.shortSide}p" },
+            modifier = Modifier.fillMaxWidth()
+        )
+        BatchOperation.CONVERT_AUDIO -> BraunSegmentedControl(
+            options = AudioConvertFormat.entries.toList(), selectedOption = options.audioFormat,
+            onOptionSelected = { onChange(options.copy(audioFormat = it)) }, labelForOption = { it.label },
+            modifier = Modifier.fillMaxWidth()
+        )
+        BatchOperation.SHRINK_PHOTO -> Text("Longest side 1920 px, quality 80%, location and camera data removed.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        BatchOperation.COMPRESS_PDF -> Text("Photos and scans inside each PDF re-saved at about 150 DPI.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> {}
     }
 }

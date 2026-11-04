@@ -566,6 +566,7 @@ fun FileSelectionCard(
     fileDetails: String? = null,
     onClick: () -> Unit
 ) {
+    ShortcutHandler(KeyboardShortcuts.Action.OPEN, handler = onClick)
     Surface(
         modifier = Modifier
             .fillMaxWidth()

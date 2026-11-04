@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
@@ -25,6 +27,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.omniforge.apparat.core.jobs.ToolJobs
 import com.omniforge.apparat.core.settings.AppSettings
 import com.omniforge.apparat.core.theme.ApparatTheme
+import com.omniforge.apparat.core.ui.KeyboardShortcuts
 import com.omniforge.apparat.core.util.FileUtils
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
@@ -44,6 +47,8 @@ fun main(args: Array<String>) {
     if (args.any { it == "--self-test" }) kotlin.system.exitProcess(runSelfTest())
     if (args.any { it == "--help" || it == "-h" }) { println(CLI_HELP); return }
     if (args.any { it == "--batch" }) kotlin.system.exitProcess(runCommandLineBatch(args.toList()))
+    // apparat-cli.exe (Windows console launcher) only runs commands; the window opens from Apparat.exe.
+    if (System.getProperty("apparat.cli") != null) { System.err.println(CLI_HELP); kotlin.system.exitProcess(2) }
     setLinuxWindowClass("apparat")
 
     val initialFiles = args.filterNot { it.startsWith("-") }.map(::File).filter { it.exists() }
@@ -97,9 +102,30 @@ fun main(args: Array<String>) {
             title = "Apparat",
             icon = remember(iconVariant) { AppIcons.painter(iconVariant) },
             onPreviewKeyEvent = { event ->
-                val isBack = event.type == KeyEventType.KeyDown &&
-                    (event.key == Key.Escape || (event.isAltPressed && event.key == Key.DirectionLeft))
-                if (isBack) BackDispatcher.dispatch() || controller.pop() else false
+                if (event.type != KeyEventType.KeyDown) false
+                else if (event.key == Key.Escape || (event.isAltPressed && event.key == Key.DirectionLeft)) {
+                    BackDispatcher.dispatch() || controller.pop()
+                } else if (event.isCtrlPressed && !event.isAltPressed) when (event.key) {
+                    Key.O -> {
+                        if (!KeyboardShortcuts.trigger(KeyboardShortcuts.Action.OPEN)) {
+                            val files = DesktopDialogs.openFiles(emptyList())
+                            if (files.isNotEmpty()) controller.handleFiles(files)
+                        }
+                        true
+                    }
+                    Key.S -> {
+                        KeyboardShortcuts.trigger(if (event.isShiftPressed) KeyboardShortcuts.Action.SAVE_AS else KeyboardShortcuts.Action.SAVE)
+                        true
+                    }
+                    Key.F -> {
+                        if (!KeyboardShortcuts.trigger(KeyboardShortcuts.Action.FIND)) {
+                            KeyboardShortcuts.pendingFind = true
+                            controller.navigate("home")
+                        }
+                        true
+                    }
+                    else -> false
+                } else false
             }
         ) {
             LaunchedEffect(Unit) {

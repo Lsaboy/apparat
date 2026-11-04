@@ -40,6 +40,10 @@ val CLI_HELP = """
     Examples:
         apparat --batch compress-pdf ~/Scans
         apparat --batch photo-under-kb --kb 50 --out ~/upload passport.jpg sign.png
+    On Windows, run commands with apparat-cli.exe (next to Apparat.exe) to see the output.
+
+    Shortcuts in the app: Ctrl+O open, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+F search tools,
+    Esc or Alt+Left back.
 """.trimIndent()
 
 /** `--batch ...`: runs a batch without a window and prints one line per file. Exit code 1 if any failed. */

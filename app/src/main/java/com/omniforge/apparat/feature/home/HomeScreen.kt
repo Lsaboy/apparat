@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +74,17 @@ fun HomeScreen(
     val context = LocalContext.current
 
     var searchQuery by remember { mutableStateOf("") }
+    val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    com.omniforge.apparat.core.ui.ShortcutHandler(com.omniforge.apparat.core.ui.KeyboardShortcuts.Action.FIND) {
+        runCatching { searchFocus.requestFocus() }
+    }
+    LaunchedEffect(Unit) {
+        if (com.omniforge.apparat.core.ui.KeyboardShortcuts.pendingFind) {
+            com.omniforge.apparat.core.ui.KeyboardShortcuts.pendingFind = false
+            kotlinx.coroutines.delay(50)
+            runCatching { searchFocus.requestFocus() }
+        }
+    }
     var selectedCategory by remember { mutableStateOf<ToolCategory?>(null) }
     var isGridView by remember { mutableStateOf(appSettings.isGridView) }
     var showFirstBootDialog by remember { mutableStateOf(!appSettings.hasSeenAppearancePrompt) }
@@ -283,7 +295,7 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Normal
                                 ),
                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().focusRequester(searchFocus)
                             )
                         }
 
