@@ -92,23 +92,24 @@ Done so far:
   it. Also on the command line: `apparat --batch compress-pdf ~/Scans` (`apparat --help`).
 - **Audio Converter**: MP3/M4A/Opus/FLAC/WAV, bitrate, loudness levelling.
 - **Rotate, Flip & Speed**: lossless rotation, mirror/flip, 0.25×-4× with pitch kept.
+- **Watch Folder**: a batch operation on every new file in a folder, once it stops growing;
+  a ledger in the output folder stops repeats after a restart.
+- **PDF page tools**: thumbnail grid; reorder, rotate, delete, extract, page numbers, watermark.
+- **Video**: join clips, crop, frames / contact sheet, resolution and frame rate.
+- **Keyboard shortcuts**: Ctrl+O/S/Shift+S/F, Esc/Alt+Left. Shared registry
+  (`core/ui/KeyboardShortcuts.kt`), a no-op on Android.
+- **Windows console launcher**: `apparat-cli.exe`, a copy of `Apparat.exe` with the PE
+  subsystem set to console, made in `createDistributable` (`app/build.gradle.kts`).
 
 ### More desktop ideas, most valuable first
 
 1. ~~Batch mode~~ and ~~command line~~: done (see above). Next step for batch: more operations
    (split every PDF, PDF→images, merge per folder) and per-operation quality settings.
-2. **Windows console.** The Windows launcher is a GUI program, so `--batch`/`--self-test` print
-   nothing in a terminal there. The self-test also writes and opens a report file. A separate
-   `apparat-cli.exe` console launcher would fix this properly.
+2. ~~Windows console~~, ~~PDF page tools~~, ~~video join/crop/frames/resolution~~, ~~watch
+   folder~~, ~~keyboard shortcuts~~: done (see above). Next: `apparat-cli` on PATH.
 3. ~~Hardware video encoding~~: done. VA-API (AMD/Intel on Linux), NVENC, QSV, D3D12/Media
    Foundation (AMD on Windows), with step-by-step fallback to the CPU. Pitfalls: README.md,
    "Hardware video". Code: `platform/HwAccel.kt`, `engine/video/VideoEncodePlan.kt`.
-4. **PDF page tools with thumbnails.** Reorder, rotate or delete pages, add page numbers or a
-   watermark. A big screen makes page grids practical.
-5. **Video:** join clips, crop, extract frames / contact sheet, change resolution or frame rate.
-6. **Watch folder.** Anything saved into a folder gets processed automatically (for example,
-   scans become compressed PDFs).
-7. **Keyboard shortcuts** (Ctrl+O open, Ctrl+S save, Ctrl+F search on Home).
 
 ## Two Android findings (no Android files changed)
 

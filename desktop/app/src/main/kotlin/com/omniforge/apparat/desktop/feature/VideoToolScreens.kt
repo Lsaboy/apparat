@@ -233,7 +233,7 @@ fun VideoResizeScreen(initialUri: Uri? = null, onBack: () -> Unit) {
         ready = { p ->
             val sameH = height == null || height == p.displayHeight
             val f = fps
-            val sameF = f == null || (p.fps != null && kotlin.math.abs(p.fps - f) < 0.01)
+            val sameF = f == null || (p.fps?.let { kotlin.math.abs(it - f) < 0.01 } == true)
             !(sameH && sameF)
         },
         options = { p ->
@@ -296,15 +296,15 @@ fun VideoFramesScreen(initialUri: Uri? = null, onBack: () -> Unit) {
             )
             if (mode == FramesMode.SHEET) {
                 Heading("Columns")
-                BraunSegmentedControl(listOf(3, 4, 5, 6), columns, { columns = it }, { "$it" }, Modifier.fillMaxWidth())
+                BraunSegmentedControl(listOf(3, 4, 5, 6), columns, { columns = it }, Modifier.fillMaxWidth(), { "$it" })
                 Heading("Rows")
-                BraunSegmentedControl(listOf(3, 4, 5, 6, 8), rows, { rows = it }, { "$it" }, Modifier.fillMaxWidth())
+                BraunSegmentedControl(listOf(3, 4, 5, 6, 8), rows, { rows = it }, Modifier.fillMaxWidth(), { "$it" })
                 Hint("${columns * rows} evenly spaced frames, each labelled with its time, on one 1920 px wide JPG.")
             } else {
                 Heading("How many")
-                BraunSegmentedControl(listOf(5, 10, 20, 50, 100), count, { count = it }, { "$it" }, Modifier.fillMaxWidth())
+                BraunSegmentedControl(listOf(5, 10, 20, 50, 100), count, { count = it }, Modifier.fillMaxWidth(), { "$it" })
                 Heading("Format")
-                BraunSegmentedControl(FrameFormat.entries.toList(), format, { format = it }, { it.label }, Modifier.fillMaxWidth())
+                BraunSegmentedControl(FrameFormat.entries.toList(), format, { format = it }, Modifier.fillMaxWidth(), { it.label })
                 Hint("Full-size frames spread evenly across the video, named with their time, packed into one ZIP.")
             }
         },

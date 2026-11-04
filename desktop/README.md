@@ -104,12 +104,19 @@ with "Unresolved reference". Add a small stand-in under `desktop/engine/src/main
 
 ## Desktop-only tools
 
-Three extra tools exist only on desktop: **Batch Processor** (one operation on many files, into a
-folder; drop a folder on the window to start one), **Audio Converter** (MP3/M4A/Opus/FLAC/WAV,
-bitrate, loudness levelling) and **Rotate, Flip & Speed**. Batches also run from a terminal:
-`apparat --batch compress-pdf ~/Scans` (see `apparat --help`). They are
-listed in `app/src/main/kotlin/com/omniforge/apparat/core/model/DesktopTools.kt`; see STRATEGY.md
-for how to add more.
+Desktop-only tools: **Batch Processor** (one operation on many files, into a folder; drop a
+folder on the window to start one), **Watch Folder** (files saved into a folder get a batch
+operation automatically), **Audio Converter** (MP3/M4A/Opus/FLAC/WAV, bitrate, loudness
+levelling), **Rotate, Flip & Speed**, **Page Tools: Reorder, Rotate & Number** (PDF page grid),
+**Join Videos**, **Crop Video**, **Resolution & Frame Rate** and **Frames & Contact Sheet**.
+Batches also run from a terminal: `apparat --batch compress-pdf ~/Scans` (see `apparat --help`).
+On Windows use `apparat-cli.exe`, installed next to `Apparat.exe` (per-user installs go to
+`%LOCALAPPDATA%\Apparat`); `Apparat.exe` is a GUI program and prints nothing. They are listed in
+`app/src/main/kotlin/com/omniforge/apparat/core/model/DesktopTools.kt`; see STRATEGY.md for how
+to add more.
+
+Shortcuts: Ctrl+O open, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+F search tools, Esc or Alt+Left
+back.
 
 ## Hardware video
 
