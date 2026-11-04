@@ -1,0 +1,15 @@
+Apparat 1.5.0 self-test (Linux amd64, Java 21.0.13)
+cache: /home/runner/.cache/apparat  downloads: /home/runner/Downloads
+PASS  ffmpeg: /home/runner/.cache/apparat/native/ffmpeg-8.1.2-1.5.14-linux-x86_64-gpl-f43a74581bab49642d5f23623e24.jar/org/bytedeco/ffmpeg/linux-x86_64-gpl/ffmpeg (bundled)
+PASS  encoders: H.264, HEVC, AV1; HEVC=true AV1=true
+PASS  hardware video: No hardware encoder found, using the CPU: no GPU driver loaded, or a sandbox without --device=dri
+        - no /dev/dri render node (no GPU driver loaded, or a sandbox without --device=dri)
+        - h264_nvenc on cuda: failed (Exiting with exit code -1)
+PASS  make test video: 205120 bytes
+PASS  video shrink: 640x360 h264/aac via H.264, CPU
+PASS  audio extract: 18786 bytes aac
+PASS  gif: 200742 bytes
+PASS  image: png 2075 B -> webp 3762 B
+PASS  pdf: 54586 B, split into 2
+ALL CHECKS PASSED
+Report saved to /home/runner/.local/share/apparat/self-test.txt

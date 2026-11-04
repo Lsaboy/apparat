@@ -1,0 +1,5 @@
+Apparat: hardware video unavailable (no GPU driver loaded, or a sandbox without --device=dri) [73 ms]
+Apparat:   no /dev/dri render node (no GPU driver loaded, or a sandbox without --device=dri)
+Apparat:   h264_nvenc on cuda: failed (Exiting with exit code -1)
+[SKIKO] warn: Fallback to next API
+org.jetbrains.skiko.RenderException: Cannot create Linux GL context

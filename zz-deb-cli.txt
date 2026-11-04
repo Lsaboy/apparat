@@ -1,0 +1,4 @@
+Convert photos: 2 file(s) → /tmp/cli-out
+  ok      a.png → a.webp
+  ok      b.png → b.webp
+Done: 2, failed: 0, skipped: 0
