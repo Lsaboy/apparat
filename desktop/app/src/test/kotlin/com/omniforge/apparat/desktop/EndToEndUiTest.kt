@@ -202,9 +202,9 @@ class EndToEndUiTest {
 
     @Test
     fun desktopToolsAreListedOnHome() = e2e("desktopToolsAreListedOnHome") {
-        assertEquals(24, com.omniforge.apparat.core.model.ALL_TOOLS.size)
+        assertEquals(30, com.omniforge.apparat.core.model.ALL_TOOLS.size)
         open("home")
-        waitForText("24 Instruments")
+        waitForText("30 Instruments")
     }
 
     @Test
